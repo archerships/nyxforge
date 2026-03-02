@@ -33,7 +33,8 @@ command_exists() { command -v "$1" &>/dev/null; }
 add_to_shell() {
     local line="${1}"
     local marker="${2}"
-    for rc in "$HOME/.zshrc" "$HOME/.bashrc"; do
+    # macOS login shells source .bash_profile, not .bashrc; include both.
+    for rc in "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.zprofile"; do
         [[ -f "${rc}" ]] || continue
         if ! grep -qF "${marker}" "${rc}"; then
             echo "" >> "${rc}"
@@ -109,10 +110,29 @@ fi
 
 # -- 3. PATH ------------------------------------------------------------------
 FLUTTER_BIN="${FLUTTER_HOME}/bin"
+
+# Use $HOME-relative form so the line is portable across users / machines.
+FLUTTER_BIN_PORTABLE="\$HOME/development/flutter/bin"
+if [[ "${FLUTTER_HOME}" != "$HOME/development/flutter" ]]; then
+    # Non-default install location — store the absolute path.
+    FLUTTER_BIN_PORTABLE="${FLUTTER_BIN}"
+fi
+
 if ! echo "${PATH}" | grep -q "${FLUTTER_BIN}"; then
-    add_to_shell "export PATH=\"${FLUTTER_BIN}:\$PATH\"" "nyxforge: flutter"
+    add_to_shell "export PATH=\"${FLUTTER_BIN_PORTABLE}:\$PATH\"" "nyxforge: flutter"
     export PATH="${FLUTTER_BIN}:${PATH}"
     info "PATH updated for this session"
+fi
+
+# On macOS, also write to /etc/paths.d/ so ALL shells (including non-login
+# non-interactive ones) pick up Flutter without sourcing any rc file.
+if [[ "$(uname)" == "Darwin" ]]; then
+    PATHS_D="/etc/paths.d/flutter"
+    if [[ ! -f "${PATHS_D}" ]] || ! grep -qF "${FLUTTER_BIN}" "${PATHS_D}" 2>/dev/null; then
+        echo "${FLUTTER_BIN}" | sudo tee "${PATHS_D}" >/dev/null && \
+            info "Added ${FLUTTER_BIN} to /etc/paths.d/flutter (system-wide)" || \
+            warn "Could not write /etc/paths.d/flutter (skipping — sudo not available)"
+    fi
 fi
 
 FLUTTER="${FLUTTER_BIN}/flutter"
@@ -129,10 +149,7 @@ info "Enabling Flutter web support..."
 info "Pre-caching Flutter web artifacts (this takes a minute)..."
 "${FLUTTER}" precache --web 2>/dev/null || true
 
-# -- 7. PATH reminder (dart is bundled with Flutter) --------------------------
-add_to_shell "export PATH=\"${FLUTTER_BIN}:\$PATH\"" "nyxforge: dart (bundled with flutter)"
-
-# -- 8. doctor ----------------------------------------------------------------
+# -- 7. doctor ----------------------------------------------------------------
 info "Running flutter doctor..."
 "${FLUTTER}" doctor --android-licenses 2>/dev/null || true
 "${FLUTTER}" doctor -v 2>&1 | grep -v "^$" | head -60 || true
