@@ -68,6 +68,18 @@ pub enum ComparisonOp {
     Equal,
 }
 
+impl ComparisonOp {
+    pub fn evaluate(&self, value: Decimal, threshold: Decimal) -> bool {
+        match self {
+            Self::LessThan           => value < threshold,
+            Self::LessThanOrEqual    => value <= threshold,
+            Self::GreaterThan        => value > threshold,
+            Self::GreaterThanOrEqual => value >= threshold,
+            Self::Equal              => value == threshold,
+        }
+    }
+}
+
 /// Specification of the oracle network trusted to verify the goal.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OracleSpec {

@@ -17,7 +17,7 @@ impl RandomXHasher {
         let flags = RandomXFlag::get_recommended_flags();
         let cache = RandomXCache::new(flags, seed_hash)
             .map_err(|e| anyhow::anyhow!("RandomX cache init failed: {e}"))?;
-        let vm = RandomXVM::new(flags, Some(&cache), None)
+        let vm = RandomXVM::new(flags, Some(cache), None)
             .map_err(|e| anyhow::anyhow!("RandomX VM init failed: {e}"))?;
         Ok(Self { vm })
     }

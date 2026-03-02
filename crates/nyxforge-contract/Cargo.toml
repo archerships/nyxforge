@@ -17,9 +17,11 @@ nyxforge-zk   = { path = "../nyxforge-zk" }
 
 darkfi-sdk = { workspace = true }
 
-serde      = { workspace = true }
-bincode    = { workspace = true }
-blake3     = { workspace = true }
-anyhow     = { workspace = true }
-thiserror  = { workspace = true }
-tracing    = { workspace = true }
+serde        = { workspace = true }
+bincode      = { workspace = true }
+blake3       = { workspace = true }
+anyhow       = { workspace = true }
+thiserror    = { workspace = true }
+tracing      = { workspace = true }
+chrono       = { workspace = true }
+rust_decimal = { workspace = true }

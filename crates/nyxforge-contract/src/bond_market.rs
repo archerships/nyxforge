@@ -30,7 +30,7 @@ pub struct IssueBondParams {
 pub struct CancelBondParams {
     pub bond_id: BondId,
     /// Issuer's signature authorising cancellation.
-    pub issuer_sig: [u8; 64],
+    pub issuer_sig: Vec<u8>,
 }
 
 // ---------------------------------------------------------------------------

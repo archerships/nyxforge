@@ -26,8 +26,10 @@ anyhow   = { workspace = true }
 thiserror = { workspace = true }
 tracing  = { workspace = true }
 tracing-subscriber = { workspace = true }
-chrono   = { workspace = true }
-clap     = { version = "4", features = ["derive"] }
+chrono       = { workspace = true }
+rust_decimal = { workspace = true }
+async-trait  = { workspace = true }
+clap         = { version = "4", features = ["derive"] }
 
 # HTTP client for fetching public data feeds
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }

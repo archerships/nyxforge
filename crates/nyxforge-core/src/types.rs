@@ -3,7 +3,7 @@ use zeroize::Zeroize;
 
 /// Fixed-point amount denominated in the network's base token (e.g. DRK).
 /// Stored as integer micro-units (1 DRK = 1_000_000 μDRK).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Zeroize)]
 pub struct Amount(pub u64);
 
 impl Amount {
@@ -23,7 +23,7 @@ impl Amount {
 }
 
 /// 32-byte opaque commitment / hash identifier.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Zeroize)]
 pub struct Digest([u8; 32]);
 
 impl Digest {
@@ -40,7 +40,7 @@ impl From<blake3::Hash> for Digest {
 pub type Nullifier = Digest;
 
 /// Compressed Ristretto255 public key (32 bytes).
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Zeroize)]
 pub struct PublicKey(pub [u8; 32]);
 
 /// Secret key — zeroised on drop.

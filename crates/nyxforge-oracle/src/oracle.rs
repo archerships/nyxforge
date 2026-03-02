@@ -111,7 +111,7 @@ impl OracleNode {
             evidence_hash,
             evidence_uri: None,
             oracle_key: self.config.public_key.clone(),
-            signature,
+            signature: signature.to_vec(),
             attested_at: now,
         }
     }
@@ -125,18 +125,3 @@ impl OracleNode {
     }
 }
 
-// ---------------------------------------------------------------------------
-// ComparisonOp evaluation helper
-// ---------------------------------------------------------------------------
-
-impl nyxforge_core::bond::ComparisonOp {
-    pub fn evaluate(&self, value: rust_decimal::Decimal, threshold: rust_decimal::Decimal) -> bool {
-        match self {
-            Self::LessThan           => value < threshold,
-            Self::LessThanOrEqual    => value <= threshold,
-            Self::GreaterThan        => value > threshold,
-            Self::GreaterThanOrEqual => value >= threshold,
-            Self::Equal              => value == threshold,
-        }
-    }
-}

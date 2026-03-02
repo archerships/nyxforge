@@ -53,7 +53,7 @@ impl WalletKeys {
             .map_err(|e| anyhow!("invalid XMR view key: {e:?}"))?;
 
         let view_pair = ViewPair {
-            spend: spend_key.public_key(),
+            spend: monero::PublicKey::from_private_key(&spend_key),
             view: view_key,
         };
         let xmr_address = Address::from_viewpair(Network::Mainnet, &view_pair);
@@ -105,7 +105,7 @@ impl WalletKeys {
         let view_key = PrivateKey::from_slice(&view_bytes)
             .map_err(|e| anyhow!("invalid XMR view key: {e:?}"))?;
         let view_pair = ViewPair {
-            spend: spend_key.public_key(),
+            spend: monero::PublicKey::from_private_key(&spend_key),
             view: view_key,
         };
         let xmr_address = Address::from_viewpair(Network::Mainnet, &view_pair);
@@ -123,6 +123,15 @@ impl WalletKeys {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+impl std::fmt::Debug for WalletKeys {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WalletKeys")
+            .field("xmr_address", &self.xmr_address.to_string())
+            .field("drk_pubkey", &bytes_to_hex(&self.drk_pubkey.0))
+            .finish_non_exhaustive()
+    }
+}
 
 fn bytes_to_hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()

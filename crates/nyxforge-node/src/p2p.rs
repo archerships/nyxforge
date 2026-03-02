@@ -85,6 +85,6 @@ pub async fn run_swarm(
 
     // Placeholder: keep the task alive.
     let _ = state.bond_count().await;
-    futures::future::pending::<()>().await;
+    std::future::pending::<()>().await;
     Ok(())
 }

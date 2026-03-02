@@ -11,6 +11,9 @@
 
 set -euo pipefail
 
+# Ensure Rust and Flutter are on PATH regardless of how the script was invoked.
+export PATH="$HOME/.cargo/bin:$HOME/development/flutter/bin:$PATH"
+
 FLUTTER="${FLUTTER:-$HOME/development/flutter/bin/flutter}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NODE_ARGS=(--testnet)

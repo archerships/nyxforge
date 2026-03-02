@@ -25,7 +25,7 @@ pub struct OracleAttestation {
     pub oracle_key: PublicKey,
 
     /// Ed25519 signature over `bincode(bond_id || goal_met || evidence_hash || timestamp)`.
-    pub signature: [u8; 64],
+    pub signature: Vec<u8>,
 
     pub attested_at: DateTime<Utc>,
 }
