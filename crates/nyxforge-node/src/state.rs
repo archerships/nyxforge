@@ -151,6 +151,10 @@ impl NodeState {
         self.0.bonds.read().await.len()
     }
 
+    pub async fn list_bonds(&self) -> Vec<Bond> {
+        self.0.bonds.read().await.values().cloned().collect()
+    }
+
     // -- Wallet / miner accessors -------------------------------------------
 
     pub fn wallet(&self) -> &WalletState {

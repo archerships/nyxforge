@@ -37,3 +37,4 @@ clap = { version = "4", features = ["derive"] }
 # RPC server (local UNIX socket / HTTP for browser)
 axum = { version = "0.7", features = ["json"] }
 tower-http = { version = "0.5", features = ["cors"] }
+hex  = { workspace = true }

@@ -27,6 +27,9 @@ use axum::{extract::State, response::Json, routing::post, Router};
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
+use nyxforge_contract::bond_market::{process_issue_bond, IssueBondParams};
+use nyxforge_core::bond::Bond;
+use nyxforge_core::types::Digest;
 use nyxforge_miner::MinerCmd;
 use nyxforge_wallet::storage::WalletStorage;
 use nyxforge_wallet::Balance;
@@ -85,13 +88,47 @@ async fn dispatch(state: &NodeState, req: RpcRequest) -> RpcResponse {
             "version": env!("CARGO_PKG_VERSION"),
         })),
 
-        // -- Bonds (existing stubs) -----------------------------------------
-        "bonds.list" => RpcResponse::ok(serde_json::json!({ "bonds": [] })),
+        // -- Bonds ----------------------------------------------------------
+
+        "bonds.list" => {
+            let bonds = state.list_bonds().await;
+            RpcResponse::ok(serde_json::json!({ "bonds": bonds }))
+        }
 
         "bonds.get" => {
             let id_hex = req.params["id"].as_str().unwrap_or("");
-            let _ = (id_hex, state);
-            RpcResponse::ok(serde_json::json!(null))
+            let id_bytes = match hex::decode(id_hex) {
+                Ok(b) if b.len() == 32 => {
+                    let mut arr = [0u8; 32];
+                    arr.copy_from_slice(&b);
+                    arr
+                }
+                _ => return RpcResponse::err("invalid bond ID: expected 32-byte hex"),
+            };
+            match state.get_bond(&Digest::from_bytes(id_bytes)).await {
+                Some(bond) => RpcResponse::ok(bond),
+                None => RpcResponse::err("bond not found"),
+            }
+        }
+
+        "bonds.issue" => {
+            let bond: Bond = match serde_json::from_value(req.params["bond"].clone()) {
+                Ok(b) => b,
+                Err(e) => return RpcResponse::err(format!("invalid bond params: {e}")),
+            };
+            let params = IssueBondParams {
+                bond: bond.clone(),
+                collateral_proof: vec![0xde, 0xad], // stub: real ZK proof in v2
+            };
+            match process_issue_bond(&params) {
+                Err(e) => RpcResponse::err(e.to_string()),
+                Ok(id) => {
+                    let id_hex = hex::encode(id.as_bytes());
+                    state.insert_bond(bond).await;
+                    info!(bond_id = %id_hex, "bond issued");
+                    RpcResponse::ok(serde_json::json!({ "bond_id": id_hex }))
+                }
+            }
         }
 
         // -- Wallet ---------------------------------------------------------

@@ -9,6 +9,7 @@ members = [
     "crates/nyxforge-web",
     "crates/nyxforge-wallet",
     "crates/nyxforge-miner",
+    "crates/nyxforge-cli",
 ]
 
 [workspace.package]
@@ -74,6 +75,11 @@ rust_decimal = { version = "1", features = ["serde-with-str"] }
 monero      = { version = "0.21", features = ["serde"] }
 randomx-rs  = "1"
 async-trait = "0.1"
+
+# CLI tooling
+dialoguer = "0.11"
+colored   = "2"
+hex       = "0.4"
 
 [profile.release]
 opt-level     = 3
