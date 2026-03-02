@@ -1,0 +1,39 @@
+[package]
+name        = "nyxforge-node"
+description = "P2P node: gossip, DHT, state sync, and local JSON-RPC API"
+version.workspace    = true
+edition.workspace    = true
+authors.workspace    = true
+license.workspace    = true
+
+[[bin]]
+name = "nyxforge-node"
+path = "src/main.rs"
+
+[dependencies]
+nyxforge-core     = { path = "../nyxforge-core" }
+nyxforge-contract = { path = "../nyxforge-contract" }
+nyxforge-oracle   = { path = "../nyxforge-oracle" }
+nyxforge-wallet   = { path = "../nyxforge-wallet" }
+nyxforge-miner    = { path = "../nyxforge-miner" }
+
+darkfi = { workspace = true }
+
+tokio    = { workspace = true }
+libp2p   = { workspace = true }
+serde    = { workspace = true }
+serde_json = { workspace = true }
+bincode  = { workspace = true }
+blake3   = { workspace = true }
+anyhow   = { workspace = true }
+thiserror = { workspace = true }
+tracing  = { workspace = true }
+tracing-subscriber = { workspace = true }
+chrono   = { workspace = true }
+
+# CLI flags
+clap = { version = "4", features = ["derive"] }
+
+# RPC server (local UNIX socket / HTTP for browser)
+axum = { version = "0.7", features = ["json"] }
+tower-http = { version = "0.5", features = ["cors"] }

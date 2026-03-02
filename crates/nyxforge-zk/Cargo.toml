@@ -1,0 +1,25 @@
+[package]
+name        = "nyxforge-zk"
+description = "ZK circuits for anonymous bond mint, transfer, and redemption"
+version.workspace    = true
+edition.workspace    = true
+authors.workspace    = true
+license.workspace    = true
+
+[dependencies]
+nyxforge-core = { path = "../nyxforge-core" }
+
+# DarkFi ZK SDK — provides the zkVM, proof system (Halo2), and gadgets
+darkfi-sdk = { workspace = true }
+
+serde      = { workspace = true }
+blake3     = { workspace = true }
+rand       = { workspace = true }
+rand_core  = { workspace = true }
+zeroize    = { workspace = true }
+anyhow     = { workspace = true }
+thiserror  = { workspace = true }
+tracing    = { workspace = true }
+
+[dev-dependencies]
+rand = { workspace = true }

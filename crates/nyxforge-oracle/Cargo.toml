@@ -1,0 +1,33 @@
+[package]
+name        = "nyxforge-oracle"
+description = "Decentralised goal-verification oracle network"
+version.workspace    = true
+edition.workspace    = true
+authors.workspace    = true
+license.workspace    = true
+
+[[bin]]
+name = "nyxforge-oracle"
+path = "src/main.rs"
+
+[lib]
+name = "nyxforge_oracle"
+path = "src/lib.rs"
+
+[dependencies]
+nyxforge-core = { path = "../nyxforge-core" }
+
+tokio    = { workspace = true }
+serde    = { workspace = true }
+serde_json = { workspace = true }
+blake3   = { workspace = true }
+sha2     = { workspace = true }
+anyhow   = { workspace = true }
+thiserror = { workspace = true }
+tracing  = { workspace = true }
+tracing-subscriber = { workspace = true }
+chrono   = { workspace = true }
+clap     = { version = "4", features = ["derive"] }
+
+# HTTP client for fetching public data feeds
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }

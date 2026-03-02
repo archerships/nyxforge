@@ -1,0 +1,25 @@
+[package]
+name        = "nyxforge-contract"
+description = "DarkFi WASM smart contracts: bond market, order book, settlement"
+version.workspace    = true
+edition.workspace    = true
+authors.workspace    = true
+license.workspace    = true
+
+# WASM target for DarkFi's zkVM runtime.
+# Build with: cargo build --target wasm32-unknown-unknown --release
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+nyxforge-core = { path = "../nyxforge-core" }
+nyxforge-zk   = { path = "../nyxforge-zk" }
+
+darkfi-sdk = { workspace = true }
+
+serde      = { workspace = true }
+bincode    = { workspace = true }
+blake3     = { workspace = true }
+anyhow     = { workspace = true }
+thiserror  = { workspace = true }
+tracing    = { workspace = true }

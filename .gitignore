@@ -1,0 +1,12 @@
+/target/
+**/*.rs.bk
+Cargo.lock          # library crates; node bins track their own lock
+.env
+*.key
+*.pem
+node_data/
+wallet.db
+*.log
+.DS_Store
+dist/
+pkg/

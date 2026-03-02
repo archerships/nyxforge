@@ -1,0 +1,19 @@
+[package]
+name        = "nyxforge-miner"
+description = "RandomX CPU miner with P2Pool mini stratum client"
+version.workspace    = true
+edition.workspace    = true
+authors.workspace    = true
+license.workspace    = true
+
+# This crate is native-only — it must NOT target wasm32.
+# randomx-rs links against the RandomX C library.
+
+[dependencies]
+randomx-rs  = { workspace = true }
+async-trait = { workspace = true }
+tokio       = { workspace = true }
+serde       = { workspace = true }
+serde_json  = { workspace = true }
+anyhow      = { workspace = true }
+tracing     = { workspace = true }

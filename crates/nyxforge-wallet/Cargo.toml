@@ -1,0 +1,23 @@
+[package]
+name        = "nyxforge-wallet"
+description = "Unified XMR + DRK wallet library for NyxForge"
+version.workspace    = true
+edition.workspace    = true
+authors.workspace    = true
+license.workspace    = true
+
+[dependencies]
+nyxforge-core = { path = "../nyxforge-core" }
+
+monero      = { workspace = true }
+async-trait = { workspace = true }
+reqwest     = { version = "0.12", features = ["json"] }
+
+tokio      = { workspace = true }
+serde      = { workspace = true }
+serde_json = { workspace = true }
+anyhow     = { workspace = true }
+blake3     = { workspace = true }
+rand       = { workspace = true }
+zeroize    = { workspace = true }
+tracing    = { workspace = true }
