@@ -7,6 +7,7 @@
 # Actions:
 #   --start         Build and start node + Flutter UI (default if no action given)
 #   --stop          Stop all running NyxForge processes
+#   --status        Show status of all NyxForge processes
 #   --help          Show this message and exit
 #
 # Options (for --start):
@@ -24,6 +25,7 @@
 #   ./nyxforge --stop
 #   ./nyxforge --stop --dryrun
 #   ./nyxforge --start --mainnet --dryrun
+#   ./nyxforge --status
 
 set -euo pipefail
 
@@ -77,6 +79,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --start)      ACTION=start ;;
         --stop)       ACTION=stop ;;
+        --status)     ACTION=status ;;
         --help|-h)    usage ;;
         --dryrun)     DRYRUN=true ;;
         --mine)       MINE=true ;;
@@ -305,9 +308,161 @@ do_start() {
 }
 
 # ---------------------------------------------------------------------------
+# STATUS
+# ---------------------------------------------------------------------------
+do_status() {
+    local RULE
+    RULE="$(printf '%.0s─' {1..52})"
+
+    # -- helpers ---------------------------------------------------------------
+
+    # Print a status row: label, indicator, detail
+    status_row() {
+        local label="$1" indicator="$2" detail="$3"
+        printf "  ${BOLD}%-14s${RESET}  %s  %s\n" "$label" "$indicator" "$detail"
+    }
+
+    ok()   { echo -e "${GREEN}●${RESET}"; }
+    dead() { echo -e "${RED}○${RESET}"; }
+
+    # Human-readable elapsed time from ps (format: [[DD-]HH:]MM:SS)
+    uptime_for_pid() {
+        local pid="$1"
+        ps -o etime= -p "$pid" 2>/dev/null | tr -d ' ' || echo "?"
+    }
+
+    # Call the local RPC and return the JSON result field, or empty on failure.
+    rpc_call() {
+        local method="$1"
+        curl -sf --max-time 2 -X POST "$RPC_URL" \
+            -H 'Content-Type: application/json' \
+            -d "{\"method\":\"${method}\",\"params\":{}}" 2>/dev/null || true
+    }
+
+    # Parse a JSON field from a string using python3.
+    json_get() {
+        local json="$1" key="$2"
+        echo "$json" | python3 -c \
+            "import sys,json; d=json.load(sys.stdin); print(d.get('$key',''))" \
+            2>/dev/null || true
+    }
+
+    # -- header ----------------------------------------------------------------
+    echo ""
+    echo -e "${BOLD}NyxForge status${RESET}  $(date '+%Y-%m-%d %H:%M:%S')"
+    echo "$RULE"
+
+    # -- node ------------------------------------------------------------------
+    local node_pid node_detail node_ind
+    node_pid="$(read_pid_file "$NODE_PID_FILE")"
+    if [[ -z "$node_pid" ]]; then
+        node_pid="$(pgrep -x nyxforge-node 2>/dev/null | head -1 || true)"
+    fi
+
+    if [[ -n "$node_pid" ]] && pid_alive "$node_pid"; then
+        node_ind="$(ok)"
+        node_detail="running   PID ${node_pid}   up $(uptime_for_pid "$node_pid")"
+    else
+        node_ind="$(dead)"
+        node_detail="stopped"
+        node_pid=""
+    fi
+    status_row "node" "$node_ind" "$node_detail"
+
+    # -- Flutter UI ------------------------------------------------------------
+    local flutter_pid flutter_detail flutter_ind
+    flutter_pid="$(read_pid_file "$FLUTTER_PID_FILE")"
+    if [[ -n "$flutter_pid" ]] && pid_alive "$flutter_pid"; then
+        flutter_ind="$(ok)"
+        flutter_detail="running   PID ${flutter_pid}   port ${UI_PORT}   up $(uptime_for_pid "$flutter_pid")"
+    else
+        # Fall back: any process holding the UI port
+        local port_pid
+        port_pid="$(lsof -ti ":$UI_PORT" 2>/dev/null | head -1 || true)"
+        if [[ -n "$port_pid" ]]; then
+            flutter_ind="$(ok)"
+            flutter_detail="running   PID ${port_pid}   port ${UI_PORT}"
+        else
+            flutter_ind="$(dead)"
+            flutter_detail="stopped"
+        fi
+    fi
+    status_row "Flutter UI" "$flutter_ind" "$flutter_detail"
+
+    # -- RPC -------------------------------------------------------------------
+    local rpc_ind rpc_detail rpc_resp
+    rpc_resp="$(rpc_call status)"
+    if [[ -n "$rpc_resp" ]]; then
+        rpc_ind="$(ok)"
+        rpc_detail="reachable   ${RPC_URL}"
+    else
+        rpc_ind="$(dead)"
+        rpc_detail="unreachable   ${RPC_URL}"
+    fi
+    status_row "RPC" "$rpc_ind" "$rpc_detail"
+
+    echo "$RULE"
+
+    # -- miner (via RPC) -------------------------------------------------------
+    local miner_ind miner_detail miner_resp
+    miner_resp="$(rpc_call miner.status)"
+    if [[ -n "$miner_resp" ]]; then
+        local running hashrate shares
+        running="$(json_get "$miner_resp" running)"
+        hashrate="$(json_get "$miner_resp" hashrate_h_s)"
+        shares="$(json_get  "$miner_resp" shares_found)"
+        if [[ "$running" == "True" || "$running" == "true" ]]; then
+            miner_ind="$(ok)"
+            # Format hashrate: show kH/s if ≥ 1000
+            local hr_display
+            hr_display="$(python3 -c "
+h = float('${hashrate}' or 0)
+print(f'{h/1000:.2f} kH/s' if h >= 1000 else f'{h:.1f} H/s')
+" 2>/dev/null || echo "${hashrate} H/s")"
+            miner_detail="mining    ${hr_display}   ${shares} share(s)"
+        else
+            miner_ind="$(dead)"
+            miner_detail="stopped"
+        fi
+    else
+        miner_ind="${YELLOW}?${RESET}"
+        miner_detail="unknown (node not reachable)"
+    fi
+    status_row "miner" "$miner_ind" "$miner_detail"
+
+    # -- wallet (via RPC) ------------------------------------------------------
+    local wallet_ind wallet_detail wallet_resp
+    wallet_resp="$(rpc_call wallet.addresses)"
+    if [[ -n "$wallet_resp" ]]; then
+        local xmr_addr
+        xmr_addr="$(json_get "$wallet_resp" xmr)"
+        if [[ -n "$xmr_addr" && "$xmr_addr" != "None" && "$xmr_addr" != "null" ]]; then
+            # Show first 8 … last 6 chars of the address
+            local short_addr
+            short_addr="$(echo "$xmr_addr" | python3 -c \
+                "import sys; a=sys.stdin.read().strip(); print(a[:8]+'…'+a[-6:])" \
+                2>/dev/null || echo "$xmr_addr")"
+            wallet_ind="$(ok)"
+            wallet_detail="created   XMR ${short_addr}"
+        else
+            wallet_ind="$(dead)"
+            wallet_detail="not created   (run: curl -X POST $RPC_URL -d '{\"method\":\"wallet.create\",\"params\":{\"passphrase\":\"\"}}')"
+        fi
+    else
+        wallet_ind="${YELLOW}?${RESET}"
+        wallet_detail="unknown (node not reachable)"
+    fi
+    status_row "wallet" "$wallet_ind" "$wallet_detail"
+
+    echo "$RULE"
+    echo ""
+}
+
+# ---------------------------------------------------------------------------
 # Dispatch
 # ---------------------------------------------------------------------------
 case "$ACTION" in
-    start) do_start ;;
-    stop)  do_stop  ;;
+    start)  do_start  ;;
+    stop)   do_stop   ;;
+    status) do_status ;;
 esac
