@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# pre-commit hook: block commits that contain personal identifiers.
+#
+# Checks:
+#   1. Git author name / email in the current config.
+#   2. Staged diff lines (additions only) for any matching pattern.
+#
+# To bypass intentionally:  git commit --no-verify
+
+set -euo pipefail
+
+RED='\033[0;31m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; RESET='\033[0m'
+
+# Patterns are matched case-insensitively against both the git identity and
+# staged content.  Add more entries here as needed.
+PATTERNS=(
+    'crasch'
+    'chris rasch'
+    'christopher rasch'
+    'crasch@gmail'
+)
+
+FOUND=0
+
+warn()  { echo -e "${YELLOW}[pre-commit]${RESET} $*" >&2; }
+error() { echo -e "${RED}[pre-commit]${RESET} $*" >&2; }
+info()  { echo -e "${CYAN}[pre-commit]${RESET} $*" >&2; }
+
+# ---------------------------------------------------------------------------
+# 1. Check git identity (name + email from config)
+# ---------------------------------------------------------------------------
+AUTHOR_NAME="$(git config user.name  2>/dev/null || true)"
+AUTHOR_EMAIL="$(git config user.email 2>/dev/null || true)"
+IDENTITY="${AUTHOR_NAME} ${AUTHOR_EMAIL}"
+
+for pat in "${PATTERNS[@]}"; do
+    if echo "${IDENTITY}" | grep -qi "${pat}"; then
+        error "Git identity contains '${pat}': ${AUTHOR_NAME} <${AUTHOR_EMAIL}>"
+        error "Fix with: git config [--global] user.name  'Archer Ships'"
+        error "          git config [--global] user.email 'archerships@protonmail.ch'"
+        FOUND=1
+    fi
+done
+
+# ---------------------------------------------------------------------------
+# 2. Check staged diff (added lines only)
+# ---------------------------------------------------------------------------
+STAGED_DIFF="$(git diff --cached -U0 2>/dev/null || true)"
+
+if [[ -n "${STAGED_DIFF}" ]]; then
+    # Collect only added lines (starts with +, excluding the +++ filename header)
+    ADDED_LINES="$(echo "${STAGED_DIFF}" | grep '^+' | grep -v '^+++' || true)"
+
+    if [[ -n "${ADDED_LINES}" ]]; then
+        for pat in "${PATTERNS[@]}"; do
+            MATCHES="$(echo "${ADDED_LINES}" | grep -i "${pat}" || true)"
+            if [[ -n "${MATCHES}" ]]; then
+                error "Staged content contains '${pat}':"
+                while IFS= read -r line; do
+                    echo -e "    ${RED}${line}${RESET}" >&2
+                done <<< "${MATCHES}"
+                FOUND=1
+            fi
+        done
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# Result
+# ---------------------------------------------------------------------------
+if [[ "${FOUND}" -eq 1 ]]; then
+    echo >&2
+    error "Commit blocked — personal identifier found."
+    info  "Remove the offending content, or use 'git commit --no-verify' to override."
+    exit 1
+fi

@@ -81,6 +81,20 @@ if [[ "${DO_FLUTTER}" == "true" ]]; then
     bash "${SCRIPT_DIR}/install-playwright.sh"
 fi
 
+# -- git hooks ----------------------------------------------------------------
+header "Git Hooks"
+HOOKS_SRC="${SCRIPT_DIR}/hooks"
+HOOKS_DST="${PROJECT_ROOT}/.git/hooks"
+if [[ -d "${HOOKS_DST}" ]]; then
+    for hook in "${HOOKS_SRC}"/*; do
+        name="$(basename "${hook}")"
+        ln -sf "../../scripts/hooks/${name}" "${HOOKS_DST}/${name}"
+        success "Installed hook: ${name}"
+    done
+else
+    warn ".git/hooks not found — skipping hook installation"
+fi
+
 # -- check / summary ----------------------------------------------------------
 header "Environment Check"
 
