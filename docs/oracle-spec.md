@@ -7,13 +7,13 @@
 
 ## 1. Introduction
 
-NyxForge requires a specialized oracle infrastructure to resolve **Social Policy Bonds (SPBs)**. Unlike standard DeFi price feeds, these oracles must handle **private web data**, **complex qualitative outcomes**, and **multi-decade timeframes** while adhering to the mandate of **commodity hardware** and **anonymity**.
+NyxForge requires a specialized oracle infrastructure to resolve **Social Policy Bonds (SPBs)**. Unlike standard DeFi price feeds, these oracles must handle **private web data**, **complex qualitative outcomes**, and **multi-century timeframes (up to 200 years)** while adhering to the mandate of **commodity hardware** and **anonymity**.
 
 ---
 
 ## 2. Oracle Architecture: The Three-Tier Stack
 
-To ensure intersubjective truth and censorship resistance, NyxForge employs a tiered resolution hierarchy.
+To ensure intersubjective truth and censorship resistance, NyxForge employs a tiered resolution hierarchy capable of surviving 200 years.
 
 | Tier | Mechanism | Purpose |
 | :--- | :--- | :--- |
@@ -23,7 +23,29 @@ To ensure intersubjective truth and censorship resistance, NyxForge employs a ti
 
 ---
 
-## 3. Privacy & Zero-Knowledge Attestation
+## 3. The "Long Now" (Multi-Century) Model
+
+For bonds maturing in 10, 50, 100, or 200 years, the oracle system shifts from "Data Fetching" to **"Evidence Archiving."**
+
+### 3.1 Sovereign Infrastructure & Persistence
+Oracle nodes do not rely on a central server. They run on a decentralized network of **commodity hardware** (home servers, laptops, or decentralized clouds like Akash/Flux).
+*   **Rotation:** No single computer is expected to run for 200 years. Instead, the **NYX Fair Launch Emission** (100-200 year decay) creates a perpetual incentive for a rotating cast of global participants to spin up new nodes.
+*   **Heartbeat:** If one operator goes offline, the unclaimed rewards attract a new operator to take over the monitoring task on modern hardware.
+
+### 3.2 Perpetual Evidence Archiving
+*   **Archivists:** Participants incentivized by the **NYX Fair Launch** to pin signed reports, news, and scientific data to the Arweave Permaweb.
+*   **Holographic Replay:** In the year 2200, the AO process resolves the bond by replaying two centuries of immutable evidence stored in its own log.
+
+### 3.3 The Delphic Pattern (Institutional Resilience)
+*   **Substitution:** If a data source (e.g., NOAA) ceases to exist, the Treasury DAO votes to substitute it with a modern equivalent index.
+*   **Fallback:** If all automated metrics fail, the bond defaults to a decentralized jury of humans—the only "oracle" that has survived for millennia (the legal model).
+
+### 3.4 Cryptographic Agility
+Contracts include "Verifier Slots" to allow upgrading from Ed25519/ECDSA to **Post-Quantum Cryptography** (Lattice-based) as standards evolve over the centuries.
+
+---
+
+## 4. Privacy & Zero-Knowledge Attestation
 
 NyxForge oracles utilize **Zero-Knowledge (ZK)** technology to prove outcomes without exposing raw sensitive data.
 

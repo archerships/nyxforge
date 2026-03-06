@@ -549,13 +549,17 @@ no on-chain link to the bond note that was burned.
 
 ## 9. Running an Oracle
 
-Oracle nodes monitor bonds, fetch data from external sources, and post signed
-attestations when a goal is met or the deadline passes.
+Oracle nodes are the "eyes" of the NyxForge network. They monitor bonds, fetch real-world data, and post signed attestations when a goal is met.
 
-```bash
-# Not yet documented — oracle CLI coming soon
-```
+### Sovereign Infrastructure & The "Long Now"
+NyxForge is designed to support bonds with maturity dates ranging from **1 year up to 200 years** (matching the expected lifespan of the Arweave network). To ensure oracles survive for centuries, the system follows a **Sovereign Hardware** model:
 
+- **Decentralized Execution:** Oracle nodes run on commodity hardware (home servers, laptops, or decentralized clouds like Akash). There is no central server to shut down.
+- **Rotational Persistence:** We do not expect a single computer to run for 200 years. Instead, the **NYX Fair Launch Emission** creates a perpetual economic incentive. If an oracle operator goes offline, the unclaimed rewards attract a new operator to take over the task on modern hardware.
+- **Evidence Archiving:** For long-term bonds, oracles don't just "check" a website; they fetch data and upload the signed evidence (PDFs, CSVs, zkTLS proofs) to the **Arweave Permaweb**.
+- **Holographic Resolution:** Once evidence is on Arweave, it is permanent. In the year 2200, the bond can be resolved by "replaying" the immutable evidence logs, even if the original data source has been dead for a century.
+
+### Oracle Requirements
 Oracles must:
 
 - Hold the oracle public key registered in the bond's `OracleSpec`.

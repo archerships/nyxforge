@@ -29,6 +29,7 @@ NyxForge will be implemented as a series of **Permanent Processes** on the Arwea
 *   **Immutability:** Every message and state transition is stored permanently on Arweave.
 *   **Self-Healing:** If any node goes offline, the process state is reconstructed by any new Compute Unit (CU) by replaying the permanent message logs.
 *   **Lifespan:** The NyxForge protocol exists for as long as the Arweave network exists (designed for 200+ years).
+*   **Bond Duration:** Supports Social Policy Bonds with maturity dates ranging from 1 year to 200 years.
 
 ### 2.2 Unbounded Execution
 *   **No Gas Limits:** Unlike EVM chains, AO has no protocol-enforced gas limits. High-compute tasks (e.g., massive ZK proof verification) can run as long as the user pays the CU marketplace.
@@ -47,7 +48,7 @@ NyxForge oracles use a **push model**: oracle nodes run as always-on processes t
 
 | Concern | AO Cron (Pull) | Oracle Push |
 | :--- | :--- | :--- |
-| **Timing linkability** | Cron fires on a public schedule — observers can bracket *when* a condition was met to the cron window. | Oracle chooses when to submit (further obscured by noise bonds). |
+| **Timing linkability** | Cron fires on a public schedule — observers can bracket *when* a condition was met to the cron window. | Oracle chooses when to submit 
 | **Latency** | Bounded below by the cron interval; a goal met 1 second after a cron tick waits a full interval. | Near-instant; oracle submits as soon as the condition clears. |
 | **Cost** | Every cron tick costs compute even when nothing changed. | Compute only spent when an event actually occurs. |
 | **Complexity** | Bond process must re-fetch and re-evaluate data inside the AO sandbox (requires trusted HTTP adapters). | Data fetch stays off-chain in the oracle node; AO only verifies the signed attestation. |
@@ -62,8 +63,8 @@ Oracle node                   AO Bond Process
     │                               │
     ├── condition met ──────────────┤
     │   sign attestation            │
-    │   (optionally delay to        │
-    │    next noise window)         │
+    │           │
+    │             │
     │                               │
     └── send AO message ───────────►│ verify signature
                                     │ check nullifier
