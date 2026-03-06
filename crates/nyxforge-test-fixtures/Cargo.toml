@@ -1,0 +1,30 @@
+[package]
+name        = "nyxforge-test-fixtures"
+description = "Shared test fixtures, deterministic data, and mock implementations for NyxForge test suites"
+version.workspace    = true
+edition.workspace    = true
+authors.workspace    = true
+license.workspace    = true
+
+# This crate is only referenced in [dev-dependencies] of other workspace members.
+# It is not published and should never appear in a release binary.
+publish = false
+
+[lib]
+name = "nyxforge_test_fixtures"
+path = "src/lib.rs"
+
+[dependencies]
+nyxforge-core   = { path = "../nyxforge-core" }
+nyxforge-zk     = { path = "../nyxforge-zk" }
+nyxforge-oracle = { path = "../nyxforge-oracle" }
+
+anyhow       = { workspace = true }
+async-trait  = { workspace = true }
+blake3       = { workspace = true }
+chrono       = { workspace = true }
+once_cell    = { workspace = true }
+rust_decimal = { workspace = true }
+serde        = { workspace = true }
+serde_json   = { workspace = true }
+tokio        = { workspace = true }

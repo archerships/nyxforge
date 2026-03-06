@@ -9,17 +9,29 @@ license.workspace    = true
 [dependencies]
 nyxforge-core = { path = "../nyxforge-core" }
 
-# DarkFi ZK SDK — provides the zkVM, proof system (Halo2), and gadgets
-darkfi-sdk = { workspace = true }
+# Halo2 proof system and gadgets (same versions pinned in Cargo.lock via darkfi-sdk)
+halo2_proofs  = "0.3.2"
+halo2_gadgets = "0.4.0"
+halo2_poseidon = "0.1.0"
+pasta_curves  = "0.5.1"
 
 serde      = { workspace = true }
-blake3     = { workspace = true }
 rand       = { workspace = true }
 rand_core  = { workspace = true }
 zeroize    = { workspace = true }
 anyhow     = { workspace = true }
 thiserror  = { workspace = true }
 tracing    = { workspace = true }
+once_cell  = { workspace = true }
 
 [dev-dependencies]
-rand = { workspace = true }
+rand      = { workspace = true }
+hex       = { workspace = true }
+
+[[bench]]
+name    = "zk_proofs"
+harness = false
+
+[dev-dependencies.criterion]
+version  = "0.5"
+features = ["html_reports"]

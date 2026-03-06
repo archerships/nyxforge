@@ -3,10 +3,27 @@
 ## State Machine
 
 ```
+                     ┌──────────┐
+                     │ PROPOSED │  ← issuer publishes for community review
+                     └────┬─────┘       (optional step)
+                          │ community posts questions / suggestions
+                          │
+                          │ bonds.submit_for_approval
+                          ▼
+               ┌─────────────────────┐
+               │ PENDING_ORACLE_     │  ← each listed oracle must accept
+               │ APPROVAL            │
+               └────────┬────────────┘
+                        │ any oracle rejects → issuer calls
+                        │ bonds.revise_oracles (clears responses,
+                        │ oracles must re-accept)
+                        │
+                        │ all oracles accept
+                        ▼
                      ┌─────────┐
-                     │  DRAFT  │  ← issuer defines goal, no collateral yet
+                     │  DRAFT  │  ← oracle-approved; ready for collateral
                      └────┬────┘
-                          │ IssueBond (lock collateral, mint notes)
+                          │ bonds.issue (lock collateral, mint notes)
                           ▼
                      ┌─────────┐
         ┌────────────│  ACTIVE │────────────┐

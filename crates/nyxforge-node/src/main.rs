@@ -33,12 +33,12 @@ struct Args {
     #[arg(long, default_value = "node_data")]
     data_dir: std::path::PathBuf,
 
-    /// Remote monerod URL for the XMR light wallet
-    #[arg(long, default_value = "http://node.community.rino.io:18081")]
+    /// Remote monerod URL for the XMR light wallet (stagenet default)
+    #[arg(long, default_value = "http://127.0.0.1:38081")]
     xmr_node: String,
 
-    /// P2Pool mini stratum endpoint
-    #[arg(long, default_value = "p2pool.io:3333")]
+    /// Stratum endpoint for mining (P2Pool or compatible server)
+    #[arg(long, default_value = "127.0.0.1:3333")]
     p2pool_url: String,
 
     /// CPU threads to use for mining
@@ -48,6 +48,10 @@ struct Args {
     /// Begin mining immediately at launch
     #[arg(long)]
     mine_on_start: bool,
+
+    /// Skip oracle data_id verification when issuing bonds (testing/dev only)
+    #[arg(long)]
+    allow_unverifiable: bool,
 }
 
 #[tokio::main]
@@ -66,7 +70,7 @@ async fn main() -> Result<()> {
     tracing::info!(testnet = args.testnet, listen = %args.listen, "configuration");
 
     // Initialise shared state.
-    let state = state::NodeState::new(&args.data_dir).await?;
+    let state = state::NodeState::new(&args.data_dir, args.allow_unverifiable).await?;
 
     // Start P2P swarm.
     let p2p_handle = {

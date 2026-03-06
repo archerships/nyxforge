@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'theme.dart';
 import 'node_client.dart';
+import 'bond_market_screen.dart';
+import 'issue_bond_screen.dart';
 import 'wallet_screen.dart';
 import 'mine_screen.dart';
 
@@ -38,8 +40,8 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   static const _screens = [
-    _BondListPlaceholder(),
-    _IssuePlaceholder(),
+    BondMarketScreen(),
+    IssueBondScreen(),
     WalletScreen(),
     MineScreen(),
     _NodeStatusScreen(),
@@ -98,80 +100,6 @@ class _SidebarLogo extends StatelessWidget {
               fontWeight:  FontWeight.w700,
               letterSpacing: 2,
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// -- Placeholder screens ------------------------------------------------------
-
-class _BondListPlaceholder extends StatelessWidget {
-  const _BondListPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return _PlaceholderScreen(
-      icon:     Icons.bar_chart,
-      title:    'Bond Market',
-      subtitle: 'Browse and trade anonymous social policy bonds',
-      chips:    const ['All Bonds', 'Environment', 'Health', 'Housing', 'Education'],
-    );
-  }
-}
-
-class _IssuePlaceholder extends StatelessWidget {
-  const _IssuePlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return _PlaceholderScreen(
-      icon:     Icons.add_circle_outline,
-      title:    'Issue Bond',
-      subtitle: 'Define a social goal and issue bonds backed by collateral',
-      chips:    const ['Define Goal', 'Set Oracle', 'Lock Collateral', 'Publish'],
-    );
-  }
-}
-
-class _PlaceholderScreen extends StatelessWidget {
-  const _PlaceholderScreen({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.chips,
-  });
-
-  final IconData icon;
-  final String   title;
-  final String   subtitle;
-  final List<String> chips;
-
-  @override
-  Widget build(BuildContext context) {
-    final tt = Theme.of(context).textTheme;
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 48, color: NyxColors.textMuted),
-          const SizedBox(height: 16),
-          Text(title,    style: tt.titleLarge),
-          const SizedBox(height: 8),
-          Text(subtitle, style: tt.bodyMedium),
-          const SizedBox(height: 24),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: chips
-                .map((c) => Chip(label: Text(c)))
-                .toList(),
-          ),
-          const SizedBox(height: 32),
-          OutlinedButton(
-            onPressed: () {},
-            child: const Text('COMING SOON'),
           ),
         ],
       ),

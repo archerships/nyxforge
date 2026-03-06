@@ -1,6 +1,6 @@
 //! Shared in-memory + persistent node state.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -8,7 +8,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use tokio::sync::{mpsc, RwLock};
 
-use nyxforge_core::bond::{Bond, BondId};
+use nyxforge_core::bond::{Bond, BondComment, BondId, OracleResponse};
 use nyxforge_core::market::OrderBook;
 use nyxforge_core::types::Nullifier;
 use nyxforge_miner::{MinerCmd, MinerStats};
@@ -108,17 +108,33 @@ struct Inner {
     /// Miner sub-state.
     pub miner: MinerState,
 
+    /// Comments on proposed bonds, keyed by bond ID.
+    comments: RwLock<HashMap<BondId, Vec<BondComment>>>,
+
+    /// Oracle accept/reject responses, keyed by bond ID.
+    oracle_responses: RwLock<HashMap<BondId, Vec<OracleResponse>>>,
+
+    /// Data IDs announced by connected oracle nodes.
+    known_data_ids: RwLock<HashSet<String>>,
+
+    /// When true, bonds.issue skips the oracle data_id check (test/dev mode).
+    allow_unverifiable: bool,
+
     /// Local data directory.
     pub data_dir: std::path::PathBuf,
 }
 
 impl NodeState {
-    pub async fn new(data_dir: &Path) -> Result<Self> {
+    pub async fn new(data_dir: &Path, allow_unverifiable: bool) -> Result<Self> {
         tokio::fs::create_dir_all(data_dir).await?;
         Ok(Self(Arc::new(Inner {
             bonds: RwLock::new(HashMap::new()),
             order_books: RwLock::new(HashMap::new()),
             spent_nullifiers: RwLock::new(HashMap::new()),
+            comments: RwLock::new(HashMap::new()),
+            oracle_responses: RwLock::new(HashMap::new()),
+            known_data_ids: RwLock::new(HashSet::new()),
+            allow_unverifiable,
             wallet: WalletState::new(),
             miner: MinerState::new(),
             data_dir: data_dir.to_owned(),
@@ -153,6 +169,91 @@ impl NodeState {
 
     pub async fn list_bonds(&self) -> Vec<Bond> {
         self.0.bonds.read().await.values().cloned().collect()
+    }
+
+    // -- Proposal comments --------------------------------------------------
+
+    /// Append a comment to a bond. The bond must already be stored.
+    pub async fn insert_comment(&self, comment: BondComment) {
+        self.0.comments.write().await
+            .entry(comment.bond_id)
+            .or_default()
+            .push(comment);
+    }
+
+    /// Return all comments on a bond, oldest first.
+    pub async fn get_comments(&self, bond_id: &BondId) -> Vec<BondComment> {
+        self.0.comments.read().await
+            .get(bond_id)
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    // -- Oracle approval responses ------------------------------------------
+
+    /// Record an oracle's accept/reject response.
+    /// Returns `true` if this response completes the set and the bond should
+    /// advance to `Draft` (all listed oracles have now accepted).
+    pub async fn record_oracle_response(&self, response: OracleResponse) -> bool {
+        let bond_id = response.bond_id;
+        self.0.oracle_responses.write().await
+            .entry(bond_id)
+            .or_default()
+            .push(response);
+
+        // Check if all oracles have accepted.
+        self.all_oracles_accepted(&bond_id).await
+    }
+
+    /// Returns true if every key in the bond's OracleSpec has an accepted
+    /// response and none have rejected.
+    pub async fn all_oracles_accepted(&self, bond_id: &BondId) -> bool {
+        let bond = match self.0.bonds.read().await.get(bond_id).cloned() {
+            Some(b) => b,
+            None => return false,
+        };
+        let responses = self.0.oracle_responses.read().await;
+        let recorded = responses.get(bond_id).map(Vec::as_slice).unwrap_or(&[]);
+
+        bond.oracle.oracle_keys.iter().all(|key| {
+            recorded.iter().any(|r| r.oracle_key == *key && r.accepted)
+        })
+    }
+
+    /// Return all oracle responses for a bond.
+    pub async fn get_oracle_responses(&self, bond_id: &BondId) -> Vec<OracleResponse> {
+        self.0.oracle_responses.read().await
+            .get(bond_id)
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    /// Clear oracle responses for a bond (called after the issuer revises
+    /// the oracle list so oracles must re-accept from scratch).
+    pub async fn clear_oracle_responses(&self, bond_id: &BondId) {
+        self.0.oracle_responses.write().await.remove(bond_id);
+    }
+
+    // -- Oracle registry ----------------------------------------------------
+
+    /// Record data IDs announced by an oracle node.
+    pub async fn register_data_ids(&self, ids: Vec<String>) {
+        let mut set = self.0.known_data_ids.write().await;
+        for id in ids {
+            set.insert(id);
+        }
+    }
+
+    /// Returns true if at least one oracle has announced support for this data_id,
+    /// or if the node is running in allow-unverifiable mode.
+    pub async fn is_data_id_supported(&self, data_id: &str) -> bool {
+        self.0.allow_unverifiable
+            || self.0.known_data_ids.read().await.contains(data_id)
+    }
+
+    /// Returns true when the node was started with --allow-unverifiable.
+    pub fn is_unverifiable_allowed(&self) -> bool {
+        self.0.allow_unverifiable
     }
 
     // -- Wallet / miner accessors -------------------------------------------

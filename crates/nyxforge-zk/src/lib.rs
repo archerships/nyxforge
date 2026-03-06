@@ -12,8 +12,11 @@
 //! ```
 
 pub mod burn;
+pub mod circuit;
 pub mod mint;
 pub mod note;
+pub mod params;
+pub mod primitives;
 pub mod transfer;
 
 pub use mint::{MintProof, MintWitness};

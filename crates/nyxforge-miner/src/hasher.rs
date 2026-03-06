@@ -53,10 +53,68 @@ pub fn meets_target(hash: &[u8; 32], target_hex: &str) -> bool {
 mod tests {
     use super::meets_target;
 
+    // Helper: build a hash whose last 4 bytes (LE u32) equal `tail`.
+    fn hash_with_tail(tail: u32) -> [u8; 32] {
+        let mut h = [0u8; 32];
+        let bytes = tail.to_le_bytes();
+        h[28..32].copy_from_slice(&bytes);
+        h
+    }
+
+    // --- Easy targets (all-zeroes hash should always pass) ---
+
     #[test]
-    fn target_check() {
-        let easy_target = "ffffffff";
-        let hash = [0u8; 32];
-        assert!(meets_target(&hash, easy_target));
+    fn all_zero_hash_beats_max_target() {
+        assert!(meets_target(&[0u8; 32], "ffffffff"));
+    }
+
+    #[test]
+    fn all_zero_hash_beats_mid_target() {
+        assert!(meets_target(&[0u8; 32], "0000ffff"));
+    }
+
+    // --- Hard targets (large hash tail should fail) ---
+
+    #[test]
+    fn large_tail_fails_strict_target() {
+        // tail = 0x0001_0000 > target 0x0000_ffff
+        let hash = hash_with_tail(0x0001_0000);
+        assert!(!meets_target(&hash, "0000ffff"));
+    }
+
+    #[test]
+    fn impossible_target_fails() {
+        // target = 0x0000_0000 → only all-zero tail passes
+        let hash = hash_with_tail(1);
+        assert!(!meets_target(&hash, "00000000"));
+    }
+
+    // --- Boundary: tail == target ---
+
+    #[test]
+    fn tail_equal_to_target_passes() {
+        // meets_target uses <=, so tail == target should pass
+        let target_val: u32 = 0x0000_ffff;
+        let hash = hash_with_tail(target_val);
+        assert!(meets_target(&hash, "0000ffff"));
+    }
+
+    #[test]
+    fn tail_one_above_target_fails() {
+        let target_val: u32 = 0x0000_ffff;
+        let hash = hash_with_tail(target_val + 1);
+        assert!(!meets_target(&hash, "0000ffff"));
+    }
+
+    // --- Malformed target ---
+
+    #[test]
+    fn invalid_hex_target_returns_false() {
+        assert!(!meets_target(&[0u8; 32], "not-hex!"));
+    }
+
+    #[test]
+    fn empty_target_returns_false() {
+        assert!(!meets_target(&[0u8; 32], ""));
     }
 }

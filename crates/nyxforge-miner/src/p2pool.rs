@@ -12,8 +12,9 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpStream;
 use tracing::{debug, info, warn};
 
-/// Default P2Pool mini stratum endpoint.
-pub const DEFAULT_P2POOL_URL: &str = "p2pool.io:3333";
+/// Default P2Pool stratum endpoint (local P2Pool instance).
+/// For stagenet: run `p2pool --stagenet --host 127.0.0.1` and point here.
+pub const DEFAULT_P2POOL_URL: &str = "127.0.0.1:3333";
 
 /// Miner configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -197,5 +198,92 @@ impl StratumClient {
 
     pub fn worker_id(&self) -> &str {
         &self.worker_id
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // --- MinerConfig defaults ---
+
+    #[test]
+    fn default_p2pool_url_is_local() {
+        let cfg = MinerConfig::default();
+        assert_eq!(cfg.p2pool_url, DEFAULT_P2POOL_URL);
+        assert!(cfg.p2pool_url.starts_with("127.0.0.1"));
+    }
+
+    #[test]
+    fn default_thread_count_is_one() {
+        assert_eq!(MinerConfig::default().threads, 1);
+    }
+
+    #[test]
+    fn miner_config_roundtrips_via_json() {
+        let cfg = MinerConfig {
+            threads: 4,
+            p2pool_url: "192.168.1.1:3333".into(),
+            xmr_address: "5Abcdef".into(),
+            drk_address: "deadbeef".into(),
+        };
+        let json = serde_json::to_string(&cfg).unwrap();
+        let restored: MinerConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.threads, 4);
+        assert_eq!(restored.p2pool_url, "192.168.1.1:3333");
+        assert_eq!(restored.xmr_address, "5Abcdef");
+        assert_eq!(restored.drk_address, "deadbeef");
+    }
+
+    // --- Share serialization ---
+
+    #[test]
+    fn share_serialises_expected_fields() {
+        let share = Share {
+            worker_id: "w1".into(),
+            job_id:    "j42".into(),
+            nonce:     "0a0b0c0d".into(),
+            result:    "abcd1234".into(),
+        };
+        let json = serde_json::to_string(&share).unwrap();
+        assert!(json.contains("\"worker_id\""));
+        assert!(json.contains("\"job_id\""));
+        assert!(json.contains("\"nonce\""));
+        assert!(json.contains("\"result\""));
+        assert!(json.contains("j42"));
+        assert!(json.contains("0a0b0c0d"));
+    }
+
+    // --- Job deserialization ---
+
+    #[test]
+    fn job_deserialises_from_json() {
+        let raw = r#"{
+            "job_id":    "abc123",
+            "blob":      "deadbeef",
+            "target":    "0000ffff",
+            "seed_hash": "cafebabe00000000000000000000000000000000000000000000000000000000",
+            "height":    12345
+        }"#;
+        let job: Job = serde_json::from_str(raw).unwrap();
+        assert_eq!(job.job_id, "abc123");
+        assert_eq!(job.blob, "deadbeef");
+        assert_eq!(job.target, "0000ffff");
+        assert_eq!(job.height, 12345);
+    }
+
+    #[test]
+    fn job_roundtrips_via_json() {
+        let job = Job {
+            job_id:    "xyz".into(),
+            blob:      "aabbcc".into(),
+            target:    "00001000".into(),
+            seed_hash: "00".repeat(32),
+            height:    999,
+        };
+        let json = serde_json::to_string(&job).unwrap();
+        let restored: Job = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.job_id, "xyz");
+        assert_eq!(restored.height, 999);
     }
 }

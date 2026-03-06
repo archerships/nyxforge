@@ -15,6 +15,9 @@ pub struct VerificationResult {
 /// Trait for a pluggable data feed.
 #[async_trait::async_trait]
 pub trait DataSource: Send + Sync {
+    /// The canonical data_id this source handles.
+    fn data_id(&self) -> &str;
+
     /// Returns true if this source can supply the given data_id.
     fn supports(&self, data_id: &str) -> bool;
 
@@ -37,6 +40,7 @@ pub struct MockDataSource {
 
 #[async_trait::async_trait]
 impl DataSource for MockDataSource {
+    fn data_id(&self) -> &str { &self.data_id }
     fn supports(&self, data_id: &str) -> bool { data_id == self.data_id }
     async fn fetch(&self, _: &str) -> Result<Decimal> { Ok(self.value) }
     fn name(&self) -> &str { "mock" }
@@ -64,6 +68,7 @@ impl HttpJsonSource {
 
 #[async_trait::async_trait]
 impl DataSource for HttpJsonSource {
+    fn data_id(&self) -> &str { &self.data_id }
     fn supports(&self, data_id: &str) -> bool { data_id == self.data_id }
 
     async fn fetch(&self, _: &str) -> Result<Decimal> {
@@ -93,15 +98,95 @@ pub use async_trait;
 mod tests {
     use super::*;
 
+    fn fixed_source(data_id: &str, value: f64) -> MockDataSource {
+        MockDataSource {
+            data_id: data_id.into(),
+            value:   Decimal::try_from(value).unwrap(),
+        }
+    }
+
+    fn source_below(data_id: &str, threshold: Decimal) -> MockDataSource {
+        MockDataSource { data_id: data_id.into(), value: threshold - Decimal::ONE }
+    }
+
+    fn source_at(data_id: &str, threshold: Decimal) -> MockDataSource {
+        MockDataSource { data_id: data_id.into(), value: threshold }
+    }
+
+    fn source_above(data_id: &str, threshold: Decimal) -> MockDataSource {
+        MockDataSource { data_id: data_id.into(), value: threshold + Decimal::ONE }
+    }
+
+    // --- MockDataSource / fixed_source ---
+
     #[tokio::test]
     async fn mock_source_returns_configured_value() {
-        let src = MockDataSource {
-            data_id: "test.metric".into(),
-            value:   Decimal::from(42u32),
-        };
+        let src = fixed_source("test.metric", 42.0);
         assert!(src.supports("test.metric"));
         assert!(!src.supports("other.metric"));
         let v = src.fetch("test.metric").await.unwrap();
-        assert_eq!(v, Decimal::from(42u32));
+        assert_eq!(v, Decimal::try_from(42.0).unwrap());
+    }
+
+    #[tokio::test]
+    async fn mock_source_name_is_mock() {
+        let src = fixed_source("x", 0.0);
+        assert_eq!(src.name(), "mock");
+    }
+
+    // --- Boundary helpers ---
+
+    #[tokio::test]
+    async fn source_below_is_strictly_less_than_threshold() {
+        let threshold = Decimal::from(50_000u32);
+        let src = source_below("us.hud.pit_count", threshold);
+        let v = src.fetch("us.hud.pit_count").await.unwrap();
+        assert!(v < threshold, "expected v < {threshold}, got {v}");
+    }
+
+    #[tokio::test]
+    async fn source_at_equals_threshold() {
+        let threshold = Decimal::from(50_000u32);
+        let src = source_at("us.hud.pit_count", threshold);
+        let v = src.fetch("us.hud.pit_count").await.unwrap();
+        assert_eq!(v, threshold);
+    }
+
+    #[tokio::test]
+    async fn source_above_is_strictly_greater_than_threshold() {
+        let threshold = Decimal::from(50_000u32);
+        let src = source_above("us.hud.pit_count", threshold);
+        let v = src.fetch("us.hud.pit_count").await.unwrap();
+        assert!(v > threshold, "expected v > {threshold}, got {v}");
+    }
+
+    // --- Goal evaluation using GoalMetric.operator.evaluate() ---
+    // These tests simulate what the oracle verifier does after fetching data.
+
+    #[tokio::test]
+    async fn homelessness_goal_met_when_below_threshold() {
+        use nyxforge_core::bond::ComparisonOp;
+        let threshold = Decimal::from(50_000u32);
+        let src = source_below("us.hud.pit_count.unsheltered", threshold);
+        let value = src.fetch("us.hud.pit_count.unsheltered").await.unwrap();
+        assert!(ComparisonOp::LessThan.evaluate(value, threshold));
+    }
+
+    #[tokio::test]
+    async fn homelessness_goal_not_met_at_threshold() {
+        use nyxforge_core::bond::ComparisonOp;
+        let threshold = Decimal::from(50_000u32);
+        let src = source_at("us.hud.pit_count.unsheltered", threshold);
+        let value = src.fetch("us.hud.pit_count.unsheltered").await.unwrap();
+        assert!(!ComparisonOp::LessThan.evaluate(value, threshold));
+    }
+
+    #[tokio::test]
+    async fn lte_goal_met_exactly_at_threshold() {
+        use nyxforge_core::bond::ComparisonOp;
+        let threshold = Decimal::from(50_000u32);
+        let src = source_at("m", threshold);
+        let value = src.fetch("m").await.unwrap();
+        assert!(ComparisonOp::LessThanOrEqual.evaluate(value, threshold));
     }
 }

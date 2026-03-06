@@ -6,6 +6,21 @@ use nyxforge_oracle::{OracleConfig, OracleNode};
 use nyxforge_oracle::verifier::MockDataSource;
 use nyxforge_core::types::PublicKey;
 
+async fn announce_to_node(node_rpc: &str, data_ids: Vec<String>) {
+    let body = serde_json::json!({
+        "method": "oracle.announce",
+        "params": { "data_ids": data_ids },
+    });
+    match reqwest::Client::new().post(node_rpc).json(&body).send().await {
+        Ok(r) if r.status().is_success() =>
+            tracing::info!(%node_rpc, "announced data IDs to node"),
+        Ok(r) =>
+            tracing::warn!(%node_rpc, status = %r.status(), "oracle.announce returned error"),
+        Err(e) =>
+            tracing::warn!(%node_rpc, "could not reach node for oracle.announce: {e}"),
+    }
+}
+
 #[derive(Parser, Debug)]
 #[command(version, about = "NyxForge oracle node")]
 struct Args {
@@ -53,11 +68,14 @@ async fn main() -> Result<()> {
         }),
     ];
 
-    let _node = OracleNode::new(config, secret_key, sources);
+    let node = OracleNode::new(config, secret_key, sources);
+
+    // Announce supported data IDs to the node so it can validate bond issuance.
+    announce_to_node(&args.node_rpc, node.supported_data_ids()).await;
 
     tracing::info!(%args.node_rpc, "oracle running — polling every {}s", args.poll_interval);
 
     // TODO: main loop — fetch registered bonds from node, evaluate, post attestations.
-    futures::future::pending::<()>().await;
+    std::future::pending::<()>().await;
     Ok(())
 }

@@ -33,3 +33,7 @@ clap         = { version = "4", features = ["derive"] }
 
 # HTTP client for fetching public data feeds
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+
+[dev-dependencies]
+nyxforge-test-fixtures = { path = "../nyxforge-test-fixtures" }
+

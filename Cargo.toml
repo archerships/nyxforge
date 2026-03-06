@@ -10,6 +10,8 @@ members = [
     "crates/nyxforge-wallet",
     "crates/nyxforge-miner",
     "crates/nyxforge-cli",
+    "crates/nyxforge-mcp",
+    "crates/nyxforge-test-fixtures",
 ]
 
 [workspace.package]
@@ -80,6 +82,12 @@ async-trait = "0.1"
 dialoguer = "0.11"
 colored   = "2"
 hex       = "0.4"
+
+# Lazy statics (used in test fixtures)
+once_cell = "1"
+
+# Test utilities
+tempfile = "3"
 
 [profile.release]
 opt-level     = 3

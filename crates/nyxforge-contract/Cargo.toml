@@ -25,3 +25,6 @@ thiserror    = { workspace = true }
 tracing      = { workspace = true }
 chrono       = { workspace = true }
 rust_decimal = { workspace = true }
+
+[dev-dependencies]
+nyxforge-test-fixtures = { path = "../nyxforge-test-fixtures" }

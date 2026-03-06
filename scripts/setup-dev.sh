@@ -28,15 +28,18 @@ command_exists() { command -v "$1" &>/dev/null; }
 # -- parse args ---------------------------------------------------------------
 DO_RUST=true
 DO_FLUTTER=true
+DO_MINING=false
 CHECK_ONLY=false
 
 for arg in "$@"; do
     case "${arg}" in
         --rust)    DO_FLUTTER=false ;;
         --flutter) DO_RUST=false ;;
+        --mining)  DO_MINING=true; DO_RUST=false; DO_FLUTTER=false ;;
         --check)   CHECK_ONLY=true; DO_RUST=false; DO_FLUTTER=false ;;
         --help|-h)
-            echo "Usage: $0 [--rust] [--flutter] [--check]"
+            echo "Usage: $0 [--rust] [--flutter] [--mining] [--check]"
+            echo "  --mining   Install stagenet mining stack (monerod + p2pool)"
             exit 0 ;;
         *) die "Unknown argument: ${arg}" ;;
     esac
@@ -81,6 +84,12 @@ if [[ "${DO_FLUTTER}" == "true" ]]; then
     bash "${SCRIPT_DIR}/install-playwright.sh"
 fi
 
+# -- stagenet mining ----------------------------------------------------------
+if [[ "${DO_MINING}" == "true" ]]; then
+    header "Stagenet Mining Stack"
+    bash "${SCRIPT_DIR}/install-stagenet-mining.sh"
+fi
+
 # -- git hooks ----------------------------------------------------------------
 header "Git Hooks"
 HOOKS_SRC="${SCRIPT_DIR}/hooks"
@@ -115,6 +124,8 @@ check "flutter"   "flutter --version --machine 2>/dev/null | python3 -c 'import 
 check "dart"       "dart --version 2>&1 | head -1"
 check "node"       "node --version"
 check "playwright" "npx --yes playwright --version 2>/dev/null | head -1"
+check "monerod"    "monerod --version 2>&1 | head -1"
+check "p2pool"     "p2pool --version 2>&1 | head -1 || $HOME/.local/bin/p2pool --version 2>&1 | head -1"
 check "git"        "git --version"
 check "python3"   "python3 --version"
 check "curl"      "curl --version | head -1"

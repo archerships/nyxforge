@@ -13,8 +13,11 @@
 # Options (for --start):
 #   --mine              Start mining immediately at launch
 #   --threads <n>       CPU threads for mining (default: 1)
+#   --pool <host:port>  Stratum endpoint to mine against (default: 127.0.0.1:3333)
 #   --mainnet           Use mainnet instead of testnet
 #   --no-browser        Don't open Chrome automatically
+#   --wallet-key <hex>  Import existing wallet from XMR spend key (64-char hex);
+#                       if omitted a fresh wallet is generated automatically
 #
 # Modifiers:
 #   --dryrun            Show what would be done without doing it
@@ -61,8 +64,10 @@ ACTION=""
 DRYRUN=false
 MINE=false
 THREADS=1
+POOL_URL=""
 MAINNET=false
 OPEN_BROWSER=true
+WALLET_KEY=""
 
 # ---------------------------------------------------------------------------
 # Parse arguments
@@ -88,6 +93,12 @@ while [[ $# -gt 0 ]]; do
             [[ $# -ge 2 ]] || die "--threads requires a value"
             THREADS="$2"; shift ;;
         --no-browser) OPEN_BROWSER=false ;;
+        --pool)
+            [[ $# -ge 2 ]] || die "--pool requires a value (e.g. 127.0.0.1:3333)"
+            POOL_URL="$2"; shift ;;
+        --wallet-key)
+            [[ $# -ge 2 ]] || die "--wallet-key requires a value"
+            WALLET_KEY="$2"; shift ;;
         *) die "Unknown option: $1  (run with --help for usage)" ;;
     esac
     shift
@@ -216,14 +227,20 @@ do_stop() {
 do_start() {
     # Build node args
     NODE_ARGS=(--testnet)
-    [[ "$MAINNET" == true ]] && NODE_ARGS=()
-    [[ "$MINE"    == true ]] && NODE_ARGS+=(--mine-on-start --mine-threads "$THREADS")
+    [[ "$MAINNET"    == true ]] && NODE_ARGS=()
+    [[ "$MINE"       == true ]] && NODE_ARGS+=(--mine-on-start --mine-threads "$THREADS")
+    [[ -n "$POOL_URL"        ]] && NODE_ARGS+=(--p2pool-url "$POOL_URL")
 
     echo ""
     info "NyxForge starting"
     [[ "$DRYRUN" == true ]] && warn "Dry run — nothing will actually start"
-    [[ "$MAINNET" == true ]] && info "Network: mainnet" || info "Network: testnet"
-    [[ "$MINE"    == true ]] && info "Mining: enabled ($THREADS thread(s))" || info "Mining: disabled"
+    [[ "$MAINNET" == true ]] && info "Network: mainnet" || info "Network: stagenet"
+    if [[ "$MINE" == true ]]; then
+        pool_display="${POOL_URL:-127.0.0.1:3333}"
+        info "Mining: enabled ($THREADS thread(s)) → ${pool_display}"
+    else
+        info "Mining: disabled  (use --mine to enable)"
+    fi
     echo ""
 
     # -- Verify tools ----------------------------------------------------------
@@ -269,6 +286,66 @@ do_start() {
                 echo " timed out — check $NODE_LOG"
             fi
         done
+    fi
+
+    # -- Wallet setup ----------------------------------------------------------
+    if [[ "$DRYRUN" == false ]]; then
+        # Check if wallet already exists.
+        # Helper: extract a field from the RPC result envelope {"result": {...}}
+        rpc_field() { python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('result',{}).get('$1',''))" 2>/dev/null || true; }
+        rpc_ok()    { python3 -c "import sys,json; d=json.load(sys.stdin); r=d.get('result',{}); exit(0 if any(r.values()) else 1)" 2>/dev/null; }
+
+        wallet_check=$(curl -sf --max-time 2 -X POST "$RPC_URL" \
+            -H 'Content-Type: application/json' \
+            -d '{"method":"wallet.addresses","params":{}}' 2>/dev/null || true)
+        wallet_exists=false
+        if echo "$wallet_check" | python3 -c \
+            "import sys,json; d=json.load(sys.stdin); exit(0 if d.get('result',{}).get('xmr') else 1)" 2>/dev/null; then
+            wallet_exists=true
+        fi
+
+        if [[ "$wallet_exists" == true ]]; then
+            xmr_full=$(echo "$wallet_check" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['result']['xmr'])" 2>/dev/null || echo "?")
+            xmr_addr="${xmr_full:0:8}...${xmr_full: -6}"
+            info "Wallet loaded from disk  (XMR ${xmr_addr})"
+        elif [[ -n "$WALLET_KEY" ]]; then
+            info "Importing wallet from provided spend key..."
+            result=$(curl -sf -X POST "$RPC_URL" \
+                -H 'Content-Type: application/json' \
+                -d "{\"method\":\"wallet.import\",\"params\":{\"spend_key\":\"${WALLET_KEY}\"}}" 2>/dev/null || true)
+            xmr_full=$(echo "$result" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('result',{}).get('xmr_address',''))" 2>/dev/null || echo "")
+            if [[ -n "$xmr_full" ]]; then
+                xmr_addr="${xmr_full:0:8}...${xmr_full: -6}"
+                success "Wallet imported  (XMR ${xmr_addr})"
+            else
+                warn "Wallet import failed: ${result}"
+            fi
+        else
+            info "No wallet found — generating new wallet..."
+            result=$(curl -sf -X POST "$RPC_URL" \
+                -H 'Content-Type: application/json' \
+                -d '{"method":"wallet.create","params":{"passphrase":""}}' 2>/dev/null || true)
+            xmr_full=$(echo "$result" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('result',{}).get('xmr_address',''))" 2>/dev/null || echo "")
+            if [[ -n "$xmr_full" ]]; then
+                xmr_addr="${xmr_full:0:8}...${xmr_full: -6}"
+                spend_key=$(echo "$result" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('result',{}).get('xmr_spend_key',''))" 2>/dev/null || echo "")
+                success "Wallet created  (XMR ${xmr_addr})"
+                if [[ -n "$spend_key" ]]; then
+                    echo ""
+                    warn "SAVE YOUR SPEND KEY — needed to restore your wallet:"
+                    echo -e "    ${BOLD}${spend_key}${RESET}"
+                    echo ""
+                fi
+            else
+                warn "Wallet creation failed: ${result}"
+            fi
+        fi
+    else
+        if [[ -n "$WALLET_KEY" ]]; then
+            dry "wallet.import spend_key=${WALLET_KEY:0:8}..."
+        else
+            dry "wallet.create (generate new wallet)"
+        fi
     fi
 
     # -- Cleanup trap ----------------------------------------------------------

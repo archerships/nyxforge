@@ -38,3 +38,7 @@ clap = { version = "4", features = ["derive"] }
 axum = { version = "0.7", features = ["json"] }
 tower-http = { version = "0.5", features = ["cors"] }
 hex  = { workspace = true }
+
+[dev-dependencies]
+nyxforge-test-fixtures = { path = "../nyxforge-test-fixtures" }
+tempfile               = { workspace = true }

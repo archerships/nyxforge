@@ -1,0 +1,54 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Edit(**)",
+      "Write(**)",
+
+      "Bash(cargo *)",
+      "Bash(rustc *)",
+      "Bash(rustup *)",
+      "Bash(wasm-pack *)",
+      "Bash(trunk *)",
+
+      "Bash(git *)",
+
+      "Bash(flutter *)",
+      "Bash(dart *)",
+
+      "Bash(node *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+
+      "Bash(python3 *)",
+      "Bash(pip3 *)",
+
+      "Bash(brew *)",
+      "Bash(xcode-select *)",
+
+      "Bash(monerod *)",
+      "Bash(p2pool *)",
+
+      "Bash(./nyxforge *)",
+      "Bash(./scripts/*.sh*)",
+      "Bash(bash ./scripts/*.sh*)",
+
+      "Bash(source *)",
+      "Bash(export *)",
+      "Bash(mkdir *)",
+      "Bash(ls *)",
+      "Bash(find *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(stat *)",
+      "Bash(wc *)",
+      "Bash(echo *)",
+      "Bash(lsof *)",
+      "Bash(kill *)",
+      "Bash(ps *)",
+      "Bash(du *)",
+      "Bash(df *)"
+    ]
+  }
+}
