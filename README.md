@@ -36,10 +36,21 @@ nyxforge/
 │   ├── nyxforge-oracle      # Decentralised goal-verification oracle network
 │   └── nyxforge-web         # Browser WASM frontend (wasm-bindgen)
 └── docs/
-    ├── architecture.md      # System design deep-dive
-    ├── bond-lifecycle.md    # Bond state machine
-    └── zk-design.md         # ZK circuit descriptions
+    ├── README.md            # Points to ../doc/ for all documentation
+    └── test-plan.md         # Developer test strategy and CI matrix
 ```
+
+Documentation lives in `../doc/` (one level up from this source tree):
+
+| What you need | Where |
+| :--- | :--- |
+| Product spec | `doc/00_CORE.md` |
+| Bond state machine | `doc/05_TECH/bond-lifecycle.md` |
+| ZK circuit design | `doc/05_TECH/zk-design.md` |
+| Oracle spec | `doc/05_TECH/oracle-spec.md` |
+| CLI reference | `doc/05_TECH/user-manual.md` |
+| Architecture diagram | `doc/05_TECH/architecture.md` |
+| Research / background | `doc/03_RESEARCH/` |
 
 ## Bond Lifecycle
 
