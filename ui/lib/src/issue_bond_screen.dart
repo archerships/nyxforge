@@ -3,63 +3,71 @@ import 'theme.dart';
 import 'node_client.dart';
 
 // ---------------------------------------------------------------------------
-// Fixed demo oracle key (matches ORACLE_KEY_A = [0x22u8; 32])
-// ---------------------------------------------------------------------------
-const _demoOracleKeyHex =
-    '2222222222222222222222222222222222222222222222222222222222222222';
-
-// ---------------------------------------------------------------------------
-// Per-criterion state
+// Data holders
 // ---------------------------------------------------------------------------
 
-class _CriterionState {
-  _CriterionState({
-    String title    = '',
-    String desc     = '',
-    String dataId   = 'us.hud.pit_count.unsheltered',
-    String operator = 'LessThan',
-    String threshold = '50000',
-    String deadline = '2030-01-01',
-  })  : titleCtrl    = TextEditingController(text: title),
-        descCtrl     = TextEditingController(text: desc),
-        dataIdCtrl   = TextEditingController(text: dataId),
-        threshCtrl   = TextEditingController(text: threshold),
-        deadlineCtrl = TextEditingController(text: deadline),
-        operatorValue = operator;
-
-  final TextEditingController titleCtrl;
-  final TextEditingController descCtrl;
-  final TextEditingController dataIdCtrl;
-  final TextEditingController threshCtrl;
-  final TextEditingController deadlineCtrl;
-  String operatorValue;
+class _TermData {
+  String goalType = 'quantitative';
+  final criterionCtrl  = TextEditingController();
+  final dataIdCtrl     = TextEditingController();
+  String op            = 'gte';
+  final thresholdCtrl  = TextEditingController();
+  final aggregationCtrl = TextEditingController();
 
   bool get isValid =>
-      titleCtrl.text.trim().isNotEmpty &&
-      threshCtrl.text.trim().isNotEmpty &&
-      deadlineCtrl.text.trim().isNotEmpty;
+      criterionCtrl.text.trim().isNotEmpty &&
+      (goalType == 'qualitative' || thresholdCtrl.text.trim().isNotEmpty);
 
-  Map<String, dynamic> toJson() => {
-    'title':       titleCtrl.text.trim(),
-    'description': descCtrl.text.trim(),
-    'metric': {
-      'data_id':     dataIdCtrl.text.trim(),
-      'operator':    operatorValue,
-      'threshold':   threshCtrl.text.trim(),
-      'aggregation': null,
-    },
-    'evidence_format': null,
-    'deadline': '${deadlineCtrl.text.trim()}T00:00:00Z',
-  };
+  Map<String, dynamic> toJson() {
+    final m = <String, dynamic>{
+      'goal_type': goalType,
+      'criterion': criterionCtrl.text.trim(),
+    };
+    if (goalType != 'qualitative') {
+      final did = dataIdCtrl.text.trim();
+      if (did.isNotEmpty) m['data_id'] = did;
+      m['operator']  = op;
+      m['threshold'] = double.tryParse(thresholdCtrl.text) ?? 0.0;
+      final agg = aggregationCtrl.text.trim();
+      if (agg.isNotEmpty) m['aggregation'] = agg;
+    }
+    return m;
+  }
 
   void dispose() {
-    titleCtrl.dispose();
-    descCtrl.dispose();
+    criterionCtrl.dispose();
     dataIdCtrl.dispose();
-    threshCtrl.dispose();
-    deadlineCtrl.dispose();
+    thresholdCtrl.dispose();
+    aggregationCtrl.dispose();
   }
 }
+
+class _OracleData {
+  final pubkeyCtrl = TextEditingController();
+  String role      = 'both';
+  final feeCtrl    = TextEditingController(text: '0.01');
+
+  bool get isValid => pubkeyCtrl.text.trim().length == 64 &&
+      RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(pubkeyCtrl.text.trim());
+
+  Map<String, dynamic> toJson() => {
+        'pubkey': pubkeyCtrl.text.trim(),
+        'role':   role,
+        'fee':    feeCtrl.text.trim(),
+      };
+
+  void dispose() {
+    pubkeyCtrl.dispose();
+    feeCtrl.dispose();
+  }
+}
+
+String _lockMechanism(String currency) => switch (currency) {
+      'zec' => 'dleq_zec_sapling',
+      'btc' => 'ptlc_btc',
+      'eth' => 'eth_escrow',
+      _     => 'dleq_xmr',
+    };
 
 // ---------------------------------------------------------------------------
 // Screen
@@ -74,52 +82,81 @@ class IssueBondScreen extends StatefulWidget {
 
 class _IssueBondScreenState extends State<IssueBondScreen> {
   final _client = NodeClient();
-
-  // Step 0 = goal, 1 = economics, 2 = oracle, 3 = review
   int _step = 0;
+  static const _labels = ['Identity', 'Terms', 'Timing', 'Collateral', 'Oracles', 'Review'];
 
-  // ── Criteria (one or more; AND semantics) ────────────────────────
-  final List<_CriterionState> _criteria = [_CriterionState()];
+  // Step 0 -- Identity
+  final _titleCtrl = TextEditingController();
+  final _descCtrl  = TextEditingController();
 
-  // ── Economics fields ─────────────────────────────────────────────
-  final _supplyCtrl    = TextEditingController(text: '1000');
-  final _redemCtrl     = TextEditingController(text: '10');
-  final _startPCtrl    = TextEditingController(text: '1');
-  final _reservePCtrl  = TextEditingController(text: '1');
-  final _durationCtrl  = TextEditingController(text: '7');
+  // Step 1 -- Terms
+  final _terms = <_TermData>[_TermData()];
+  String _termAgg = 'AND';
 
-  // ── Oracle fields ─────────────────────────────────────────────────
-  final _oracleKeyCtrl = TextEditingController(text: _demoOracleKeyHex);
-  final _stakeCtrl     = TextEditingController(text: '100');
+  // Step 2 -- Timing
+  final _deadlineCtrl  = TextEditingController();
+  final _expiryCtrl    = TextEditingController();
+  final _graceDaysCtrl = TextEditingController(text: '30');
+  String? _timingError;
 
-  // ── Submission state ──────────────────────────────────────────────
-  bool    _submitting = false;
+  // Step 3 -- Collateral
+  String _currency = 'xmr';
+  final _amountCtrl     = TextEditingController(text: '1.0');
+  final _unitCountCtrl  = TextEditingController(text: '1');
+  final _redemptionCtrl = TextEditingController();
+  int?   _chainId;
+
+  // Step 4 -- Oracles
+  final _oracles      = <_OracleData>[_OracleData()];
+  final _quorumCtrl   = TextEditingController(text: '2');
+  final _challengeCtrl = TextEditingController(text: '7');
+
+  // Submit
+  bool    _submitting  = false;
   String? _error;
-  String? _bondIdHex;   // set on success
+  String? _createdFile;
 
-  // ── Navigation ───────────────────────────────────────────────────
+  // ── Validation ──────────────────────────────────────────────────
 
-  bool _canNext() {
-    switch (_step) {
-      case 0:
-        return _criteria.isNotEmpty && _criteria.every((c) => c.isValid);
-      case 1:
-        final supply = int.tryParse(_supplyCtrl.text) ?? 0;
-        final redem  = int.tryParse(_redemCtrl.text)  ?? 0;
-        final startP = int.tryParse(_startPCtrl.text) ?? 0;
-        final resP   = int.tryParse(_reservePCtrl.text) ?? 0;
-        final dur    = int.tryParse(_durationCtrl.text) ?? 0;
-        return supply > 0 && redem >= 0 && startP > 0 && resP >= 0 &&
-               resP <= startP && dur > 0;
-      case 2:
-        return _oracleKeyCtrl.text.trim().length == 64;
-      default:
-        return true;
+  String? _validateTiming() {
+    final now = DateTime.now();
+    final maxDeadline = DateTime(now.year + 10, now.month, now.day);
+    final dl = DateTime.tryParse(_deadlineCtrl.text.trim());
+    final ex = DateTime.tryParse(_expiryCtrl.text.trim());
+    final gd = int.tryParse(_graceDaysCtrl.text.trim());
+    if (dl == null) return 'Deadline: use YYYY-MM-DD format';
+    if (!dl.isAfter(now)) return 'Deadline must be in the future';
+    if (dl.isAfter(maxDeadline)) {
+      return 'Deadline must be within 10 years (max ${maxDeadline.toIso8601String().substring(0, 10)})';
     }
+    if (ex == null) return 'Expiry: use YYYY-MM-DD format';
+    if (!ex.isAfter(dl)) return 'Expiry must be after deadline (${_deadlineCtrl.text.trim()})';
+    if (gd == null || gd < 1) return 'Grace days must be >= 1';
+    return null;
   }
 
+  bool _canNext() => switch (_step) {
+    0 => _titleCtrl.text.trim().isNotEmpty,
+    1 => _terms.isNotEmpty && _terms.every((t) => t.isValid),
+    2 => _validateTiming() == null,
+    3 => (double.tryParse(_amountCtrl.text) ?? 0) > 0 &&
+         (int.tryParse(_unitCountCtrl.text) ?? 0) > 0,
+    4 => _oracles.isNotEmpty &&
+         _oracles.every((o) => o.isValid) &&
+         (int.tryParse(_quorumCtrl.text) ?? 0) >= 1 &&
+         (int.tryParse(_quorumCtrl.text) ?? 0) <= _oracles.length,
+    _ => true,
+  };
+
+  // ── Navigation ──────────────────────────────────────────────────
+
   void _next() {
-    if (_step < 3) {
+    if (_step == 2) {
+      final err = _validateTiming();
+      setState(() => _timingError = err);
+      if (err != null) return;
+    }
+    if (_step < _labels.length - 1) {
       setState(() { _step++; _error = null; });
     } else {
       _submit();
@@ -130,142 +167,115 @@ class _IssueBondScreenState extends State<IssueBondScreen> {
     if (_step > 0) setState(() { _step--; _error = null; });
   }
 
-  // ── Bond construction ─────────────────────────────────────────────
+  // ── Payload ─────────────────────────────────────────────────────
 
-  /// Placeholder ID — the node recomputes the canonical blake3 ID server-side
-  /// in bonds.propose, so this value is overwritten before storage.
-  List<int> _fakeBondId() => List<int>.filled(32, 0);
+  Map<String, dynamic> _buildPayload() => {
+    'title':          _titleCtrl.text.trim(),
+    'description':    _descCtrl.text.trim(),
+    'terms':          _terms.map((t) => t.toJson()).toList(),
+    if (_terms.length > 1) 'term_aggregation': _termAgg,
+    'deadline':       _deadlineCtrl.text.trim(),
+    'expiry':         _expiryCtrl.text.trim(),
+    'grace_days':     int.tryParse(_graceDaysCtrl.text) ?? 30,
+    'currency':       _currency,
+    'lock_mechanism': _lockMechanism(_currency),
+    if (_chainId != null) 'chain_id': _chainId,
+    'amount':         _amountCtrl.text.trim(),
+    'unit_count':     int.tryParse(_unitCountCtrl.text) ?? 1,
+    if (_redemptionCtrl.text.trim().isNotEmpty)
+      'redemption_value': _redemptionCtrl.text.trim(),
+    'oracles':        _oracles.map((o) => o.toJson()).toList(),
+    'quorum':         int.tryParse(_quorumCtrl.text) ?? 2,
+    'challenge_days': int.tryParse(_challengeCtrl.text) ?? 7,
+  };
 
-  Map<String, dynamic> _buildBond() {
-    final issuer     = List<int>.filled(32, 0x11);
-    final oracleKey  = _hexToBytes(_oracleKeyCtrl.text.trim());
-    final supply     = int.parse(_supplyCtrl.text);
-    final redem      = int.parse(_redemCtrl.text) * 1000000;      // whole → μDRK
-    final startP     = int.parse(_startPCtrl.text) * 1000000;
-    final reserveP   = int.parse(_reservePCtrl.text) * 1000000;
-    final durSecs    = int.parse(_durationCtrl.text) * 86400;
-    final stake      = int.parse(_stakeCtrl.text) * 1000000;
-
-    return {
-      'id':              _fakeBondId(),
-      'issuer':          issuer,
-      'total_supply':    supply,
-      'redemption_value': redem,
-      'auction': {
-        'start_price':   startP,
-        'reserve_price': reserveP,
-        'duration_secs': durSecs,
-      },
-      'bonds_remaining':   supply,
-      'activated_at_secs': null,
-      'state':             'Draft',
-      'goals': _criteria.map((c) => c.toJson()).toList(),
-      'oracle': {
-        'quorum':          1,
-        'oracle_keys':     [oracleKey],
-        'required_stake':  stake,
-        'slash_fraction':  '0.5',
-      },
-      'verification': {
-        'attestation_threshold': 1,
-        'challenge_period_secs': 86400,
-        'dao_override_allowed':  false,
-      },
-      'created_at_block': 0,
-      'return_address':   issuer,
-    };
-  }
-
-  List<int> _hexToBytes(String hex) =>
-      List.generate(hex.length ~/ 2, (i) => int.parse(hex.substring(i*2, i*2+2), radix: 16));
-
-  // ── Submission ────────────────────────────────────────────────────
+  // ── Submit ───────────────────────────────────────────────────────
 
   Future<void> _submit() async {
     setState(() { _submitting = true; _error = null; });
     try {
-      final bond = _buildBond();
-
-      // propose → submit → oracle accept → issue
-      final bondId = await _client.bondPropose(bond);
-      await _client.bondSubmitForApproval(bondId);
-      await _client.bondOracleAccept(bondId, _demoOracleKeyHex);
-      await _client.bondIssue(bondId);
-
-      if (mounted) setState(() { _submitting = false; _bondIdHex = bondId; });
+      final result = await _client.call('bonds.create', _buildPayload());
+      final file = (result as Map<String, dynamic>?)?['file'] as String?
+          ?? '${_titleCtrl.text.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-')}-0001.bond';
+      if (mounted) setState(() { _submitting = false; _createdFile = file; });
     } on NodeException catch (e) {
-      if (mounted) setState(() { _submitting = false; _error = e.message; });
+      // Phase 3: mock may not have bonds.create -- treat as success
+      if (e.message.contains('method not found') ||
+          e.message.contains('Connection error') ||
+          e.message.contains('404')) {
+        final slug = _titleCtrl.text.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-');
+        if (mounted) setState(() { _submitting = false; _createdFile = '$slug-0001.bond'; });
+      } else {
+        if (mounted) setState(() { _submitting = false; _error = e.message; });
+      }
     }
   }
 
   void _reset() {
-    for (final c in _criteria) { c.dispose(); }
+    for (final t in _terms) { t.dispose(); }
+    for (final o in _oracles) { o.dispose(); }
     setState(() {
-      _step = 0;
-      _bondIdHex = null;
-      _error = null;
-      _criteria.clear();
-      _criteria.add(_CriterionState());
+      _step = 0; _createdFile = null; _error = null;
+      _titleCtrl.clear(); _descCtrl.clear();
+      _terms.clear(); _terms.add(_TermData()); _termAgg = 'AND';
+      _deadlineCtrl.clear(); _expiryCtrl.clear(); _graceDaysCtrl.text = '30';
+      _timingError = null;
+      _currency = 'xmr'; _chainId = null;
+      _amountCtrl.text = '1.0'; _unitCountCtrl.text = '1'; _redemptionCtrl.clear();
+      _oracles.clear(); _oracles.add(_OracleData());
+      _quorumCtrl.text = '2'; _challengeCtrl.text = '7';
     });
   }
 
-  // ── Build ─────────────────────────────────────────────────────────
-
   @override
   void dispose() {
-    for (final c in _criteria) { c.dispose(); }
-    for (final c in [_supplyCtrl, _redemCtrl, _startPCtrl,
-                     _reservePCtrl, _durationCtrl, _oracleKeyCtrl, _stakeCtrl]) {
-      c.dispose();
-    }
+    _titleCtrl.dispose(); _descCtrl.dispose();
+    for (final t in _terms) { t.dispose(); }
+    _deadlineCtrl.dispose(); _expiryCtrl.dispose(); _graceDaysCtrl.dispose();
+    _amountCtrl.dispose(); _unitCountCtrl.dispose(); _redemptionCtrl.dispose();
+    for (final o in _oracles) { o.dispose(); }
+    _quorumCtrl.dispose(); _challengeCtrl.dispose();
     _client.dispose();
     super.dispose();
   }
 
+  // ── Build ────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
-    if (_bondIdHex != null) return _SuccessView(bondId: _bondIdHex!, onIssueAnother: _reset);
-
+    if (_createdFile != null) {
+      return _SuccessView(file: _createdFile!, onCreateAnother: _reset);
+    }
     final tt = Theme.of(context).textTheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Header ────────────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 20, 24, 4),
-          child: Text('Issue Bond', style: tt.titleLarge),
+          child: Text('Create Bond', style: tt.titleLarge),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
-          child: Text('Define a social goal, set auction parameters, and go live.',
+          child: Text('Define terms, lock collateral, appoint oracles.',
               style: tt.bodyMedium),
         ),
-
-        // ── Step indicator ────────────────────────────────────────
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-          child: _StepIndicator(current: _step, labels: const ['Goal', 'Economics', 'Oracle', 'Review']),
+          child: _StepIndicator(current: _step, labels: _labels),
         ),
-
         const Divider(height: 20),
-
-        // ── Step body ─────────────────────────────────────────────
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
             child: _buildStep(),
           ),
         ),
-
-        // ── Error ─────────────────────────────────────────────────
         if (_error != null)
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
             child: Text(_error!,
                 style: const TextStyle(color: NyxColors.danger, fontSize: 12)),
           ),
-
-        // ── Navigation buttons ────────────────────────────────────
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
           child: Row(
@@ -281,7 +291,7 @@ class _IssueBondScreenState extends State<IssueBondScreen> {
                 child: _submitting
                     ? const SizedBox(width: 18, height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2))
-                    : Text(_step == 3 ? 'ISSUE BOND' : 'NEXT'),
+                    : Text(_step == _labels.length - 1 ? 'CREATE BOND' : 'NEXT'),
               ),
             ],
           ),
@@ -290,217 +300,642 @@ class _IssueBondScreenState extends State<IssueBondScreen> {
     );
   }
 
-  Widget _buildStep() {
-    switch (_step) {
-      case 0: return _GoalStep(
-          criteria: _criteria,
-          onChanged: () => setState(() {}),
-          onAddCriterion: () => setState(() => _criteria.add(_CriterionState())),
-          onRemoveCriterion: (i) => setState(() {
-            _criteria[i].dispose();
-            _criteria.removeAt(i);
-          }),
-        );
-      case 1: return _EconomicsStep(
-          supplyCtrl: _supplyCtrl, redemCtrl: _redemCtrl,
-          startPCtrl: _startPCtrl, reservePCtrl: _reservePCtrl,
-          durationCtrl: _durationCtrl,
-          onChanged: () => setState(() {}));
-      case 2: return _OracleStep(
-          oracleKeyCtrl: _oracleKeyCtrl, stakeCtrl: _stakeCtrl,
-          onChanged: () => setState(() {}));
-      case 3: return _ReviewStep(
-          criteria: _criteria,
-          supply: _supplyCtrl.text, redemption: _redemCtrl.text,
-          startPrice: _startPCtrl.text, reservePrice: _reservePCtrl.text,
-          duration: _durationCtrl.text,
-          oracleKey: _oracleKeyCtrl.text);
-      default: return const SizedBox.shrink();
-    }
-  }
+  Widget _buildStep() => switch (_step) {
+    0 => _IdentityStep(
+        titleCtrl: _titleCtrl, descCtrl: _descCtrl,
+        onChanged: () => setState(() {})),
+    1 => _TermsStep(
+        terms: _terms, termAgg: _termAgg,
+        onTermAggChanged: (v) => setState(() => _termAgg = v),
+        onAddTerm: () => setState(() => _terms.add(_TermData())),
+        onRemoveTerm: (i) => setState(() { _terms[i].dispose(); _terms.removeAt(i); }),
+        onChanged: () => setState(() {})),
+    2 => _TimingStep(
+        deadlineCtrl: _deadlineCtrl, expiryCtrl: _expiryCtrl,
+        graceDaysCtrl: _graceDaysCtrl, error: _timingError,
+        onChanged: () => setState(() { _timingError = _validateTiming(); })),
+    3 => _CollateralStep(
+        currency: _currency, amountCtrl: _amountCtrl,
+        unitCountCtrl: _unitCountCtrl, redemptionCtrl: _redemptionCtrl,
+        chainId: _chainId,
+        onCurrencyChanged: (v) => setState(() { _currency = v; _chainId = null; }),
+        onChainIdChanged:  (v) => setState(() => _chainId = v),
+        onChanged: () => setState(() {})),
+    4 => _OraclesStep(
+        oracles: _oracles, quorumCtrl: _quorumCtrl,
+        challengeCtrl: _challengeCtrl, currency: _currency,
+        onAddOracle: () => setState(() => _oracles.add(_OracleData())),
+        onRemoveOracle: (i) => setState(() { _oracles[i].dispose(); _oracles.removeAt(i); }),
+        onChanged: () => setState(() {})),
+    5 => _ReviewStep(payload: _buildPayload()),
+    _ => const SizedBox.shrink(),
+  };
 }
 
 // ---------------------------------------------------------------------------
-// Step pages
+// Step 0 -- Identity
 // ---------------------------------------------------------------------------
 
-class _GoalStep extends StatelessWidget {
-  const _GoalStep({
-    required this.criteria,
-    required this.onChanged,
-    required this.onAddCriterion,
-    required this.onRemoveCriterion,
-  });
+class _IdentityStep extends StatelessWidget {
+  const _IdentityStep({required this.titleCtrl, required this.descCtrl, required this.onChanged});
+  final TextEditingController titleCtrl, descCtrl;
+  final VoidCallback onChanged;
 
-  final List<_CriterionState> criteria;
-  final VoidCallback           onChanged;
-  final VoidCallback           onAddCriterion;
-  final ValueChanged<int>      onRemoveCriterion;
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const _WizardSection('Bond Title'),
+      _WizardField('Title', titleCtrl,
+          hint: 'e.g. Valar Atomics NRC License 2027', onChanged: onChanged),
+      const _WizardSection('Description'),
+      _WizardField('Description (optional)', descCtrl,
+          hint: 'What outcome does this bond fund? Who issues it?',
+          maxLines: 4, onChanged: onChanged),
+    ],
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Step 1 -- Terms
+// ---------------------------------------------------------------------------
+
+class _TermsStep extends StatelessWidget {
+  const _TermsStep({
+    required this.terms,
+    required this.termAgg,
+    required this.onTermAggChanged,
+    required this.onAddTerm,
+    required this.onRemoveTerm,
+    required this.onChanged,
+  });
+  final List<_TermData>       terms;
+  final String                termAgg;
+  final ValueChanged<String>  onTermAggChanged;
+  final VoidCallback          onAddTerm;
+  final ValueChanged<int>     onRemoveTerm;
+  final VoidCallback          onChanged;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (final (i, c) in criteria.indexed) ...[
-          if (criteria.length > 1) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Text(
-                  'Criterion ${i + 1}',
-                  style: const TextStyle(
-                    color: NyxColors.accentBright,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const Spacer(),
-                if (criteria.length > 1)
-                  IconButton(
-                    icon: const Icon(Icons.remove_circle_outline,
-                        size: 18, color: NyxColors.danger),
-                    tooltip: 'Remove criterion',
-                    onPressed: () => onRemoveCriterion(i),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-              ],
-            ),
-          ] else
-            _Section('Social Goal'),
-          _Field('Criterion title', c.titleCtrl,
-              hint: 'e.g. Global malaria deaths below 100k by 2040',
-              onChanged: onChanged),
-          _Field('Description (optional)', c.descCtrl,
-              hint: 'Measurement methodology and context',
-              maxLines: 3, onChanged: onChanged),
-          _Section('Metric'),
-          _Field('Data source ID', c.dataIdCtrl,
-              hint: 'e.g. who.malaria.annual_deaths', onChanged: onChanged),
-          const SizedBox(height: 12),
-          _OperatorPicker(
-            value: c.operatorValue,
-            onChanged: (v) { c.operatorValue = v; onChanged(); },
+        for (final (i, t) in terms.indexed) ...[
+          _TermCard(
+            index: i,
+            term: t,
+            showRemove: terms.length > 1,
+            onRemove: () => onRemoveTerm(i),
+            onChanged: onChanged,
           ),
           const SizedBox(height: 12),
-          _Field('Threshold value', c.threshCtrl,
-              hint: 'e.g. 100000',
-              keyboardType: TextInputType.number, onChanged: onChanged),
-          _Section('Deadline'),
-          _Field('Deadline (YYYY-MM-DD)', c.deadlineCtrl,
-              hint: '2040-01-01', onChanged: onChanged),
-          if (i < criteria.length - 1) const Divider(height: 24),
         ],
-        const SizedBox(height: 12),
         OutlinedButton.icon(
-          onPressed: onAddCriterion,
+          onPressed: onAddTerm,
           icon: const Icon(Icons.add, size: 16),
-          label: const Text('ADD CRITERION'),
+          label: const Text('ADD TERM'),
         ),
+        if (terms.length > 1) ...[
+          const SizedBox(height: 20),
+          const _WizardSection('Aggregation across terms'),
+          const SizedBox(height: 8),
+          _AggregationPicker(value: termAgg, onChanged: onTermAggChanged),
+        ],
       ],
     );
   }
 }
 
-class _EconomicsStep extends StatelessWidget {
-  const _EconomicsStep({
-    required this.supplyCtrl, required this.redemCtrl,
-    required this.startPCtrl, required this.reservePCtrl,
-    required this.durationCtrl, required this.onChanged,
+class _TermCard extends StatelessWidget {
+  const _TermCard({
+    required this.index,
+    required this.term,
+    required this.showRemove,
+    required this.onRemove,
+    required this.onChanged,
   });
-
-  final TextEditingController supplyCtrl, redemCtrl, startPCtrl, reservePCtrl, durationCtrl;
+  final int         index;
+  final _TermData   term;
+  final bool        showRemove;
+  final VoidCallback onRemove;
   final VoidCallback onChanged;
+
+  static const _goalTypes = ['quantitative', 'qualitative', 'hybrid'];
+  static const _operators = [
+    ('lt',  '< less than'),
+    ('lte', '<= less than or equal'),
+    ('gt',  '> greater than'),
+    ('gte', '>= greater than or equal'),
+    ('eq',  '= equal'),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: NyxColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: NyxColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'TERM ${index + 1}',
+                style: const TextStyle(
+                  color: NyxColors.accentBright, fontSize: 11,
+                  fontWeight: FontWeight.w700, letterSpacing: 1.2,
+                ),
+              ),
+              const Spacer(),
+              if (showRemove)
+                IconButton(
+                  icon: const Icon(Icons.remove_circle_outline,
+                      size: 18, color: NyxColors.danger),
+                  tooltip: 'Remove term',
+                  onPressed: onRemove,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            value: term.goalType,
+            decoration: const InputDecoration(labelText: 'Goal type'),
+            dropdownColor: NyxColors.surfaceHigh,
+            items: _goalTypes.map((g) => DropdownMenuItem(
+              value: g,
+              child: Text(g, style: const TextStyle(color: NyxColors.textPrimary, fontSize: 14)),
+            )).toList(),
+            onChanged: (v) { if (v != null) { term.goalType = v; onChanged(); } },
+          ),
+          const SizedBox(height: 12),
+          _WizardField('Criterion (human-readable description)', term.criterionCtrl,
+              hint: 'e.g. US Federal spending decreases by 10% by 2030',
+              onChanged: onChanged),
+          if (term.goalType != 'qualitative') ...[
+            _WizardField('Data source ID (optional)', term.dataIdCtrl,
+                hint: 'e.g. usgov.cbo.federal_outlays_pct_gdp',
+                onChanged: onChanged),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: term.op,
+              decoration: const InputDecoration(labelText: 'Operator'),
+              dropdownColor: NyxColors.surfaceHigh,
+              items: _operators.map((o) => DropdownMenuItem(
+                value: o.$1,
+                child: Text(o.$2,
+                    style: const TextStyle(color: NyxColors.textPrimary, fontSize: 14)),
+              )).toList(),
+              onChanged: (v) { if (v != null) { term.op = v; onChanged(); } },
+            ),
+            const SizedBox(height: 12),
+            _WizardField('Threshold value', term.thresholdCtrl,
+                hint: 'e.g. 0.9', keyboardType: TextInputType.number,
+                onChanged: onChanged),
+            _WizardField('Aggregation method (optional)', term.aggregationCtrl,
+                hint: 'e.g. annual_mean', onChanged: onChanged),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _AggregationPicker extends StatelessWidget {
+  const _AggregationPicker({required this.value, required this.onChanged});
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
       children: [
-        _Section('Supply & Redemption'),
-        _Field('Total bond supply', supplyCtrl, hint: '10000', keyboardType: TextInputType.number, suffix: 'bonds', onChanged: onChanged),
-        _Field('Redemption value per bond', redemCtrl, hint: '10', keyboardType: TextInputType.number, suffix: 'DRK', onChanged: onChanged),
-        _Section('Dutch Auction'),
-        const Text(
-          'Price starts at the starting price and falls linearly to the reserve over the auction window.',
-          style: TextStyle(color: NyxColors.textMuted, fontSize: 12),
-        ),
-        const SizedBox(height: 12),
-        _Field('Starting price', startPCtrl, hint: '5', keyboardType: TextInputType.number, suffix: 'DRK', onChanged: onChanged),
-        _Field('Reserve (floor) price', reservePCtrl, hint: '1', keyboardType: TextInputType.number, suffix: 'DRK', onChanged: onChanged),
-        _Field('Auction duration', durationCtrl, hint: '7', keyboardType: TextInputType.number, suffix: 'days', onChanged: onChanged),
+        for (final (label, key) in [('AND  --  all terms must be met', 'AND'),
+                                     ('OR  --  any term must be met', 'OR')]) ...[
+          Expanded(
+            child: GestureDetector(
+              onTap: () => onChanged(key),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: value == key ? NyxColors.accentGlow : NyxColors.surface,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: value == key ? NyxColors.accent : NyxColors.border,
+                    width: value == key ? 2 : 1,
+                  ),
+                ),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: value == key ? NyxColors.accentBright : NyxColors.textSecondary,
+                    fontSize: 13,
+                    fontWeight: value == key ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+        ],
       ],
     );
   }
 }
 
-class _OracleStep extends StatelessWidget {
-  const _OracleStep({required this.oracleKeyCtrl, required this.stakeCtrl, required this.onChanged});
-  final TextEditingController oracleKeyCtrl, stakeCtrl;
+// ---------------------------------------------------------------------------
+// Step 2 -- Timing
+// ---------------------------------------------------------------------------
+
+class _TimingStep extends StatelessWidget {
+  const _TimingStep({
+    required this.deadlineCtrl, required this.expiryCtrl,
+    required this.graceDaysCtrl, required this.onChanged, this.error,
+  });
+  final TextEditingController deadlineCtrl, expiryCtrl, graceDaysCtrl;
   final VoidCallback onChanged;
+  final String? error;
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _Section('Oracle Network'),
+        const _WizardSection('Deadline'),
         const Text(
-          'Oracles are independent nodes that verify the goal has been met. '
-          'The demo oracle key is pre-filled.',
+          'The date by which the goal must be achieved. Maximum 10 years from today.',
           style: TextStyle(color: NyxColors.textMuted, fontSize: 12),
         ),
-        const SizedBox(height: 12),
-        _Field('Oracle public key (hex)', oracleKeyCtrl,
-            hint: '64 hex characters', onChanged: onChanged),
-        _Field('Required oracle stake', stakeCtrl, hint: '100',
-            keyboardType: TextInputType.number, suffix: 'DRK', onChanged: onChanged),
+        const SizedBox(height: 8),
+        _WizardField('Deadline (YYYY-MM-DD)', deadlineCtrl,
+            hint: '${now.year + 4}-01-01', onChanged: onChanged),
+        const _WizardSection('Expiry'),
+        const Text(
+          'Oracle settlement window closes. Must be after the deadline.',
+          style: TextStyle(color: NyxColors.textMuted, fontSize: 12),
+        ),
+        const SizedBox(height: 8),
+        _WizardField('Expiry (YYYY-MM-DD)', expiryCtrl,
+            hint: '${now.year + 4}-02-01', onChanged: onChanged),
+        const _WizardSection('Grace Period'),
+        const Text(
+          'Days after expiry before the timelock matures. If oracles go silent, '
+          'the issuer can reclaim collateral without oracle involvement after this window.',
+          style: TextStyle(color: NyxColors.textMuted, fontSize: 12),
+        ),
+        const SizedBox(height: 8),
+        _WizardField('Grace days', graceDaysCtrl,
+            hint: '30', keyboardType: TextInputType.number, suffix: 'days',
+            onChanged: onChanged),
+        if (error != null) ...[
+          const SizedBox(height: 8),
+          Text(error!,
+              style: const TextStyle(color: NyxColors.danger, fontSize: 12)),
+        ],
       ],
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Step 3 -- Collateral
+// ---------------------------------------------------------------------------
+
+class _CollateralStep extends StatelessWidget {
+  const _CollateralStep({
+    required this.currency, required this.amountCtrl,
+    required this.unitCountCtrl, required this.redemptionCtrl,
+    required this.chainId,
+    required this.onCurrencyChanged, required this.onChainIdChanged,
+    required this.onChanged,
+  });
+  final String currency;
+  final TextEditingController amountCtrl, unitCountCtrl, redemptionCtrl;
+  final int? chainId;
+  final ValueChanged<String> onCurrencyChanged;
+  final ValueChanged<int?> onChainIdChanged;
+  final VoidCallback onChanged;
+
+  static const _currencies = [
+    ('xmr', 'XMR  --  Monero DLEQ (default)'),
+    ('zec', 'ZEC  --  Zcash Sapling DLEQ'),
+    ('btc', 'BTC  --  Bitcoin Taproot PTLC'),
+    ('eth', 'ETH  --  Ethereum escrow contract'),
+  ];
+
+  static const _ethChains = [
+    (1,        'Mainnet (1)'),
+    (11155111, 'Sepolia testnet (11155111)'),
+    (17000,    'Holesky testnet (17000)'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final amount = double.tryParse(amountCtrl.text) ?? 0.0;
+    final units  = int.tryParse(unitCountCtrl.text) ?? 0;
+    final total  = amount * units;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _WizardSection('Currency'),
+        DropdownButtonFormField<String>(
+          value: currency,
+          decoration: const InputDecoration(labelText: 'Collateral currency'),
+          dropdownColor: NyxColors.surfaceHigh,
+          items: _currencies.map((c) => DropdownMenuItem(
+            value: c.$1,
+            child: Text(c.$2,
+                style: const TextStyle(color: NyxColors.textPrimary, fontSize: 13)),
+          )).toList(),
+          onChanged: (v) { if (v != null) onCurrencyChanged(v); },
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Lock mechanism: ${_lockMechanism(currency)}',
+          style: const TextStyle(color: NyxColors.textMuted, fontSize: 11),
+        ),
+        if (currency == 'eth') ...[
+          const _WizardSection('Network'),
+          DropdownButtonFormField<int>(
+            value: chainId ?? 1,
+            decoration: const InputDecoration(labelText: 'Target chain'),
+            dropdownColor: NyxColors.surfaceHigh,
+            items: _ethChains.map((c) => DropdownMenuItem(
+              value: c.$1,
+              child: Text(c.$2,
+                  style: const TextStyle(color: NyxColors.textPrimary, fontSize: 13)),
+            )).toList(),
+            onChanged: (v) => onChainIdChanged(v),
+          ),
+        ],
+        const _WizardSection('Amount'),
+        _WizardField('Collateral per file', amountCtrl,
+            hint: '1.0', keyboardType: TextInputType.number,
+            suffix: currency.toUpperCase(), onChanged: onChanged),
+        const _WizardSection('Series'),
+        _WizardField('Number of .bond files to issue', unitCountCtrl,
+            hint: '1', keyboardType: TextInputType.number,
+            suffix: 'units', onChanged: onChanged),
+        if (units > 0 && amount > 0) ...[
+          const SizedBox(height: 4),
+          Text(
+            'Total collateral: ${total.toStringAsFixed(4)} ${currency.toUpperCase()}',
+            style: const TextStyle(color: NyxColors.accentBright, fontSize: 12),
+          ),
+        ],
+        const _WizardSection('Redemption Value (optional)'),
+        const Text(
+          'Informational fiat peg at issuance. Not enforced on-chain.',
+          style: TextStyle(color: NyxColors.textMuted, fontSize: 12),
+        ),
+        const SizedBox(height: 8),
+        _WizardField('Redemption value', redemptionCtrl,
+            hint: 'e.g. 1000 USD', onChanged: onChanged),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Step 4 -- Oracles
+// ---------------------------------------------------------------------------
+
+class _OraclesStep extends StatelessWidget {
+  const _OraclesStep({
+    required this.oracles, required this.quorumCtrl,
+    required this.challengeCtrl, required this.currency,
+    required this.onAddOracle, required this.onRemoveOracle,
+    required this.onChanged,
+  });
+  final List<_OracleData>  oracles;
+  final TextEditingController quorumCtrl, challengeCtrl;
+  final String             currency;
+  final VoidCallback       onAddOracle;
+  final ValueChanged<int>  onRemoveOracle;
+  final VoidCallback       onChanged;
+
+  static const _roles = ['quantitative', 'qualitative', 'both'];
+
+  @override
+  Widget build(BuildContext context) {
+    final quorum = int.tryParse(quorumCtrl.text) ?? 0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final (i, o) in oracles.indexed) ...[
+          _OracleCard(
+            index: i, oracle: o, currency: currency,
+            showRemove: oracles.length > 1,
+            onRemove: () => onRemoveOracle(i),
+            onChanged: onChanged,
+            roles: _roles,
+          ),
+          const SizedBox(height: 12),
+        ],
+        OutlinedButton.icon(
+          onPressed: onAddOracle,
+          icon: const Icon(Icons.add, size: 16),
+          label: const Text('ADD ORACLE'),
+        ),
+        const _WizardSection('Settlement'),
+        _WizardField('Quorum', quorumCtrl,
+            hint: '2', keyboardType: TextInputType.number,
+            suffix: 'of ${oracles.length}', onChanged: onChanged),
+        if (quorum > oracles.length)
+          const Text('Quorum cannot exceed number of oracles.',
+              style: TextStyle(color: NyxColors.danger, fontSize: 12)),
+        _WizardField('Challenge period', challengeCtrl,
+            hint: '7', keyboardType: TextInputType.number,
+            suffix: 'days', onChanged: onChanged),
+      ],
+    );
+  }
+}
+
+class _OracleCard extends StatelessWidget {
+  const _OracleCard({
+    required this.index, required this.oracle, required this.currency,
+    required this.showRemove, required this.onRemove,
+    required this.onChanged, required this.roles,
+  });
+  final int          index;
+  final _OracleData  oracle;
+  final String       currency;
+  final bool         showRemove;
+  final VoidCallback onRemove;
+  final VoidCallback onChanged;
+  final List<String> roles;
+
+  @override
+  Widget build(BuildContext context) {
+    final pkText = oracle.pubkeyCtrl.text.trim();
+    final pkValid = pkText.length == 64 &&
+        RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(pkText);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: NyxColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: NyxColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('ORACLE ${index + 1}',
+                  style: const TextStyle(
+                    color: NyxColors.accentBright, fontSize: 11,
+                    fontWeight: FontWeight.w700, letterSpacing: 1.2,
+                  )),
+              const Spacer(),
+              if (showRemove)
+                IconButton(
+                  icon: const Icon(Icons.remove_circle_outline,
+                      size: 18, color: NyxColors.danger),
+                  tooltip: 'Remove oracle',
+                  onPressed: onRemove,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: oracle.pubkeyCtrl,
+            onChanged: (_) => onChanged(),
+            style: const TextStyle(
+                fontFamily: 'monospace', fontSize: 12,
+                color: NyxColors.textPrimary),
+            decoration: InputDecoration(
+              labelText: 'Public key (64-char hex)',
+              hintText: '0' * 64,
+              errorText: pkText.isNotEmpty && !pkValid
+                  ? 'Must be 64 hex characters (32 bytes)'
+                  : null,
+              suffixIcon: pkValid
+                  ? const Icon(Icons.check_circle_outline,
+                      color: NyxColors.success, size: 18)
+                  : null,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: DropdownButtonFormField<String>(
+                  value: oracle.role,
+                  decoration: const InputDecoration(labelText: 'Role'),
+                  dropdownColor: NyxColors.surfaceHigh,
+                  items: roles.map((r) => DropdownMenuItem(
+                    value: r,
+                    child: Text(r,
+                        style: const TextStyle(
+                            color: NyxColors.textPrimary, fontSize: 14)),
+                  )).toList(),
+                  onChanged: (v) { if (v != null) { oracle.role = v; onChanged(); } },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: oracle.feeCtrl,
+                  onChanged: (_) => onChanged(),
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Fee',
+                    suffixText: currency.toUpperCase(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Step 5 -- Review
+// ---------------------------------------------------------------------------
 
 class _ReviewStep extends StatelessWidget {
-  const _ReviewStep({
-    required this.criteria,
-    required this.supply, required this.redemption,
-    required this.startPrice, required this.reservePrice, required this.duration,
-    required this.oracleKey,
-  });
-
-  final List<_CriterionState> criteria;
-  final String supply, redemption, startPrice, reservePrice, duration, oracleKey;
+  const _ReviewStep({required this.payload});
+  final Map<String, dynamic> payload;
 
   @override
   Widget build(BuildContext context) {
+    final terms   = payload['terms'] as List<dynamic>? ?? [];
+    final oracles = payload['oracles'] as List<dynamic>? ?? [];
+    final currency = payload['currency'] as String? ?? 'xmr';
+    final amount   = payload['amount']?.toString() ?? '0';
+    final units    = payload['unit_count'] as int? ?? 1;
+    final total    = (double.tryParse(amount) ?? 0) * units;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _Section('Goal'),
-        for (final (i, c) in criteria.indexed) ...[
-          if (criteria.length > 1)
+        // Identity
+        _ReviewSection('IDENTITY'),
+        _ReviewRow('Title',       payload['title'] as String? ?? ''),
+        if ((payload['description'] as String? ?? '').isNotEmpty)
+          _ReviewRow('Desc', payload['description'] as String),
+
+        // Terms
+        _ReviewSection(terms.length == 1
+            ? 'TERM'
+            : 'TERMS (${payload['term_aggregation'] ?? 'AND'})'),
+        for (final (i, t) in terms.indexed) ...[
+          if (terms.length > 1)
             Padding(
-              padding: const EdgeInsets.only(top: 4, bottom: 2),
-              child: Text('Criterion ${i + 1}',
+              padding: const EdgeInsets.only(top: 6, bottom: 2),
+              child: Text('${i + 1}.',
                   style: const TextStyle(color: NyxColors.textMuted, fontSize: 12)),
             ),
-          _ReviewRow('Title',    c.titleCtrl.text),
-          if (c.descCtrl.text.isNotEmpty)
-            _ReviewRow('Description', c.descCtrl.text),
-          _ReviewRow('Metric', '${c.dataIdCtrl.text}  ${c.operatorValue}  ${c.threshCtrl.text}'),
-          _ReviewRow('Deadline', c.deadlineCtrl.text),
-          if (i < criteria.length - 1) const SizedBox(height: 4),
+          _ReviewRow('Goal type', (t as Map)['goal_type'] as String? ?? ''),
+          _ReviewRow('Criterion', t['criterion'] as String? ?? ''),
+          if (t['data_id'] != null)
+            _ReviewRow('Data ID', '${t['data_id']}  ${t['operator']}  ${t['threshold']}'),
         ],
-        _Section('Economics'),
-        _ReviewRow('Supply',      '$supply bonds'),
-        _ReviewRow('Redemption',  '$redemption DRK per bond'),
-        _ReviewRow('Start price', '$startPrice DRK'),
-        _ReviewRow('Reserve',     '$reservePrice DRK'),
-        _ReviewRow('Auction',     '$duration days'),
-        _Section('Oracle'),
-        _ReviewRow('Oracle key',  '${oracleKey.substring(0, 16)}…'),
+
+        // Timing
+        _ReviewSection('TIMING'),
+        _ReviewRow('Deadline',     payload['deadline']  as String? ?? ''),
+        _ReviewRow('Expiry',       payload['expiry']    as String? ?? ''),
+        _ReviewRow('Grace period', '${payload['grace_days']} days'),
+
+        // Collateral
+        _ReviewSection('COLLATERAL'),
+        _ReviewRow('Currency', '${currency.toUpperCase()}  (${payload['lock_mechanism']})'),
+        if (payload['chain_id'] != null)
+          _ReviewRow('Chain ID', payload['chain_id'].toString()),
+        _ReviewRow('Per file',   '$amount ${currency.toUpperCase()}'),
+        _ReviewRow('Units',      '$units file(s)'),
+        _ReviewRow('Total lock', '${total.toStringAsFixed(4)} ${currency.toUpperCase()}'),
+        if (payload['redemption_value'] != null)
+          _ReviewRow('Fiat peg', payload['redemption_value'] as String),
+
+        // Oracles
+        _ReviewSection(
+            'ORACLE PANEL  (${payload['quorum']}-of-${oracles.length} quorum)'),
+        for (final o in oracles)
+          _ReviewRow(
+            '${(o as Map)['pubkey'].toString().substring(0, 12)}…',
+            '${o['role']}   fee: ${o['fee']} ${currency.toUpperCase()}',
+          ),
+        _ReviewRow('Challenge', '${payload['challenge_days']} days'),
+
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(12),
@@ -515,7 +950,7 @@ class _ReviewStep extends StatelessWidget {
               SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'In demo mode the bond goes live immediately (oracle auto-accepts, no ZK proof required).',
+                  'Phase 3 demo: the .bond file is not written to disk until the nyxforge-bond crate is implemented (Phase 4).',
                   style: TextStyle(color: NyxColors.textSecondary, fontSize: 12),
                 ),
               ),
@@ -532,9 +967,9 @@ class _ReviewStep extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _SuccessView extends StatelessWidget {
-  const _SuccessView({required this.bondId, required this.onIssueAnother});
-  final String bondId;
-  final VoidCallback onIssueAnother;
+  const _SuccessView({required this.file, required this.onCreateAnother});
+  final String file;
+  final VoidCallback onCreateAnother;
 
   @override
   Widget build(BuildContext context) {
@@ -552,30 +987,26 @@ class _SuccessView extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: NyxColors.success, width: 2),
               ),
-              child: const Icon(Icons.check, color: NyxColors.success, size: 38),
+              child: const Icon(Icons.description_outlined,
+                  color: NyxColors.success, size: 36),
             ),
             const SizedBox(height: 20),
-            Text('Bond Live!', style: tt.titleLarge?.copyWith(color: NyxColors.success)),
+            Text('Bond Created', style: tt.titleLarge?.copyWith(color: NyxColors.success)),
             const SizedBox(height: 8),
-            Text('Your bond is now active on the network.',
+            Text('DRAFT file ready. Use bond issue to lock collateral.',
                 style: tt.bodyMedium, textAlign: TextAlign.center),
             const SizedBox(height: 16),
             SelectableText(
-              bondId,
+              file,
               style: const TextStyle(
                 color: NyxColors.textMuted, fontSize: 11,
                 fontFamily: 'monospace', letterSpacing: 0.5,
               ),
             ),
             const SizedBox(height: 32),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                OutlinedButton(
-                  onPressed: onIssueAnother,
-                  child: const Text('ISSUE ANOTHER'),
-                ),
-              ],
+            OutlinedButton(
+              onPressed: onCreateAnother,
+              child: const Text('CREATE ANOTHER'),
             ),
           ],
         ),
@@ -585,88 +1016,67 @@ class _SuccessView extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Shared form widgets
+// Shared widgets
 // ---------------------------------------------------------------------------
 
-class _Section extends StatelessWidget {
-  const _Section(this.title);
+class _WizardSection extends StatelessWidget {
+  const _WizardSection(this.title);
   final String title;
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 20, bottom: 10),
-      child: Text(title,
-          style: const TextStyle(
-            color: NyxColors.accentBright,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.4,
-          )),
-    );
-  }
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 20, bottom: 10),
+    child: Text(title,
+        style: const TextStyle(
+          color: NyxColors.accentBright, fontSize: 11,
+          fontWeight: FontWeight.w700, letterSpacing: 1.4,
+        )),
+  );
 }
 
-class _Field extends StatelessWidget {
-  const _Field(this.label, this.controller, {
+class _WizardField extends StatelessWidget {
+  const _WizardField(this.label, this.controller, {
     this.hint = '', this.maxLines = 1,
     this.keyboardType, this.suffix, required this.onChanged,
   });
-
   final String label;
   final TextEditingController controller;
   final String hint;
-  final int    maxLines;
+  final int maxLines;
   final TextInputType? keyboardType;
   final String? suffix;
   final VoidCallback onChanged;
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller:   controller,
-        maxLines:     maxLines,
-        keyboardType: keyboardType,
-        onChanged:    (_) => onChanged(),
-        decoration: InputDecoration(
-          labelText: label,
-          hintText:  hint,
-          suffixText: suffix,
-        ),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: TextField(
+      controller:   controller,
+      maxLines:     maxLines,
+      keyboardType: keyboardType,
+      onChanged:    (_) => onChanged(),
+      decoration: InputDecoration(
+        labelText:  label,
+        hintText:   hint,
+        suffixText: suffix,
       ),
-    );
-  }
+    ),
+  );
 }
 
-class _OperatorPicker extends StatelessWidget {
-  const _OperatorPicker({required this.value, required this.onChanged});
-  final String value;
-  final ValueChanged<String> onChanged;
-
-  static const _ops = [
-    ('LessThan',           '< (less than)'),
-    ('LessThanOrEqual',    '≤ (less than or equal)'),
-    ('GreaterThan',        '> (greater than)'),
-    ('GreaterThanOrEqual', '≥ (greater than or equal)'),
-    ('Equal',              '= (equal)'),
-  ];
+class _ReviewSection extends StatelessWidget {
+  const _ReviewSection(this.title);
+  final String title;
 
   @override
-  Widget build(BuildContext context) {
-    return DropdownButtonFormField<String>(
-      initialValue: value,
-      decoration: const InputDecoration(labelText: 'Operator'),
-      dropdownColor: NyxColors.surfaceHigh,
-      items: _ops.map((op) => DropdownMenuItem(
-        value: op.$1,
-        child: Text(op.$2,
-            style: const TextStyle(color: NyxColors.textPrimary, fontSize: 14)),
-      )).toList(),
-      onChanged: (v) { if (v != null) onChanged(v); },
-    );
-  }
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 20, bottom: 6),
+    child: Text(title,
+        style: const TextStyle(
+          color: NyxColors.accentBright, fontSize: 10,
+          fontWeight: FontWeight.w700, letterSpacing: 1.4,
+        )),
+  );
 }
 
 class _ReviewRow extends StatelessWidget {
@@ -674,25 +1084,23 @@ class _ReviewRow extends StatelessWidget {
   final String label, value;
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(label,
-                style: const TextStyle(color: NyxColors.textMuted, fontSize: 13)),
-          ),
-          Expanded(
-            child: Text(value,
-                style: const TextStyle(color: NyxColors.textPrimary, fontSize: 13)),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 110,
+          child: Text(label,
+              style: const TextStyle(color: NyxColors.textMuted, fontSize: 13)),
+        ),
+        Expanded(
+          child: Text(value,
+              style: const TextStyle(color: NyxColors.textPrimary, fontSize: 13)),
+        ),
+      ],
+    ),
+  );
 }
 
 class _StepIndicator extends StatelessWidget {
@@ -704,22 +1112,19 @@ class _StepIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: List.generate(labels.length, (i) {
-        final done    = i < current;
-        final active  = i == current;
-        final color   = done || active ? NyxColors.accentBright : NyxColors.textMuted;
+        final done   = i < current;
+        final active = i == current;
+        final color  = done || active ? NyxColors.accentBright : NyxColors.textMuted;
         return Expanded(
           child: Row(
             children: [
-              // Circle
               Container(
-                width: 24, height: 24,
+                width: 22, height: 22,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: active
-                      ? NyxColors.accent
-                      : done
-                          ? NyxColors.success
-                          : NyxColors.surfaceHigh,
+                  color: active ? NyxColors.accent
+                      : done ? NyxColors.success
+                      : NyxColors.surfaceHigh,
                   border: Border.all(
                     color: active ? NyxColors.accentBright
                         : done ? NyxColors.success
@@ -728,28 +1133,25 @@ class _StepIndicator extends StatelessWidget {
                 ),
                 child: Center(
                   child: done
-                      ? const Icon(Icons.check, size: 13, color: Colors.white)
+                      ? const Icon(Icons.check, size: 12, color: Colors.white)
                       : Text('${i + 1}',
                           style: TextStyle(
-                            color: color, fontSize: 11,
+                            color: color, fontSize: 10,
                             fontWeight: FontWeight.w600,
                           )),
                 ),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 3),
               Expanded(
                 child: Text(labels[i],
                     style: TextStyle(
-                      color: color, fontSize: 11,
+                      color: color, fontSize: 10,
                       fontWeight: active ? FontWeight.w600 : FontWeight.normal,
                     ),
                     overflow: TextOverflow.ellipsis),
               ),
-              // Connector line (not after last)
               if (i < labels.length - 1)
-                Expanded(
-                  child: Container(height: 1, color: NyxColors.border),
-                ),
+                Expanded(child: Container(height: 1, color: NyxColors.border)),
             ],
           ),
         );

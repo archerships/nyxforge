@@ -1,33 +1,38 @@
-//! BURN circuit — proves redemption of a bond note after goal achievement.
+//! BURN circuit — proves redemption of a bounty note after goal achievement.
 //!
 //! # Public inputs (instance column, rows 0..4)
 //!
-//! | Row | Value                |
-//! |-----|----------------------|
-//! |  0  | `nullifier`          |
-//! |  1  | `bond_id`            |
-//! |  2  | `quorum_result_hash` |
-//! |  3  | `payout_commitment`  |
-//! |  4  | `payout_amount`      |
+//! | Row | Value                  |
+//! |-----|------------------------|
+//! |  0  | `nullifier`            |
+//! |  1  | `bounty_id`              |
+//! |  2  | `judge_attest_pk`     |
+//! |  3  | `payout_commitment`    |
+//! |  4  | `payout_amount`        |
 //!
 //! # Statement proved
 //!
-//! The prover knows `(bond_note, owner_secret, payout_address, payout_randomness)` such that:
+//! The prover knows `(bounty_note, owner_secret, judge_attest_key, payout_address,
+//! payout_randomness)` such that:
 //!
 //! ```text
-//! nullifier        = Poseidon2(owner_secret, bond_note.serial)
-//! payout_amount    = Fp::from(quantity * redemption_value)        [native check]
+//! nullifier         = Poseidon2(owner_secret, bounty_note.serial)
+//! judge_attest_pk  = Poseidon2(fp(judge_attest_key), judge_attest_domain())
+//! payout_amount     = Fp::from(quantity * redemption_value)         [native check]
 //! payout_commitment = Poseidon2(
-//!                        Poseidon2(payout_amount_fp, payout_address),
-//!                        payout_randomness
-//!                    )
+//!                         Poseidon2(payout_amount_fp, payout_address),
+//!                         payout_randomness
+//!                     )
 //! ```
 //!
-//! `quorum_result_hash` and `payout_amount` are included as public inputs to
-//! bind the proof to a specific oracle result and payout value.  The contract
-//! verifies externally that `quorum_result_hash` matches the recorded quorum.
-//! The arithmetic constraint `payout_amount == quantity * redemption_value` is
-//! enforced off-circuit by the caller before creating the proof.
+//! `judge_attest_pk` replaces the old `quorum_result_hash` and is now
+//! **circuit-constrained** — the prover must supply the `judge_attest_key`
+//! (shared by the judge privately) and the circuit verifies its Poseidon hash
+//! matches the public instance.  The settlement contract checks that
+//! `judge_attest_pk` is in the bounty's `judge_attest_pks` list.
+//!
+//! Judge attestations never appear on the AO ledger; the BURN proof is the
+//! only on-chain record of goal verification.
 
 use halo2_gadgets::poseidon::{
     primitives::{ConstantLength, P128Pow5T3},
@@ -50,12 +55,20 @@ pub struct BurnConfig {
 /// The BURN circuit.
 #[derive(Debug, Default)]
 pub struct BurnCircuit {
-    // Bond note witnesses
-    pub bond_id:           Value<Fp>,
+    // Bounty note witnesses
+    pub bounty_id:           Value<Fp>,
     pub serial:            Value<Fp>,
 
     // Spending key
     pub owner_secret:      Value<Fp>,
+
+    // Judge attestation witnesses (Option A: ZK-private judge proof)
+    /// Per-bounty attest key received from the judge off-chain.
+    /// Private witness — never published; the circuit proves knowledge of it.
+    pub judge_attest_key:    Value<Fp>,
+    /// Domain separator: `judge_attest_domain()`.  Loaded as a witness
+    /// (constant-equivalent) so the Poseidon chip can use it.
+    pub judge_attest_domain: Value<Fp>,
 
     // Payout note witnesses
     pub payout_address:    Value<Fp>,
@@ -155,22 +168,45 @@ impl Circuit<Fp> for BurnCircuit {
             hasher.hash(layouter.namespace(|| "payout_cm hash"), [h_pay, rand_cell])?
         };
 
-        // Load bond_id for the public instance constraint.
-        let bond_id_cell = layouter.assign_region(
-            || "load bond_id for instance",
+        // ----- judge_attest_pk = Poseidon2(judge_attest_key, judge_attest_domain) -----
+        // Proves the prover knows the judge's per-bounty attest key.
+
+        let (attest_key_cell, attest_domain_cell) = layouter.assign_region(
+            || "load judge attest witnesses",
             |mut region| {
-                region.assign_advice(|| "bond_id", config.state[0], 0, || self.bond_id)
+                let k = region.assign_advice(
+                    || "judge_attest_key",    config.state[0], 0, || self.judge_attest_key)?;
+                let d = region.assign_advice(
+                    || "judge_attest_domain", config.state[1], 0, || self.judge_attest_domain)?;
+                Ok((k, d))
+            },
+        )?;
+
+        let oracle_attest_pk_computed = {
+            let hasher = Hash::<_, _, P128Pow5T3, ConstantLength<2>, 3, 2>::init(
+                Pow5Chip::construct(config.poseidon.clone()),
+                layouter.namespace(|| "judge attest init"),
+            )?;
+            hasher.hash(layouter.namespace(|| "judge attest hash"), [attest_key_cell, attest_domain_cell])?
+        };
+
+        // Load bounty_id for the public instance constraint.
+        let bond_id_cell = layouter.assign_region(
+            || "load bounty_id for instance",
+            |mut region| {
+                region.assign_advice(|| "bounty_id", config.state[0], 0, || self.bounty_id)
             },
         )?;
 
         // ----- Constrain public instances -----
-        layouter.constrain_instance(nullifier.cell(),          config.instance, 0)?;
-        layouter.constrain_instance(bond_id_cell.cell(),       config.instance, 1)?;
-        // instance[2] = quorum_result_hash — it's a pass-through public value,
-        // not computed in-circuit.  We do NOT constrain it here; the contract
-        // checks it against on-chain state externally.
-        layouter.constrain_instance(payout_commitment.cell(),  config.instance, 3)?;
-        layouter.constrain_instance(payout_amount_cell_ref,    config.instance, 4)?;
+        layouter.constrain_instance(nullifier.cell(),                   config.instance, 0)?;
+        layouter.constrain_instance(bond_id_cell.cell(),                config.instance, 1)?;
+        // instance[2] = judge_attest_pk — now CIRCUIT-CONSTRAINED.
+        // The circuit proves the prover knows judge_attest_key s.t.
+        // Poseidon2(judge_attest_key, domain) == judge_attest_pk.
+        layouter.constrain_instance(oracle_attest_pk_computed.cell(),   config.instance, 2)?;
+        layouter.constrain_instance(payout_commitment.cell(),           config.instance, 3)?;
+        layouter.constrain_instance(payout_amount_cell_ref,             config.instance, 4)?;
 
         Ok(())
     }
@@ -179,41 +215,45 @@ impl Circuit<Fp> for BurnCircuit {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::primitives::{fp_from_bytes, fp_to_bytes, note_nullifier, poseidon2};
+    use crate::primitives::{
+        fp_from_bytes, fp_to_bytes, note_nullifier, judge_attest_domain,
+        judge_attest_pk_from_key, poseidon2,
+    };
     use halo2_proofs::dev::MockProver;
 
-    const BOND_ID:           [u8; 32] = [0x01u8; 32];
-    const SERIAL:            [u8; 32] = [0x55u8; 32];
-    const OWNER_SECRET:      [u8; 32] = [0xAAu8; 32];
-    const PAYOUT_ADDRESS:    [u8; 32] = [0xCCu8; 32];
-    const PAYOUT_RANDOMNESS: [u8; 32] = [0x33u8; 32];
-    const QTY:               u64      = 10;
-    const REDEMPTION_VALUE:  u64      = 1_000_000;
+    const BOND_ID:            [u8; 32] = [0x01u8; 32];
+    const SERIAL:             [u8; 32] = [0x55u8; 32];
+    const OWNER_SECRET:       [u8; 32] = [0xAAu8; 32];
+    const ORACLE_ATTEST_KEY:  [u8; 32] = [0xEEu8; 32];
+    const PAYOUT_ADDRESS:     [u8; 32] = [0xCCu8; 32];
+    const PAYOUT_RANDOMNESS:  [u8; 32] = [0x33u8; 32];
+    const QTY:                u64      = 10;
+    const REDEMPTION_VALUE:   u64      = 1_000_000;
 
     fn test_circuit() -> (BurnCircuit, Vec<Vec<Fp>>) {
-        let nullifier_fp = note_nullifier(&OWNER_SECRET, &SERIAL);
-
-        let payout_amount = Fp::from(QTY * REDEMPTION_VALUE);
-        let h_pay         = poseidon2(payout_amount, fp_from_bytes(&PAYOUT_ADDRESS));
-        let payout_cm     = poseidon2(h_pay, fp_from_bytes(&PAYOUT_RANDOMNESS));
-
-        // quorum_result_hash — just a test value (contract checks this externally)
-        let quorum_hash_fp = Fp::from(0xbeef_cafe_u64);
+        let nullifier_fp       = note_nullifier(&OWNER_SECRET, &SERIAL);
+        let payout_amount      = Fp::from(QTY * REDEMPTION_VALUE);
+        let h_pay              = poseidon2(payout_amount, fp_from_bytes(&PAYOUT_ADDRESS));
+        let payout_cm          = poseidon2(h_pay, fp_from_bytes(&PAYOUT_RANDOMNESS));
+        let domain             = judge_attest_domain();
+        let judge_attest_pk   = fp_from_bytes(&judge_attest_pk_from_key(&ORACLE_ATTEST_KEY));
 
         let circuit = BurnCircuit {
-            bond_id:           Value::known(fp_from_bytes(&BOND_ID)),
-            payout_address:    Value::known(fp_from_bytes(&PAYOUT_ADDRESS)),
-            serial:            Value::known(fp_from_bytes(&SERIAL)),
-            owner_secret:      Value::known(fp_from_bytes(&OWNER_SECRET)),
-            payout_amount:     Value::known(payout_amount),
-            payout_randomness: Value::known(fp_from_bytes(&PAYOUT_RANDOMNESS)),
+            bounty_id:              Value::known(fp_from_bytes(&BOND_ID)),
+            serial:               Value::known(fp_from_bytes(&SERIAL)),
+            owner_secret:         Value::known(fp_from_bytes(&OWNER_SECRET)),
+            judge_attest_key:    Value::known(fp_from_bytes(&ORACLE_ATTEST_KEY)),
+            judge_attest_domain: Value::known(domain),
+            payout_address:       Value::known(fp_from_bytes(&PAYOUT_ADDRESS)),
+            payout_amount:        Value::known(payout_amount),
+            payout_randomness:    Value::known(fp_from_bytes(&PAYOUT_RANDOMNESS)),
         };
 
-        // Instance: [nullifier, bond_id, quorum_result_hash, payout_commitment, payout_amount]
+        // Instance: [nullifier, bounty_id, judge_attest_pk, payout_commitment, payout_amount]
         let instances = vec![
             nullifier_fp,
             fp_from_bytes(&BOND_ID),
-            quorum_hash_fp,                 // instance[2] — not circuit-constrained
+            judge_attest_pk,   // instance[2] — now CIRCUIT-CONSTRAINED
             payout_cm,
             payout_amount,
         ];
@@ -223,8 +263,7 @@ mod tests {
     #[test]
     fn burn_circuit_satisfies_constraints() {
         let (circuit, instances) = test_circuit();
-        let k = 10;
-        let prover = MockProver::run(k, &circuit, instances).unwrap();
+        let prover = MockProver::run(10, &circuit, instances).unwrap();
         assert_eq!(prover.verify(), Ok(()), "BURN MockProver failed");
     }
 
@@ -232,8 +271,7 @@ mod tests {
     fn burn_circuit_fails_with_wrong_nullifier() {
         let (circuit, mut instances) = test_circuit();
         instances[0][0] = Fp::from(0xdeadbeefu64);
-        let k = 10;
-        let prover = MockProver::run(k, &circuit, instances).unwrap();
+        let prover = MockProver::run(10, &circuit, instances).unwrap();
         assert!(prover.verify().is_err(), "should fail with wrong nullifier");
     }
 
@@ -241,9 +279,17 @@ mod tests {
     fn burn_circuit_fails_with_wrong_payout_commitment() {
         let (circuit, mut instances) = test_circuit();
         instances[0][3] = Fp::from(0xdeadbeefu64);
-        let k = 10;
-        let prover = MockProver::run(k, &circuit, instances).unwrap();
+        let prover = MockProver::run(10, &circuit, instances).unwrap();
         assert!(prover.verify().is_err(), "should fail with wrong payout commitment");
+    }
+
+    #[test]
+    fn burn_circuit_fails_with_wrong_oracle_attest_pk() {
+        let (circuit, mut instances) = test_circuit();
+        // Supply a pk that doesn't match the private attest key in the circuit.
+        instances[0][2] = Fp::from(0xdeadbeefu64);
+        let prover = MockProver::run(10, &circuit, instances).unwrap();
+        assert!(prover.verify().is_err(), "should fail with wrong judge_attest_pk");
     }
 
     // Silence unused fn warning for fp_to_bytes in test imports

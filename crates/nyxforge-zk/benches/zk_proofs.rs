@@ -3,14 +3,14 @@ use nyxforge_core::types::{Amount, PublicKey};
 use nyxforge_zk::{
     burn::{BurnProof, BurnWitness},
     mint::{MintProof, MintWitness},
-    note::BondNote,
+    note::BountyNote,
     transfer::{TransferProof, TransferWitness},
 };
 use nyxforge_core::types::Digest;
 
 fn bench_mint(c: &mut Criterion) {
     let witness = MintWitness {
-        bond_id:          Digest::from_bytes([0x01u8; 32]),
+        bounty_id:          Digest::from_bytes([0x01u8; 32]),
         quantity:         10,
         redemption_value: Amount(1_000_000),
         recipient:        PublicKey([0xBBu8; 32]),
@@ -32,8 +32,8 @@ fn bench_mint(c: &mut Criterion) {
 
 fn bench_transfer(c: &mut Criterion) {
     let witness = TransferWitness {
-        old_note: BondNote {
-            bond_id:          Digest::from_bytes([0x01u8; 32]),
+        old_note: BountyNote {
+            bounty_id:          Digest::from_bytes([0x01u8; 32]),
             quantity:         10,
             redemption_value: Amount(1_000_000),
             owner:            PublicKey([0xBBu8; 32]),
@@ -60,8 +60,8 @@ fn bench_transfer(c: &mut Criterion) {
 
 fn bench_burn(c: &mut Criterion) {
     let witness = BurnWitness {
-        bond_note: BondNote {
-            bond_id:          Digest::from_bytes([0x01u8; 32]),
+        bounty_note: BountyNote {
+            bounty_id:          Digest::from_bytes([0x01u8; 32]),
             quantity:         10,
             redemption_value: Amount(1_000_000),
             owner:            PublicKey([0xBBu8; 32]),
@@ -69,8 +69,9 @@ fn bench_burn(c: &mut Criterion) {
             serial:           [0x55u8; 32],
         },
         owner_secret:      [0xAAu8; 32],
-        quorum_result_hash: Digest::from_bytes([0xDDu8; 32]),
-        payout_randomness:  [0x33u8; 32],
+        judge_attest_key: [0xEEu8; 32],
+        payout_address:    [0xCCu8; 32],
+        payout_randomness: [0x33u8; 32],
     };
 
     let mut g = c.benchmark_group("burn");

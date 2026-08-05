@@ -1,23 +1,23 @@
-//! MINT circuit — proves a new bond note commitment is well-formed.
+//! MINT circuit — proves a new bounty note commitment is well-formed.
 //!
 //! # Public inputs (instance column, rows 0..1)
 //!
 //! | Row | Value        |
 //! |-----|--------------|
 //! |  0  | `commitment` |
-//! |  1  | `bond_id`    |
+//! |  1  | `bounty_id`    |
 //!
 //! # Statement proved
 //!
-//! The prover knows `(bond_id, quantity, owner_pk, randomness)` such that:
+//! The prover knows `(bounty_id, quantity, owner_pk, randomness)` such that:
 //!
 //! ```text
-//! h1         = Poseidon2(bond_id, quantity)
+//! h1         = Poseidon2(bounty_id, quantity)
 //! h2         = Poseidon2(owner_pk, randomness)
 //! commitment = Poseidon2(h1, h2)
 //! ```
 //!
-//! The public `bond_id` and computed `commitment` are constrained equal to
+//! The public `bounty_id` and computed `commitment` are constrained equal to
 //! the declared instance values.
 
 use halo2_gadgets::poseidon::{
@@ -41,8 +41,8 @@ pub struct MintConfig {
 /// The MINT circuit.
 #[derive(Debug, Default)]
 pub struct MintCircuit {
-    /// `fp(bond_id)` — also exposed as a public input (row 1).
-    pub bond_id:    Value<Fp>,
+    /// `fp(bounty_id)` — also exposed as a public input (row 1).
+    pub bounty_id:    Value<Fp>,
     /// `Fp::from(quantity)`.
     pub quantity:   Value<Fp>,
     /// `fp(owner_pk)`.
@@ -82,18 +82,18 @@ impl Circuit<Fp> for MintCircuit {
     }
 
     fn synthesize(&self, config: MintConfig, mut layouter: impl Layouter<Fp>) -> Result<(), Error> {
-        // Load bond_id and quantity as the first pair.
+        // Load bounty_id and quantity as the first pair.
         let (bond_id_cell, qty_cell) = layouter.assign_region(
             || "load witness pair 1",
             |mut region| {
-                let a = region.assign_advice(|| "bond_id",  config.state[0], 0, || self.bond_id)?;
+                let a = region.assign_advice(|| "bounty_id",  config.state[0], 0, || self.bounty_id)?;
                 let b = region.assign_advice(|| "quantity", config.state[1], 0, || self.quantity)?;
                 Ok((a, b))
             },
         )?;
         let bond_id_cell_ref = bond_id_cell.cell();
 
-        // h1 = Poseidon2(bond_id, quantity)
+        // h1 = Poseidon2(bounty_id, quantity)
         let h1 = {
             let hasher = Hash::<_, _, P128Pow5T3, ConstantLength<2>, 3, 2>::init(
                 Pow5Chip::construct(config.poseidon.clone()),
@@ -130,7 +130,7 @@ impl Circuit<Fp> for MintCircuit {
             hasher.hash(layouter.namespace(|| "cm hash"), [h1, h2])?
         };
 
-        // Constrain commitment == instance[0] and bond_id == instance[1].
+        // Constrain commitment == instance[0] and bounty_id == instance[1].
         layouter.constrain_instance(commitment.cell(), config.instance, 0)?;
         layouter.constrain_instance(bond_id_cell_ref, config.instance, 1)?;
 
@@ -154,13 +154,13 @@ mod tests {
         let bond_id_fp = fp_from_bytes(&BOND_ID);
 
         let circuit = MintCircuit {
-            bond_id:    Value::known(bond_id_fp),
+            bounty_id:    Value::known(bond_id_fp),
             quantity:   Value::known(Fp::from(QTY)),
             owner_pk:   Value::known(fp_from_bytes(&OWNER_PK)),
             randomness: Value::known(fp_from_bytes(&RANDOMNESS)),
         };
 
-        // Instance column: [commitment, bond_id]
+        // Instance column: [commitment, bounty_id]
         let instances = vec![commitment, bond_id_fp];
         (circuit, vec![instances])
     }
@@ -188,6 +188,6 @@ mod tests {
         instances[0][1] = Fp::from(0xdeadbeefu64);
         let k = 9;
         let prover = MockProver::run(k, &circuit, instances).unwrap();
-        assert!(prover.verify().is_err(), "should fail with wrong bond_id");
+        assert!(prover.verify().is_err(), "should fail with wrong bounty_id");
     }
 }

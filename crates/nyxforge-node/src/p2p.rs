@@ -1,10 +1,10 @@
-//! P2P swarm: libp2p gossipsub for bond/order propagation + Kademlia DHT.
+//! P2P swarm: libp2p gossipsub for bounty/order propagation + Kademlia DHT.
 //!
 //! Topics:
-//!   - `nyxforge/bonds/1`   — new bond series announcements
+//!   - `nyxforge/bounties/1`   — new bounty series announcements
 //!   - `nyxforge/orders/1`  — order book updates
 //!   - `nyxforge/trades/1`  — executed trade records
-//!   - `nyxforge/oracles/1` — oracle attestations
+//!   - `nyxforge/judges/1` — judge attestations
 //!   - `nyxforge/quorum/1`  — quorum results and state transitions
 
 use anyhow::Result;
@@ -14,29 +14,29 @@ use crate::state::NodeState;
 
 /// Gossipsub topic names.
 pub mod topics {
-    pub const BONDS:   &str = "nyxforge/bonds/1";
-    pub const ORDERS:  &str = "nyxforge/orders/1";
-    pub const TRADES:  &str = "nyxforge/trades/1";
-    pub const ORACLES: &str = "nyxforge/oracles/1";
-    pub const QUORUM:  &str = "nyxforge/quorum/1";
+    pub const BOUNTIES: &str = "nyxforge/bounties/1";
+    pub const ORDERS:   &str = "nyxforge/orders/1";
+    pub const TRADES:   &str = "nyxforge/trades/1";
+    pub const JUDGES:   &str = "nyxforge/judges/1";
+    pub const QUORUM:   &str = "nyxforge/quorum/1";
 }
 
 /// Messages that can be gossiped on the network.
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub enum GossipMessage {
-    NewBond(Box<nyxforge_core::bond::Bond>),
+    NewBounty(Box<nyxforge_core::bounty::Bounty>),
     NewOrder(Box<nyxforge_core::market::Order>),
     NewTrade(Box<nyxforge_core::market::Trade>),
-    OracleAttestation(Box<nyxforge_core::oracle_spec::OracleAttestation>),
-    QuorumResult(Box<nyxforge_core::oracle_spec::QuorumResult>),
+    JudgeAttestation(Box<nyxforge_core::judge_spec::JudgeAttestation>),
+    QuorumResult(Box<nyxforge_core::judge_spec::QuorumResult>),
 }
 
 /// Dispatch an incoming gossip message to the appropriate handler.
 async fn handle_message(msg: GossipMessage, state: &NodeState) {
     match msg {
-        GossipMessage::NewBond(bond) => {
-            info!(id = ?bond.id, "received new bond");
-            state.insert_bond(*bond).await;
+        GossipMessage::NewBounty(bounty) => {
+            info!(id = ?bounty.id, "received new bounty");
+            state.insert_bounty(*bounty).await;
         }
         GossipMessage::NewOrder(order) => {
             info!(id = ?order.id, side = ?order.side, "received order");
@@ -46,13 +46,13 @@ async fn handle_message(msg: GossipMessage, state: &NodeState) {
             info!(id = ?trade.id, "received trade");
             // TODO: mark nullifiers spent.
         }
-        GossipMessage::OracleAttestation(att) => {
-            info!(bond_id = ?att.bond_id, goal_met = att.goal_met, "oracle attestation");
+        GossipMessage::JudgeAttestation(att) => {
+            info!(bounty_id = ?att.bounty_id, goal_met = att.goal_met, "judge attestation");
             // TODO: accumulate attestations, check quorum.
         }
         GossipMessage::QuorumResult(q) => {
-            info!(bond_id = ?q.bond_id, goal_met = q.goal_met, "quorum finalised");
-            // TODO: update bond state in contract.
+            info!(bounty_id = ?q.bounty_id, goal_met = q.goal_met, "quorum finalised");
+            // TODO: update bounty state in contract.
         }
     }
 }
@@ -84,7 +84,7 @@ pub async fn run_swarm(
     // and call handle_message(msg, &state).await.
 
     // Placeholder: keep the task alive.
-    let _ = state.bond_count().await;
+    let _ = state.bounty_count().await;
     std::future::pending::<()>().await;
     Ok(())
 }

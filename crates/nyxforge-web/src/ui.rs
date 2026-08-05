@@ -30,17 +30,17 @@ const APP_SHELL: &str = r#"
 <div class="nyx-app">
   <header>
     <h1>NyxForge</h1>
-    <p class="tagline">Anonymous · Decentralised · Social Policy Bond Market</p>
+    <p class="tagline">Anonymous · Decentralised · Social Policy Bounty Market</p>
   </header>
 
   <nav>
-    <button onclick="nyxforge.showBonds()">Browse Bonds</button>
-    <button onclick="nyxforge.showIssue()">Issue Bond</button>
+    <button onclick="nyxforge.showBounties()">Browse Bounties</button>
+    <button onclick="nyxforge.showIssue()">Issue Bounty</button>
     <button onclick="nyxforge.showWallet()">Wallet</button>
   </nav>
 
   <main id="nyx-main">
-    <p>Loading bond market…</p>
+    <p>Loading bounty market…</p>
   </main>
 
   <footer>

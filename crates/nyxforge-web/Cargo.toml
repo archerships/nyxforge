@@ -21,6 +21,9 @@ serde                = { workspace = true }
 serde_json           = { workspace = true }
 anyhow               = { workspace = true }
 tracing              = { workspace = true }
+hex                  = { workspace = true }
+getrandom            = { version = "0.2", features = ["js"] }
+console_error_panic_hook = "0.1"
 
 # WASM-compatible async: no threads
 gloo-net = { version = "0.5", features = ["http"] }

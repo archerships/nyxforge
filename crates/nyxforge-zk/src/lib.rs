@@ -1,4 +1,4 @@
-//! ZK circuits for NyxForge's anonymous bond operations.
+//! ZK circuits for NyxForge's anonymous bounty operations.
 //!
 //! All proofs use DarkFi's zkVM / Halo2 backend.  The circuits here describe
 //! the *statements* to be proved; witness generation lives alongside each circuit.
@@ -6,7 +6,7 @@
 //! # Overview
 //!
 //! ```text
-//!   MINT     — prove: I know a valid bond series + randomness → commitment
+//!   MINT     — prove: I know a valid bounty series + randomness → commitment
 //!   TRANSFER — prove: I own note[old] and am creating note[new] with same value
 //!   BURN     — prove: I own note + goal is met → nullifier (for redemption)
 //! ```
@@ -22,7 +22,7 @@ pub mod transfer;
 pub use mint::{MintProof, MintWitness};
 pub use transfer::{TransferProof, TransferWitness};
 pub use burn::{BurnProof, BurnWitness};
-pub use note::BondNote;
+pub use note::BountyNote;
 
 /// Errors arising from proof generation or verification.
 #[derive(Debug, thiserror::Error)]

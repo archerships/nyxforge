@@ -1,22 +1,22 @@
-//! Anonymous order book for bond trading.
+//! Anonymous order book for bounty trading.
 //!
-//! Orders are posted with ZK proofs of bond ownership (bids) or token balance
+//! Orders are posted with ZK proofs of bounty ownership (bids) or token balance
 //! (asks).  The order book itself is public; individual identity is not.
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::types::{Amount, Digest};
-use crate::bond::BondId;
+use crate::bounty::BountyId;
 
 /// Opaque order identifier.
 pub type OrderId = Digest;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OrderSide {
-    /// Buyer: willing to pay `price` per bond unit.
+    /// Buyer: willing to pay `price` per bounty unit.
     Bid,
-    /// Seller: willing to accept `price` per bond unit.
+    /// Seller: willing to accept `price` per bounty unit.
     Ask,
 }
 
@@ -24,19 +24,19 @@ pub enum OrderSide {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Order {
     pub id:         OrderId,
-    pub bond_id:    BondId,
+    pub bounty_id:    BountyId,
     pub side:       OrderSide,
 
-    /// Price per bond unit in base token micro-units.
+    /// Price per bounty unit in base token micro-units.
     pub price:      Amount,
 
-    /// Number of bond units this order covers.
+    /// Number of bounty units this order covers.
     pub quantity:   u64,
 
     /// Remaining unfilled quantity.
     pub remaining:  u64,
 
-    /// ZK commitment to the maker's bond note (for asks) or token note (for bids).
+    /// ZK commitment to the maker's bounty note (for asks) or token note (for bids).
     pub commitment: Digest,
 
     pub created_at: DateTime<Utc>,
@@ -47,7 +47,7 @@ pub struct Order {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Trade {
     pub id:         Digest,
-    pub bond_id:    BondId,
+    pub bounty_id:    BountyId,
     pub price:      Amount,
     pub quantity:   u64,
     pub executed_at: DateTime<Utc>,
@@ -55,7 +55,7 @@ pub struct Trade {
     pub nullifiers: Vec<crate::types::Nullifier>,
 }
 
-/// In-memory order book for a single bond series.
+/// In-memory order book for a single bounty series.
 ///
 /// In production this state is replicated across the P2P network and
 /// committed to the DarkFi contract layer via ZK state transitions.
@@ -99,7 +99,7 @@ impl OrderBook {
                     h.update(bid.id.as_bytes());
                     Digest::from(h.finalize())
                 },
-                bond_id:     ask.bond_id,
+                bounty_id:     ask.bounty_id,
                 price:       ask.price,
                 quantity:    qty,
                 executed_at: Utc::now(),
@@ -134,7 +134,7 @@ mod tests {
     fn make_order(price: u64, qty: u64, side: OrderSide) -> Order {
         Order {
             id:         Digest::zero(),
-            bond_id:    Digest::zero(),
+            bounty_id:    Digest::zero(),
             side,
             price:      Amount(price),
             quantity:   qty,

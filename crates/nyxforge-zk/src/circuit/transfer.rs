@@ -1,4 +1,4 @@
-//! TRANSFER circuit — proves anonymous bond note ownership transfer.
+//! TRANSFER circuit — proves anonymous bounty note ownership transfer.
 //!
 //! # Public inputs (instance column, rows 0..2)
 //!
@@ -6,7 +6,7 @@
 //! |-----|-----------------|
 //! |  0  | `nullifier`     |
 //! |  1  | `new_commitment`|
-//! |  2  | `bond_id`       |
+//! |  2  | `bounty_id`       |
 //!
 //! # Statement proved
 //!
@@ -14,12 +14,12 @@
 //!
 //! ```text
 //! nullifier      = Poseidon2(owner_secret, old_serial)
-//! new_commitment = Poseidon2(Poseidon2(bond_id, quantity), Poseidon2(new_owner_pk, new_randomness))
+//! new_commitment = Poseidon2(Poseidon2(bounty_id, quantity), Poseidon2(new_owner_pk, new_randomness))
 //! ```
 //!
 //! Additionally (enforced as equality gates):
 //! - `quantity` is the same in the old and new note (conservation)
-//! - `bond_id` is the same in the old and new note (same series)
+//! - `bounty_id` is the same in the old and new note (same series)
 //!
 //! **Phase 1 note:** A full Merkle membership proof for the old note's commitment
 //! is not included.  The node verifies off-circuit that the nullifier derives
@@ -116,12 +116,12 @@ impl Circuit<Fp> for TransferCircuit {
         };
 
         // ----- new_commitment = Poseidon2(h1_new, h2_new) -----
-        // h1_new = Poseidon2(bond_id, quantity)
+        // h1_new = Poseidon2(bounty_id, quantity)
 
         let (bond_id_cell, qty_cell) = layouter.assign_region(
             || "load new h1 witnesses",
             |mut region| {
-                let a = region.assign_advice(|| "bond_id",  config.state[0], 0, || self.old_bond_id)?;
+                let a = region.assign_advice(|| "bounty_id",  config.state[0], 0, || self.old_bond_id)?;
                 let b = region.assign_advice(|| "quantity", config.state[1], 0, || self.old_quantity)?;
                 Ok((a, b))
             },
@@ -164,7 +164,7 @@ impl Circuit<Fp> for TransferCircuit {
             hasher.hash(layouter.namespace(|| "new_cm hash"), [h1_new, h2_new])?
         };
 
-        // ----- Conservation: verify old note has same bond_id and quantity -----
+        // ----- Conservation: verify old note has same bounty_id and quantity -----
         // We load old_bond_id and old_quantity again (same values) and constrain
         // them equal to the cells already used for the new commitment computation.
         let (old_bond_id_cell, old_qty_cell) = layouter.assign_region(
@@ -226,7 +226,7 @@ mod tests {
             new_randomness: Value::known(fp_from_bytes(&NEW_RAND)),
         };
 
-        // Instance: [nullifier, new_commitment, bond_id]
+        // Instance: [nullifier, new_commitment, bounty_id]
         let instances = vec![nullifier, new_commitment, bond_id_fp];
         (circuit, vec![instances])
     }

@@ -9,7 +9,7 @@ mod state;
 mod sync;
 mod wallet_manager;
 
-/// NyxForge P2P node — anonymous social policy bond market
+/// NyxForge P2P node — anonymous social policy bounty market
 #[derive(Parser, Debug)]
 #[command(version, about)]
 struct Args {
@@ -49,7 +49,7 @@ struct Args {
     #[arg(long)]
     mine_on_start: bool,
 
-    /// Skip oracle data_id verification when issuing bonds (testing/dev only)
+    /// Skip judge data_id verification when issuing bounties (testing/dev only)
     #[arg(long)]
     allow_unverifiable: bool,
 }

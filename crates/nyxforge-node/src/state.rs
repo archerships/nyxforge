@@ -8,7 +8,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use tokio::sync::{mpsc, RwLock};
 
-use nyxforge_core::bond::{Bond, BondComment, BondId, OracleResponse};
+use nyxforge_core::bounty::{Bounty, BountyComment, BountyId, JudgeResponse};
 use nyxforge_core::market::OrderBook;
 use nyxforge_core::types::Nullifier;
 use nyxforge_miner::{MinerCmd, MinerStats};
@@ -93,11 +93,11 @@ pub struct NodeState(Arc<Inner>);
 
 #[derive(Debug)]
 struct Inner {
-    /// Known bond series, keyed by ID.
-    bonds: RwLock<HashMap<BondId, Bond>>,
+    /// Known bounty series, keyed by ID.
+    bounties: RwLock<HashMap<BountyId, Bounty>>,
 
-    /// One order book per active bond series.
-    order_books: RwLock<HashMap<BondId, OrderBook>>,
+    /// One order book per active bounty series.
+    order_books: RwLock<HashMap<BountyId, OrderBook>>,
 
     /// Nullifier set — spent notes cannot be respent.
     spent_nullifiers: RwLock<HashMap<Nullifier, u64>>, // nullifier → block height
@@ -108,16 +108,16 @@ struct Inner {
     /// Miner sub-state.
     pub miner: MinerState,
 
-    /// Comments on proposed bonds, keyed by bond ID.
-    comments: RwLock<HashMap<BondId, Vec<BondComment>>>,
+    /// Comments on proposed bounties, keyed by bounty ID.
+    comments: RwLock<HashMap<BountyId, Vec<BountyComment>>>,
 
-    /// Oracle accept/reject responses, keyed by bond ID.
-    oracle_responses: RwLock<HashMap<BondId, Vec<OracleResponse>>>,
+    /// Judge accept/reject responses, keyed by bounty ID.
+    judge_responses: RwLock<HashMap<BountyId, Vec<JudgeResponse>>>,
 
-    /// Data IDs announced by connected oracle nodes.
+    /// Data IDs announced by connected judge nodes.
     known_data_ids: RwLock<HashSet<String>>,
 
-    /// When true, bonds.issue skips the oracle data_id check (test/dev mode).
+    /// When true, bounties.issue skips the judge data_id check (test/dev mode).
     allow_unverifiable: bool,
 
     /// Local data directory.
@@ -128,11 +128,11 @@ impl NodeState {
     pub async fn new(data_dir: &Path, allow_unverifiable: bool) -> Result<Self> {
         tokio::fs::create_dir_all(data_dir).await?;
         Ok(Self(Arc::new(Inner {
-            bonds: RwLock::new(HashMap::new()),
+            bounties: RwLock::new(HashMap::new()),
             order_books: RwLock::new(HashMap::new()),
             spent_nullifiers: RwLock::new(HashMap::new()),
             comments: RwLock::new(HashMap::new()),
-            oracle_responses: RwLock::new(HashMap::new()),
+            judge_responses: RwLock::new(HashMap::new()),
             known_data_ids: RwLock::new(HashSet::new()),
             allow_unverifiable,
             wallet: WalletState::new(),
@@ -141,18 +141,18 @@ impl NodeState {
         })))
     }
 
-    // -- Bond helpers -------------------------------------------------------
+    // -- Bounty helpers -------------------------------------------------------
 
-    pub async fn insert_bond(&self, bond: Bond) {
-        let mut bonds = self.0.bonds.write().await;
+    pub async fn insert_bounty(&self, bounty: Bounty) {
+        let mut bounties = self.0.bounties.write().await;
         let mut books = self.0.order_books.write().await;
-        let id = bond.id;
-        bonds.insert(id, bond);
+        let id = bounty.id;
+        bounties.insert(id, bounty);
         books.entry(id).or_insert_with(OrderBook::new);
     }
 
-    pub async fn get_bond(&self, id: &BondId) -> Option<Bond> {
-        self.0.bonds.read().await.get(id).cloned()
+    pub async fn get_bounty(&self, id: &BountyId) -> Option<Bounty> {
+        self.0.bounties.read().await.get(id).cloned()
     }
 
     pub async fn is_nullifier_spent(&self, n: &Nullifier) -> bool {
@@ -163,80 +163,80 @@ impl NodeState {
         self.0.spent_nullifiers.write().await.insert(n, block);
     }
 
-    pub async fn bond_count(&self) -> usize {
-        self.0.bonds.read().await.len()
+    pub async fn bounty_count(&self) -> usize {
+        self.0.bounties.read().await.len()
     }
 
-    pub async fn list_bonds(&self) -> Vec<Bond> {
-        self.0.bonds.read().await.values().cloned().collect()
+    pub async fn list_bounties(&self) -> Vec<Bounty> {
+        self.0.bounties.read().await.values().cloned().collect()
     }
 
     // -- Proposal comments --------------------------------------------------
 
-    /// Append a comment to a bond. The bond must already be stored.
-    pub async fn insert_comment(&self, comment: BondComment) {
+    /// Append a comment to a bounty. The bounty must already be stored.
+    pub async fn insert_comment(&self, comment: BountyComment) {
         self.0.comments.write().await
-            .entry(comment.bond_id)
+            .entry(comment.bounty_id)
             .or_default()
             .push(comment);
     }
 
-    /// Return all comments on a bond, oldest first.
-    pub async fn get_comments(&self, bond_id: &BondId) -> Vec<BondComment> {
+    /// Return all comments on a bounty, oldest first.
+    pub async fn get_comments(&self, bounty_id: &BountyId) -> Vec<BountyComment> {
         self.0.comments.read().await
-            .get(bond_id)
+            .get(bounty_id)
             .cloned()
             .unwrap_or_default()
     }
 
-    // -- Oracle approval responses ------------------------------------------
+    // -- Judge approval responses ------------------------------------------
 
-    /// Record an oracle's accept/reject response.
-    /// Returns `true` if this response completes the set and the bond should
-    /// advance to `Draft` (all listed oracles have now accepted).
-    pub async fn record_oracle_response(&self, response: OracleResponse) -> bool {
-        let bond_id = response.bond_id;
-        self.0.oracle_responses.write().await
-            .entry(bond_id)
+    /// Record an judge's accept/reject response.
+    /// Returns `true` if this response completes the set and the bounty should
+    /// advance to `Draft` (all listed judges have now accepted).
+    pub async fn record_judge_response(&self, response: JudgeResponse) -> bool {
+        let bounty_id = response.bounty_id;
+        self.0.judge_responses.write().await
+            .entry(bounty_id)
             .or_default()
             .push(response);
 
-        // Check if all oracles have accepted.
-        self.all_oracles_accepted(&bond_id).await
+        // Check if all judges have accepted.
+        self.all_judges_accepted(&bounty_id).await
     }
 
-    /// Returns true if every key in the bond's OracleSpec has an accepted
+    /// Returns true if every key in the bounty's JudgeSpec has an accepted
     /// response and none have rejected.
-    pub async fn all_oracles_accepted(&self, bond_id: &BondId) -> bool {
-        let bond = match self.0.bonds.read().await.get(bond_id).cloned() {
+    pub async fn all_judges_accepted(&self, bounty_id: &BountyId) -> bool {
+        let bounty = match self.0.bounties.read().await.get(bounty_id).cloned() {
             Some(b) => b,
             None => return false,
         };
-        let responses = self.0.oracle_responses.read().await;
-        let recorded = responses.get(bond_id).map(Vec::as_slice).unwrap_or(&[]);
+        let responses = self.0.judge_responses.read().await;
+        let recorded = responses.get(bounty_id).map(Vec::as_slice).unwrap_or(&[]);
 
-        bond.oracle.oracle_keys.iter().all(|key| {
-            recorded.iter().any(|r| r.oracle_key == *key && r.accepted)
+        bounty.judge.judge_keys.iter().all(|key| {
+            recorded.iter().any(|r| r.judge_key == *key && r.accepted)
         })
     }
 
-    /// Return all oracle responses for a bond.
-    pub async fn get_oracle_responses(&self, bond_id: &BondId) -> Vec<OracleResponse> {
-        self.0.oracle_responses.read().await
-            .get(bond_id)
+    /// Return all judge responses for a bounty.
+    pub async fn get_judge_responses(&self, bounty_id: &BountyId) -> Vec<JudgeResponse> {
+        self.0.judge_responses.read().await
+            .get(bounty_id)
             .cloned()
             .unwrap_or_default()
     }
 
-    /// Clear oracle responses for a bond (called after the issuer revises
-    /// the oracle list so oracles must re-accept from scratch).
-    pub async fn clear_oracle_responses(&self, bond_id: &BondId) {
-        self.0.oracle_responses.write().await.remove(bond_id);
+    /// Clear judge responses for a bounty (called after the issuer revises
+    /// the judge list so judges must re-accept from scratch).
+    pub async fn clear_judge_responses(&self, bounty_id: &BountyId) {
+        self.0.judge_responses.write().await.remove(bounty_id);
     }
 
-    // -- Oracle registry ----------------------------------------------------
+    // -- Judge registry ----------------------------------------------------
 
-    /// Record data IDs announced by an oracle node.
+    /// Record data IDs announced by an judge node.
     pub async fn register_data_ids(&self, ids: Vec<String>) {
         let mut set = self.0.known_data_ids.write().await;
         for id in ids {
@@ -244,7 +244,7 @@ impl NodeState {
         }
     }
 
-    /// Returns true if at least one oracle has announced support for this data_id,
+    /// Returns true if at least one judge has announced support for this data_id,
     /// or if the node is running in allow-unverifiable mode.
     pub async fn is_data_id_supported(&self, data_id: &str) -> bool {
         self.0.allow_unverifiable

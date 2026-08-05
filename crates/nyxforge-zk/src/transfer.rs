@@ -3,7 +3,7 @@
 //! Public inputs:
 //!   - `nullifier`       : spent note's nullifier (prevents double-spend)
 //!   - `new_commitment`  : commitment to the new recipient's note
-//!   - `bond_id`         : must match old and new notes
+//!   - `bounty_id`         : must match old and new notes
 
 use halo2_proofs::{
     circuit::Value,
@@ -11,21 +11,21 @@ use halo2_proofs::{
     plonk::{self, SingleVerifier},
     transcript::{Blake2bRead, Blake2bWrite, Challenge255},
 };
-use nyxforge_core::bond::BondId;
+use nyxforge_core::bounty::BountyId;
 use nyxforge_core::types::{Digest, Nullifier, PublicKey};
 use pasta_curves::EqAffine;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 
 use crate::circuit::transfer::TransferCircuit;
-use crate::note::BondNote;
+use crate::note::BountyNote;
 use crate::params::TRANSFER_KEYS;
 use crate::primitives::{fp_from_bytes, note_commitment};
 use crate::ZkError;
 
 pub struct TransferWitness {
     /// The note being consumed.
-    pub old_note: BondNote,
+    pub old_note: BountyNote,
 
     /// Owner's secret key (used to derive the nullifier).
     pub owner_secret: [u8; 32],
@@ -42,7 +42,7 @@ pub struct TransferWitness {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransferProof {
-    pub bond_id:        BondId,
+    pub bounty_id:        BountyId,
     pub nullifier:      Nullifier,
     pub new_commitment: Digest,
     pub proof_bytes:    Vec<u8>,
@@ -57,7 +57,7 @@ impl TransferProof {
         let nullifier      = w.old_note.nullifier(&w.owner_secret);
         let new_commitment = {
             let fp = note_commitment(
-                w.old_note.bond_id.as_bytes(),
+                w.old_note.bounty_id.as_bytes(),
                 w.old_note.quantity,
                 &w.recipient.0,
                 &w.new_randomness,
@@ -65,7 +65,7 @@ impl TransferProof {
             Digest::from_bytes(crate::primitives::fp_to_bytes(fp))
         };
 
-        let bond_id_fp     = fp_from_bytes(w.old_note.bond_id.as_bytes());
+        let bond_id_fp     = fp_from_bytes(w.old_note.bounty_id.as_bytes());
         let nullifier_fp   = fp_from_bytes(nullifier.as_bytes());
         let new_cm_fp      = fp_from_bytes(new_commitment.as_bytes());
 
@@ -88,14 +88,14 @@ impl TransferProof {
             .map_err(|e| ZkError::ProvingFailed(e.to_string()))?;
 
         let proof_bytes = transcript.finalize();
-        tracing::debug!(bond_id = ?w.old_note.bond_id, proof_len = proof_bytes.len(), "TRANSFER proof generated");
-        Ok(Self { bond_id: w.old_note.bond_id, nullifier, new_commitment, proof_bytes })
+        tracing::debug!(bounty_id = ?w.old_note.bounty_id, proof_len = proof_bytes.len(), "TRANSFER proof generated");
+        Ok(Self { bounty_id: w.old_note.bounty_id, nullifier, new_commitment, proof_bytes })
     }
 
     pub fn verify(&self) -> Result<(), ZkError> {
         let nullifier_fp = fp_from_bytes(self.nullifier.as_bytes());
         let new_cm_fp    = fp_from_bytes(self.new_commitment.as_bytes());
-        let bond_id_fp   = fp_from_bytes(self.bond_id.as_bytes());
+        let bond_id_fp   = fp_from_bytes(self.bounty_id.as_bytes());
 
         let instances: &[&[Fp]] = &[&[nullifier_fp, new_cm_fp, bond_id_fp]];
         let keys = &*TRANSFER_KEYS;
@@ -118,8 +118,8 @@ mod tests {
 
     fn test_witness() -> TransferWitness {
         TransferWitness {
-            old_note: BondNote {
-                bond_id:          Digest::from_bytes([0x01u8; 32]),
+            old_note: BountyNote {
+                bounty_id:          Digest::from_bytes([0x01u8; 32]),
                 quantity:         10,
                 redemption_value: Amount(1_000_000),
                 owner:            PublicKey([0xBBu8; 32]),

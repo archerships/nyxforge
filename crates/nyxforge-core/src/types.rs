@@ -36,7 +36,7 @@ impl From<blake3::Hash> for Digest {
     fn from(h: blake3::Hash) -> Self { Self(*h.as_bytes()) }
 }
 
-/// Nullifier: revealed when spending a bond note, prevents double-spend.
+/// Nullifier: revealed when spending a bounty note, prevents double-spend.
 pub type Nullifier = Digest;
 
 /// Compressed Ristretto255 public key (32 bytes).

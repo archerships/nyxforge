@@ -8,11 +8,11 @@ mod rpc_client;
 use mcp_client::McpClient;
 use rpc_client::RpcClient;
 
-/// NyxForge command-line interface
+/// NyxForge bearer bounty toolkit
 #[derive(Parser)]
-#[command(name = "nyxforge-cli", version, about = "Interact with a running NyxForge node")]
+#[command(name = "nyxforge-cli", version, about = "Create, inspect, and settle .bounty files")]
 struct Cli {
-    /// Node JSON-RPC URL
+    /// Node RPC URL (used only by dev commands; not required for file operations)
     #[arg(long, default_value = "http://127.0.0.1:8888/rpc", env = "NYXFORGE_RPC")]
     rpc: String,
 
@@ -26,8 +26,10 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Bond management
-    Bond(commands::bond::BondArgs),
+    /// Bounty file operations (create, inspect, transfer, issue, redeem, reclaim, verify)
+    Bounty(commands::bounty::BountyArgs),
+    /// Judge operations (accept, reject, attest, status, list)
+    Judge(commands::judge::JudgeArgs),
     /// AI provider management (via MCP server)
     Mcp(commands::mcp::McpArgs),
 }
@@ -39,7 +41,8 @@ async fn main() -> Result<()> {
     let mcp = McpClient::new(&cli.mcp);
 
     match cli.command {
-        Commands::Bond(args) => commands::bond::run(args, &rpc, &mcp).await,
-        Commands::Mcp(args)  => commands::mcp::run(args, &mcp).await,
+        Commands::Bounty(args)   => commands::bounty::run(args, &rpc, &mcp).await,
+        Commands::Judge(args) => commands::judge::run(args, &rpc).await,
+        Commands::Mcp(args)    => commands::mcp::run(args, &mcp).await,
     }
 }

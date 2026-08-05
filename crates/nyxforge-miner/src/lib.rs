@@ -3,7 +3,7 @@
 //! This crate is native-only — it links against the RandomX C library and
 //! cannot target wasm32.
 
-pub mod darkfi;
+// darkfi merge-mining module removed 2026-04-25; archived at src/archive/darkfi-era/
 pub mod hasher;
 pub mod p2pool;
 pub mod stats;
