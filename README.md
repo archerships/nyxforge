@@ -101,3 +101,7 @@ cargo test
 
 Read `docs/00_MVP.md` before proposing changes. Design changes belong in the spec,
 not in code comments.
+
+## License
+
+BSD 3-Clause. See [LICENSE](LICENSE).
