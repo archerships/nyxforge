@@ -2,7 +2,7 @@
 //!
 //! Public inputs:
 //!   - `commitment` : the new note's commitment
-//!   - `bond_id`    : bond series being minted
+//!   - `bounty_id`    : bounty series being minted
 //!
 //! Private witness:
 //!   - `quantity`   : number of units
@@ -16,14 +16,14 @@ use halo2_proofs::{
     plonk::{self, SingleVerifier},
     transcript::{Blake2bRead, Blake2bWrite, Challenge255},
 };
-use nyxforge_core::bond::BondId;
+use nyxforge_core::bounty::BountyId;
 use nyxforge_core::types::{Amount, Digest};
 use pasta_curves::EqAffine;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 
 use crate::circuit::mint::MintCircuit;
-use crate::note::BondNote;
+use crate::note::BountyNote;
 use crate::params::MINT_KEYS;
 use crate::primitives::fp_from_bytes;
 use crate::ZkError;
@@ -31,7 +31,7 @@ use crate::ZkError;
 /// Everything the prover knows (kept secret).
 #[derive(Debug)]
 pub struct MintWitness {
-    pub bond_id:          BondId,
+    pub bounty_id:          BountyId,
     pub quantity:         u64,
     pub redemption_value: Amount,
     pub recipient:        nyxforge_core::types::PublicKey,
@@ -45,8 +45,8 @@ pub struct MintProof {
     /// Public: commitment to the new note (Poseidon-based).
     pub commitment: Digest,
 
-    /// Public: bond series identifier.
-    pub bond_id: BondId,
+    /// Public: bounty series identifier.
+    pub bounty_id: BountyId,
 
     /// Halo2 IPA proof bytes (Blake2b transcript).
     pub proof_bytes: Vec<u8>,
@@ -55,8 +55,8 @@ pub struct MintProof {
 impl MintProof {
     /// Generate a MINT proof from the given witness.
     pub fn prove(witness: &MintWitness) -> Result<Self, ZkError> {
-        let note = BondNote {
-            bond_id:          witness.bond_id,
+        let note = BountyNote {
+            bounty_id:          witness.bounty_id,
             quantity:         witness.quantity,
             redemption_value: witness.redemption_value,
             owner:            witness.recipient.clone(),
@@ -65,11 +65,11 @@ impl MintProof {
         };
         // commitment() calls primitives::note_commitment internally.
         let commitment   = note.commitment();
-        let bond_id_fp   = fp_from_bytes(witness.bond_id.as_bytes());
+        let bond_id_fp   = fp_from_bytes(witness.bounty_id.as_bytes());
         let commitment_fp = fp_from_bytes(commitment.as_bytes());
 
         let circuit = MintCircuit {
-            bond_id:    Value::known(bond_id_fp),
+            bounty_id:    Value::known(bond_id_fp),
             quantity:   Value::known(Fp::from(witness.quantity)),
             owner_pk:   Value::known(fp_from_bytes(&witness.recipient.0)),
             randomness: Value::known(fp_from_bytes(&witness.randomness)),
@@ -84,13 +84,13 @@ impl MintProof {
 
         let proof_bytes = transcript.finalize();
         tracing::debug!(?commitment, proof_len = proof_bytes.len(), "MINT proof generated");
-        Ok(Self { commitment, bond_id: witness.bond_id, proof_bytes })
+        Ok(Self { commitment, bounty_id: witness.bounty_id, proof_bytes })
     }
 
     /// Verify a MINT proof against its public inputs.
     pub fn verify(&self) -> Result<(), ZkError> {
         let commitment_fp = fp_from_bytes(self.commitment.as_bytes());
-        let bond_id_fp    = fp_from_bytes(self.bond_id.as_bytes());
+        let bond_id_fp    = fp_from_bytes(self.bounty_id.as_bytes());
 
         let instances: &[&[Fp]] = &[&[commitment_fp, bond_id_fp]];
         let keys = &*MINT_KEYS;
@@ -113,7 +113,7 @@ mod tests {
 
     fn test_witness() -> MintWitness {
         MintWitness {
-            bond_id:          Digest::from_bytes([0x01u8; 32]),
+            bounty_id:          Digest::from_bytes([0x01u8; 32]),
             quantity:         10,
             redemption_value: Amount(1_000_000),
             recipient:        PublicKey([0xBBu8; 32]),

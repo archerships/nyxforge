@@ -15,6 +15,7 @@ halo2_gadgets = "0.4.0"
 halo2_poseidon = "0.1.0"
 pasta_curves  = "0.5.1"
 
+blake3     = { workspace = true }
 serde      = { workspace = true }
 rand       = { workspace = true }
 rand_core  = { workspace = true }

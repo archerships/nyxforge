@@ -7,7 +7,7 @@
 //! use serde_json::json;
 //!
 //! let rpc = MockRpcClient::new()
-//!     .with_response("bonds.list", json!([]))
+//!     .with_response("bounties.list", json!([]))
 //!     .with_response("wallet.addresses", json!({
 //!         "xmr": "5...",
 //!         "drk": "aabbcc...",
@@ -111,16 +111,16 @@ impl Default for MockRpcClient {
 ///
 /// Useful as a baseline — override specific methods by calling
 /// [`with_response`] after construction.
-pub fn happy_path_client(xmr_address: &str, drk_address: &str, bond_id: &str) -> MockRpcClient {
+pub fn happy_path_client(xmr_address: &str, drk_address: &str, bounty_id: &str) -> MockRpcClient {
     MockRpcClient::new()
         .with_response("wallet.addresses", json!({
             "xmr": xmr_address,
             "drk": drk_address,
         }))
-        .with_response("bonds.list", json!([]))
-        .with_response("bonds.issue", json!({ "id": bond_id }))
-        .with_response("bonds.get", json!({
-            "id": bond_id,
+        .with_response("bounties.list", json!([]))
+        .with_response("bounties.issue", json!({ "id": bounty_id }))
+        .with_response("bounties.get", json!({
+            "id": bounty_id,
             "state": "Active",
             "goal": { "title": "Test Goal" },
         }))
@@ -143,8 +143,8 @@ mod tests {
     #[tokio::test]
     async fn configured_method_returns_value() {
         let rpc = MockRpcClient::new()
-            .with_response("bonds.list", json!([]));
-        let v = rpc.call("bonds.list", json!({})).await.unwrap();
+            .with_response("bounties.list", json!([]));
+        let v = rpc.call("bounties.list", json!({})).await.unwrap();
         assert_eq!(v, json!([]));
     }
 
@@ -157,15 +157,15 @@ mod tests {
     #[tokio::test]
     async fn recording_captures_calls() {
         let rpc = MockRpcClient::new()
-            .with_response("bonds.list", json!([]))
+            .with_response("bounties.list", json!([]))
             .recording();
 
-        rpc.call("bonds.list", json!({"a": 1})).await.unwrap();
-        rpc.call("bonds.list", json!({"b": 2})).await.unwrap();
+        rpc.call("bounties.list", json!({"a": 1})).await.unwrap();
+        rpc.call("bounties.list", json!({"b": 2})).await.unwrap();
 
         let calls = rpc.recorded_calls();
         assert_eq!(calls.len(), 2);
-        assert_eq!(calls[0].0, "bonds.list");
+        assert_eq!(calls[0].0, "bounties.list");
     }
 
     #[tokio::test]
@@ -187,7 +187,7 @@ mod tests {
     #[should_panic]
     fn assert_called_panics_when_absent() {
         let rpc = MockRpcClient::new().recording();
-        rpc.assert_called("bonds.list");
+        rpc.assert_called("bounties.list");
     }
 
     #[tokio::test]
@@ -200,7 +200,7 @@ mod tests {
     #[tokio::test]
     async fn failing_client_always_errors() {
         let rpc = failing_client();
-        assert!(rpc.call("bonds.list", json!({})).await.is_err());
+        assert!(rpc.call("bounties.list", json!({})).await.is_err());
         assert!(rpc.call("wallet.create", json!({})).await.is_err());
     }
 }

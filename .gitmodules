@@ -1,0 +1,3 @@
+[submodule "ui/packages/torch_dart"]
+	path = ui/packages/torch_dart
+	url = https://github.com/mrcyjanek/torch_dart

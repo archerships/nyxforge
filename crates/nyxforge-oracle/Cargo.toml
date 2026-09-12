@@ -16,6 +16,9 @@ path = "src/lib.rs"
 
 [dependencies]
 nyxforge-core = { path = "../nyxforge-core" }
+nyxforge-zk   = { path = "../nyxforge-zk" }
+
+ed25519-dalek = { workspace = true }
 
 tokio    = { workspace = true }
 serde    = { workspace = true }

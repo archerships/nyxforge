@@ -1,12 +1,28 @@
-/target/
-**/*.rs.bk
-Cargo.lock          # library crates; node bins track their own lock
-.env
-*.key
-*.pem
-node_data/
-wallet.db
-*.log
-.DS_Store
+# Build artifacts
+target/
 dist/
-pkg/
+
+# Flutter build
+ui/build/
+ui/.dart_tool/
+ui/.flutter-plugins
+ui/.flutter-plugins-dependencies
+*.iml
+
+# Runtime artifacts
+*.log
+*.pid
+node_data/
+nyxforge
+nyxforge-node
+nyxforge-oracle
+nyxforge-cli
+
+# Playwright
+ui/node_modules/
+ui/test-results/
+ui/playwright-report/
+
+# Environment and secrets
+.env
+node_data/wallet.json

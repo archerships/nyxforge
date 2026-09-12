@@ -1,4 +1,4 @@
-//! Bond note fixtures and lazily-computed test vectors.
+//! Bounty note fixtures and lazily-computed test vectors.
 //!
 //! All notes use fixed inputs so their commitments and nullifiers are stable
 //! across runs.  The lazy statics hold the *computed* values of those
@@ -17,9 +17,9 @@
 
 use once_cell::sync::Lazy;
 
-use nyxforge_core::bond::BondId;
+use nyxforge_core::bounty::BountyId;
 use nyxforge_core::types::{Amount, Digest, PublicKey};
-use nyxforge_zk::note::BondNote;
+use nyxforge_zk::note::BountyNote;
 
 // ---------------------------------------------------------------------------
 // Fixed scalars — all obviously synthetic.
@@ -41,12 +41,12 @@ pub const RECIPIENT_KEY: PublicKey = PublicKey([0xCCu8; 32]);
 // Note constructors
 // ---------------------------------------------------------------------------
 
-/// The canonical test note — fixed bond_id (zero), quantity 5, owner [`OWNER_KEY`].
+/// The canonical test note — fixed bounty_id (zero), quantity 5, owner [`OWNER_KEY`].
 ///
 /// Use this when the note content is irrelevant to the test.
-pub fn default_note() -> BondNote {
-    BondNote {
-        bond_id: Digest::zero(),
+pub fn default_note() -> BountyNote {
+    BountyNote {
+        bounty_id: Digest::zero(),
         quantity: 5,
         redemption_value: Amount::from_whole(100),
         owner: OWNER_KEY,
@@ -55,12 +55,12 @@ pub fn default_note() -> BondNote {
     }
 }
 
-/// A note for a specific bond ID and quantity.
+/// A note for a specific bounty ID and quantity.
 ///
-/// All other fields are fixed.  Use when the bond ID or quantity matters.
-pub fn note_for_bond(bond_id: BondId, quantity: u64) -> BondNote {
-    BondNote {
-        bond_id,
+/// All other fields are fixed.  Use when the bounty ID or quantity matters.
+pub fn note_for_bounty(bounty_id: BountyId, quantity: u64) -> BountyNote {
+    BountyNote {
+        bounty_id,
         quantity,
         redemption_value: Amount::from_whole(10),
         owner: OWNER_KEY,
@@ -69,13 +69,13 @@ pub fn note_for_bond(bond_id: BondId, quantity: u64) -> BondNote {
     }
 }
 
-/// A note for a specific bond owned by [`RECIPIENT_KEY`].
+/// A note for a specific bounty owned by [`RECIPIENT_KEY`].
 ///
 /// Useful as the "new" note in transfer tests, distinct from notes
 /// owned by [`OWNER_KEY`].
-pub fn recipient_note(bond_id: BondId, quantity: u64) -> BondNote {
-    BondNote {
-        bond_id,
+pub fn recipient_note(bounty_id: BountyId, quantity: u64) -> BountyNote {
+    BountyNote {
+        bounty_id,
         quantity,
         redemption_value: Amount::from_whole(10),
         owner: RECIPIENT_KEY,
@@ -189,8 +189,8 @@ mod tests {
     #[test]
     fn note_for_bond_uses_supplied_bond_id() {
         let id = Digest::from_bytes([0x55u8; 32]);
-        let note = note_for_bond(id, 3);
-        assert_eq!(note.bond_id, id);
+        let note = note_for_bounty(id, 3);
+        assert_eq!(note.bounty_id, id);
         assert_eq!(note.quantity, 3);
     }
 

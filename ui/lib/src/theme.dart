@@ -4,22 +4,24 @@ import 'package:flutter/material.dart';
 class NyxColors {
   NyxColors._();
 
-  static const background   = Color(0xFF0A0A0F);
-  static const surface      = Color(0xFF12121A);
-  static const surfaceHigh  = Color(0xFF1C1C28);
+  static const background   = Color(0xFF0D0F1A);
+  static const surface      = Color(0xFF1E2030);
+  static const surfaceHigh  = Color(0xFF2A2D3E);
   static const border       = Color(0xFF2A2A3D);
 
-  static const accent       = Color(0xFF7B5EA7); // muted purple -- DarkFi nod
-  static const accentBright = Color(0xFFAA82D9);
-  static const accentGlow   = Color(0x337B5EA7);
+  static const primary      = Color(0xFF5E6AD2); // bright accent purple
+  static const secondary    = Color(0xFF2A2D3E);
+  static const accent       = Color(0xFF5E6AD2);
+  static const accentBright = Color(0xFF7C89F8);
+  static const accentGlow   = Color(0x335E6AD2);
 
-  static const textPrimary   = Color(0xFFE8E8F0);
-  static const textSecondary = Color(0xFF9090A8);
+  static const textPrimary   = Color(0xFFFFFFFF);
+  static const textSecondary = Color(0xFFA0A8D0);
   static const textMuted     = Color(0xFF50505E);
 
-  static const success = Color(0xFF4CAF82);
-  static const warning = Color(0xFFD4A843);
-  static const danger  = Color(0xFFCF5858);
+  static const success = Color(0xFF4ADE80);
+  static const warning = Color(0xFFFBBF24);
+  static const danger  = Color(0xFFF87171);
 }
 
 ThemeData nyxTheme() {

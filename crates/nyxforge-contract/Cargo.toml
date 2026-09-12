@@ -15,8 +15,6 @@ crate-type = ["cdylib", "rlib"]
 nyxforge-core = { path = "../nyxforge-core" }
 nyxforge-zk   = { path = "../nyxforge-zk" }
 
-darkfi-sdk = { workspace = true }
-
 serde        = { workspace = true }
 bincode      = { workspace = true }
 blake3       = { workspace = true }

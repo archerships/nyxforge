@@ -1,11 +1,12 @@
 //! BURN proof — generates and verifies a real Halo2 BURN proof.
 //!
 //! Public inputs:
-//!   - `nullifier`          : spent note's nullifier (prevents double-redemption)
-//!   - `bond_id`            : bond series being redeemed
-//!   - `quorum_result_hash` : pass-through hash (not circuit-constrained; verified externally)
-//!   - `payout_commitment`  : commitment to the anonymous payout note
-//!   - `payout_amount`      : quantity * redemption_value (native arithmetic, enforced off-circuit)
+//!   - `nullifier`         : spent note's nullifier (prevents double-redemption)
+//!   - `bounty_id`           : bounty series being redeemed
+//!   - `judge_attest_pk`  : Poseidon PK derived from judge's private attest key;
+//!                           circuit-constrained (replaces the old unconstrained quorum_result_hash)
+//!   - `payout_commitment` : commitment to the anonymous payout note
+//!   - `payout_amount`     : quantity * redemption_value (native arithmetic, enforced off-circuit)
 
 use halo2_proofs::{
     circuit::Value,
@@ -13,31 +14,35 @@ use halo2_proofs::{
     plonk::{self, SingleVerifier},
     transcript::{Blake2bRead, Blake2bWrite, Challenge255},
 };
-use nyxforge_core::bond::BondId;
+use nyxforge_core::bounty::BountyId;
 use nyxforge_core::types::{Amount, Digest, Nullifier};
 use pasta_curves::EqAffine;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 
 use crate::circuit::burn::BurnCircuit;
-use crate::note::BondNote;
+use crate::note::BountyNote;
 use crate::params::BURN_KEYS;
-use crate::primitives::{fp_from_bytes, fp_to_bytes, poseidon2};
+use crate::primitives::{fp_from_bytes, fp_to_bytes, judge_attest_domain, poseidon2};
 use crate::ZkError;
 
 pub struct BurnWitness {
     /// The note being redeemed.
-    pub bond_note: BondNote,
+    pub bounty_note: BountyNote,
 
     /// Owner's secret key (used to derive the nullifier).
     pub owner_secret: [u8; 32],
 
-    /// Hash of the QuorumResult that declared the goal met.
-    /// Treated as a pass-through public input; not circuit-constrained.
-    pub quorum_result_hash: Digest,
+    /// Judge's per-bounty attest key, received from the judge privately (off-chain).
+    ///
+    /// This is the **private witness** for the judge attestation constraint:
+    /// the circuit proves `Poseidon2(fp(judge_attest_key), domain) == judge_attest_pk`
+    /// without revealing `judge_attest_key`.  The bounty holder must receive this
+    /// from the judge before they can redeem.  Zero-ize after use.
+    pub judge_attest_key: [u8; 32],
 
     /// Address of the party receiving the payout (set by the current holder
-    /// at redemption time — not stored on the bond).
+    /// at redemption time — not stored on the bounty).
     pub payout_address: [u8; 32],
 
     /// Fresh randomness for the anonymous payout note.
@@ -46,27 +51,30 @@ pub struct BurnWitness {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BurnProof {
-    pub bond_id:            BondId,
-    pub nullifier:          Nullifier,
-    pub quorum_result_hash: Digest,
-    pub payout_commitment:  Digest,
-    pub payout_amount:      Amount,
-    pub proof_bytes:        Vec<u8>,
+    pub bounty_id:           BountyId,
+    pub nullifier:         Nullifier,
+    /// `Poseidon2(fp(judge_attest_key), judge_attest_domain())` in Pallas Fp bytes.
+    /// Registered on the bounty in `JudgeSpec.judge_attest_pks`.
+    /// The settlement contract verifies this is in the bounty's approved attest PK list.
+    pub judge_attest_pk:  [u8; 32],
+    pub payout_commitment: Digest,
+    pub payout_amount:     Amount,
+    pub proof_bytes:       Vec<u8>,
 }
 
 impl BurnProof {
     pub fn prove(w: &BurnWitness) -> Result<Self, ZkError> {
-        if w.bond_note.quantity == 0 {
+        if w.bounty_note.quantity == 0 {
             return Err(ZkError::InvalidWitness("quantity must be > 0".into()));
         }
 
         let payout_amount = Amount(
-            w.bond_note.quantity
-                .checked_mul(w.bond_note.redemption_value.0)
+            w.bounty_note.quantity
+                .checked_mul(w.bounty_note.redemption_value.0)
                 .ok_or_else(|| ZkError::InvalidWitness("payout overflow".into()))?,
         );
 
-        let nullifier = w.bond_note.nullifier(&w.owner_secret);
+        let nullifier = w.bounty_note.nullifier(&w.owner_secret);
 
         // payout_commitment = Poseidon2(Poseidon2(payout_amount_fp, payout_address), payout_randomness)
         let payout_amount_fp   = Fp::from(payout_amount.0);
@@ -75,24 +83,29 @@ impl BurnProof {
         let payout_cm_fp       = poseidon2(h_pay, fp_from_bytes(&w.payout_randomness));
         let payout_commitment = Digest::from_bytes(fp_to_bytes(payout_cm_fp));
 
-        let nullifier_fp   = fp_from_bytes(nullifier.as_bytes());
-        let bond_id_fp     = fp_from_bytes(w.bond_note.bond_id.as_bytes());
-        let quorum_hash_fp = fp_from_bytes(w.quorum_result_hash.as_bytes());
+        let nullifier_fp         = fp_from_bytes(nullifier.as_bytes());
+        let bond_id_fp           = fp_from_bytes(w.bounty_note.bounty_id.as_bytes());
+        let oracle_attest_key_fp = fp_from_bytes(&w.judge_attest_key);
+        let domain_fp            = judge_attest_domain();
+        let oracle_attest_pk_fp  = poseidon2(oracle_attest_key_fp, domain_fp);
+        let judge_attest_pk     = fp_to_bytes(oracle_attest_pk_fp);
 
         let circuit = BurnCircuit {
-            bond_id:           Value::known(bond_id_fp),
-            payout_address:    Value::known(payout_address_fp),
-            serial:            Value::known(fp_from_bytes(&w.bond_note.serial)),
-            owner_secret:      Value::known(fp_from_bytes(&w.owner_secret)),
-            payout_amount:     Value::known(payout_amount_fp),
-            payout_randomness: Value::known(fp_from_bytes(&w.payout_randomness)),
+            bounty_id:              Value::known(bond_id_fp),
+            serial:               Value::known(fp_from_bytes(&w.bounty_note.serial)),
+            owner_secret:         Value::known(fp_from_bytes(&w.owner_secret)),
+            judge_attest_key:    Value::known(oracle_attest_key_fp),
+            judge_attest_domain: Value::known(domain_fp),
+            payout_address:       Value::known(payout_address_fp),
+            payout_amount:        Value::known(payout_amount_fp),
+            payout_randomness:    Value::known(fp_from_bytes(&w.payout_randomness)),
         };
 
-        // Instance: [nullifier, bond_id, quorum_result_hash, payout_commitment, payout_amount]
+        // Instance: [nullifier, bounty_id, judge_attest_pk, payout_commitment, payout_amount]
         let instances: &[&[Fp]] = &[&[
             nullifier_fp,
             bond_id_fp,
-            quorum_hash_fp,
+            oracle_attest_pk_fp,
             payout_cm_fp,
             payout_amount_fp,
         ]];
@@ -104,14 +117,14 @@ impl BurnProof {
 
         let proof_bytes = transcript.finalize();
         tracing::debug!(
-            bond_id = ?w.bond_note.bond_id,
+            bounty_id = ?w.bounty_note.bounty_id,
             proof_len = proof_bytes.len(),
             "BURN proof generated"
         );
         Ok(Self {
-            bond_id: w.bond_note.bond_id,
+            bounty_id: w.bounty_note.bounty_id,
             nullifier,
-            quorum_result_hash: w.quorum_result_hash,
+            judge_attest_pk,
             payout_commitment,
             payout_amount,
             proof_bytes,
@@ -119,16 +132,16 @@ impl BurnProof {
     }
 
     pub fn verify(&self) -> Result<(), ZkError> {
-        let nullifier_fp   = fp_from_bytes(self.nullifier.as_bytes());
-        let bond_id_fp     = fp_from_bytes(self.bond_id.as_bytes());
-        let quorum_hash_fp = fp_from_bytes(self.quorum_result_hash.as_bytes());
-        let payout_cm_fp   = fp_from_bytes(self.payout_commitment.as_bytes());
-        let payout_amt_fp  = Fp::from(self.payout_amount.0);
+        let nullifier_fp        = fp_from_bytes(self.nullifier.as_bytes());
+        let bond_id_fp          = fp_from_bytes(self.bounty_id.as_bytes());
+        let oracle_attest_pk_fp = fp_from_bytes(&self.judge_attest_pk);
+        let payout_cm_fp        = fp_from_bytes(self.payout_commitment.as_bytes());
+        let payout_amt_fp       = Fp::from(self.payout_amount.0);
 
         let instances: &[&[Fp]] = &[&[
             nullifier_fp,
             bond_id_fp,
-            quorum_hash_fp,
+            oracle_attest_pk_fp,
             payout_cm_fp,
             payout_amt_fp,
         ]];
@@ -152,18 +165,18 @@ mod tests {
 
     fn test_witness() -> BurnWitness {
         BurnWitness {
-            bond_note: BondNote {
-                bond_id:          Digest::from_bytes([0x01u8; 32]),
+            bounty_note: BountyNote {
+                bounty_id:          Digest::from_bytes([0x01u8; 32]),
                 quantity:         10,
                 redemption_value: Amount(1_000_000),
                 owner:            PublicKey([0xBBu8; 32]),
                 randomness:       [0x42u8; 32],
                 serial:           [0x55u8; 32],
             },
-            owner_secret:       [0xAAu8; 32],
-            quorum_result_hash: Digest::from_bytes([0xDDu8; 32]),
-            payout_address:     [0xCCu8; 32],
-            payout_randomness:  [0x33u8; 32],
+            owner_secret:      [0xAAu8; 32],
+            judge_attest_key: [0xEEu8; 32],
+            payout_address:    [0xCCu8; 32],
+            payout_randomness: [0x33u8; 32],
         }
     }
 
@@ -185,7 +198,7 @@ mod tests {
     #[test]
     fn burn_rejects_zero_quantity() {
         let mut w = test_witness();
-        w.bond_note.quantity = 0;
+        w.bounty_note.quantity = 0;
         assert!(BurnProof::prove(&w).is_err());
     }
 }

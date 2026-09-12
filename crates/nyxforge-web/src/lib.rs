@@ -36,13 +36,13 @@ pub fn generate_wallet() -> Result<String, JsValue> {
         .map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
-/// Fetch the list of active bonds from the local node.
+/// Fetch the list of active bounties from the local node.
 #[wasm_bindgen]
-pub async fn list_bonds() -> Result<String, JsValue> {
-    let bonds = client::rpc_call("bonds.list", serde_json::json!({}))
+pub async fn list_bounties() -> Result<String, JsValue> {
+    let bounties = client::rpc_call("bounties.list", serde_json::json!({}))
         .await
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
-    Ok(bonds.to_string())
+    Ok(bounties.to_string())
 }
 
 /// Place a bid or ask order.

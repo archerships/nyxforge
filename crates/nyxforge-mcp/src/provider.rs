@@ -1,4 +1,4 @@
-//! Routes `bond_assist` tool calls to the configured AI provider.
+//! Routes `bounty_assist` tool calls to the configured AI provider.
 
 use anyhow::{anyhow, Result};
 use serde_json::Value;
@@ -10,14 +10,14 @@ use crate::config::{ProviderEntry, ProviderKind};
 // ---------------------------------------------------------------------------
 
 pub const SYSTEM_PROMPT: &str = r#"
-You are an expert in social policy bonds — financial instruments that pay out
+You are an expert in social policy bounties — financial instruments that pay out
 only when a measurable social or environmental goal is achieved.  You help
-users design precise, verifiable bonds with unambiguous success criteria.
+users design precise, verifiable bounties with unambiguous success criteria.
 
-Given a user's goal description and a list of existing bonds on this network,
+Given a user's goal description and a list of existing bounties on this network,
 you must:
-1. Identify existing bonds that overlap with the user's goal (may be empty).
-2. Draft a new bond specification based on the user's description.
+1. Identify existing bounties that overlap with the user's goal (may be empty).
+2. Draft a new bounty specification based on the user's description.
 
 Reply with ONLY a valid JSON object — no markdown, no prose outside the JSON.
 Use this exact schema:
@@ -25,8 +25,8 @@ Use this exact schema:
 {
   "similar_bonds": [
     {
-      "bond_id":     "<id field from the existing bonds list>",
-      "title":       "<bond title>",
+      "bounty_id":     "<id field from the existing bounties list>",
+      "title":       "<bounty title>",
       "similarity":  "high|medium|low",
       "explanation": "<1–2 sentences: why similar and what differs>"
     }
@@ -56,7 +56,7 @@ Common examples:
   us.cdc.overdose_deaths_per_100k       CDC drug overdose mortality
   us.bls.unemployment_rate              Bureau of Labor Statistics unemployment
 
-Only include bonds with at least "low" similarity.  If none match, return [].
+Only include bounties with at least "low" similarity.  If none match, return [].
 Prefer specificity in data_id — use the most precise sub-metric available.
 "#;
 
@@ -68,9 +68,9 @@ Prefer specificity in data_id — use the most precise sub-metric available.
 pub async fn call_provider(
     entry:          &ProviderEntry,
     description:    &str,
-    existing_bonds: &[Value],
+    existing_bounties: &[Value],
 ) -> Result<String> {
-    let user_msg = build_user_message(description, existing_bonds);
+    let user_msg = build_user_message(description, existing_bounties);
     let client   = reqwest::Client::new();
 
     match entry.kind {
@@ -81,10 +81,10 @@ pub async fn call_provider(
     }
 }
 
-fn build_user_message(description: &str, existing_bonds: &[Value]) -> String {
-    let summary: Vec<Value> = existing_bonds.iter().take(30).map(|b| {
+fn build_user_message(description: &str, existing_bounties: &[Value]) -> String {
+    let summary: Vec<Value> = existing_bounties.iter().take(30).map(|b| {
         serde_json::json!({
-            "bond_id":     b["id"],
+            "bounty_id":     b["id"],
             "title":       b["goal"]["title"],
             "description": b["goal"]["description"],
             "data_id":     b["goal"]["metric"]["data_id"],
@@ -96,7 +96,7 @@ fn build_user_message(description: &str, existing_bonds: &[Value]) -> String {
     }).collect();
 
     format!(
-        "## User's goal\n{description}\n\n## Existing bonds on this network\n{}",
+        "## User's goal\n{description}\n\n## Existing bounties on this network\n{}",
         serde_json::to_string_pretty(&summary).unwrap_or_default()
     )
 }

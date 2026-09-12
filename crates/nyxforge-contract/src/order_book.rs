@@ -1,4 +1,4 @@
-//! Order book contract: anonymous DEX for bond trading.
+//! Order book contract: anonymous DEX for bounty trading.
 //!
 //! Trades are settled atomically via ZK transfer proofs.
 //!
@@ -20,7 +20,7 @@ use crate::ContractResult;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PlaceOrderParams {
     pub order: Order,
-    /// ZK proof that the maker owns the bond notes (ask) or base tokens (bid)
+    /// ZK proof that the maker owns the bounty notes (ask) or base tokens (bid)
     /// being committed to this order.
     pub ownership_proof: Vec<u8>,
 }
@@ -29,8 +29,8 @@ pub struct PlaceOrderParams {
 pub struct FillOrderParams {
     pub maker_order_id: Digest,
     pub taker_order_id: Digest,
-    /// ZK transfer proof moving bond notes from maker to taker.
-    pub bond_transfer: TransferProof,
+    /// ZK transfer proof moving bounty notes from maker to taker.
+    pub bounty_transfer: TransferProof,
     /// ZK transfer proof moving base tokens from taker to maker.
     pub payment_transfer: TransferProof,
 }
@@ -54,9 +54,9 @@ pub fn process_place_order(params: &PlaceOrderParams) -> ContractResult<Digest> 
 
 /// Execute two matching orders atomically.
 pub fn process_fill_order(params: &FillOrderParams) -> ContractResult<Trade> {
-    // Verify bond transfer: nullifier must not be spent, proof must verify.
-    params.bond_transfer.verify()
-        .map_err(|e| anyhow::anyhow!("bond transfer: {e}"))?;
+    // Verify bounty transfer: nullifier must not be spent, proof must verify.
+    params.bounty_transfer.verify()
+        .map_err(|e| anyhow::anyhow!("bounty transfer: {e}"))?;
 
     // Verify payment transfer.
     params.payment_transfer.verify()
@@ -72,12 +72,12 @@ pub fn process_fill_order(params: &FillOrderParams) -> ContractResult<Trade> {
             h.update(params.taker_order_id.as_bytes());
             nyxforge_core::types::Digest::from(h.finalize())
         },
-        bond_id:     params.bond_transfer.bond_id,
+        bounty_id:     params.bounty_transfer.bounty_id,
         price:       nyxforge_core::types::Amount::ZERO, // filled from order record
         quantity:    0,                                   // filled from order record
         executed_at: chrono::Utc::now(),
         nullifiers:  vec![
-            params.bond_transfer.nullifier,
+            params.bounty_transfer.nullifier,
             params.payment_transfer.nullifier,
         ],
     };

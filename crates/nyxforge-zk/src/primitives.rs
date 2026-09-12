@@ -8,7 +8,7 @@
 //! # Commitment scheme
 //!
 //! ```text
-//! h1         = Poseidon2(fp(bond_id), fp(quantity))
+//! h1         = Poseidon2(fp(bounty_id), fp(quantity))
 //! h2         = Poseidon2(fp(owner_pk), fp(randomness))
 //! commitment = Poseidon2(h1, h2)
 //! ```
@@ -59,31 +59,56 @@ pub fn poseidon2(a: Fp, b: Fp) -> Fp {
     poseidon::Hash::<_, P128Pow5T3, ConstantLength<2>, 3, 2>::init().hash([a, b])
 }
 
-/// Compute the note commitment for a bond note.
+/// Compute the note commitment for a bounty note.
 ///
 /// ```text
-/// h1 = Poseidon2(fp(bond_id), Fp::from(quantity))
+/// h1 = Poseidon2(fp(bounty_id), Fp::from(quantity))
 /// h2 = Poseidon2(fp(owner_pk), fp(randomness))
 /// commitment = Poseidon2(h1, h2)
 /// ```
 pub fn note_commitment(
-    bond_id: &[u8; 32],
+    bounty_id: &[u8; 32],
     quantity: u64,
     owner_pk: &[u8; 32],
     randomness: &[u8; 32],
 ) -> Fp {
-    let h1 = poseidon2(fp_from_bytes(bond_id), Fp::from(quantity));
+    let h1 = poseidon2(fp_from_bytes(bounty_id), Fp::from(quantity));
     let h2 = poseidon2(fp_from_bytes(owner_pk), fp_from_bytes(randomness));
     poseidon2(h1, h2)
 }
 
-/// Compute the nullifier for a bond note.
+/// Compute the nullifier for a bounty note.
 ///
 /// ```text
 /// nullifier = Poseidon2(fp(owner_secret), fp(serial))
 /// ```
 pub fn note_nullifier(owner_secret: &[u8; 32], serial: &[u8; 32]) -> Fp {
     poseidon2(fp_from_bytes(owner_secret), fp_from_bytes(serial))
+}
+
+/// Domain separator for judge attestation key derivation.
+///
+/// Computed as `blake3(b"nyxforge::oracle::attest::domain::v1")` and interpreted
+/// as a Pallas field element.  A fixed constant baked into the BURN circuit.
+pub fn judge_attest_domain() -> Fp {
+    fp_from_bytes(blake3::hash(b"nyxforge::oracle::attest::domain::v1").as_bytes())
+}
+
+/// Derive the judge attestation public key from a per-bounty attest key.
+///
+/// ```text
+/// judge_attest_pk = Poseidon2(fp(bond_attest_key), judge_attest_domain())
+/// ```
+///
+/// The judge keeps `bond_attest_key` secret and shares it only with the
+/// bounty holder after goal verification.  `judge_attest_pk` is registered on
+/// the bounty and appears as public instance[2] in the BURN circuit.
+///
+/// The BURN circuit proves the prover knows `bond_attest_key` such that
+/// `Poseidon2(fp(bond_attest_key), domain) == judge_attest_pk`.
+pub fn judge_attest_pk_from_key(bond_attest_key: &[u8; 32]) -> [u8; 32] {
+    let domain = judge_attest_domain();
+    fp_to_bytes(poseidon2(fp_from_bytes(bond_attest_key), domain))
 }
 
 #[cfg(test)]
@@ -174,5 +199,29 @@ mod tests {
         let nul = note_nullifier(&OWNER_SECRET, &SERIAL);
         println!("GOLDEN_COMMITMENT = {}", hex::encode(fp_to_bytes(cm)));
         println!("GOLDEN_NULLIFIER  = {}", hex::encode(fp_to_bytes(nul)));
+    }
+
+    // --- judge_attest_pk ---
+
+    #[test]
+    fn oracle_attest_pk_is_deterministic() {
+        let key = [0x99u8; 32];
+        let a = judge_attest_pk_from_key(&key);
+        let b = judge_attest_pk_from_key(&key);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn oracle_attest_pk_differs_by_key() {
+        let a = judge_attest_pk_from_key(&[0x01u8; 32]);
+        let b = judge_attest_pk_from_key(&[0x02u8; 32]);
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn oracle_attest_pk_is_not_attest_key() {
+        let key = [0x01u8; 32];
+        let pk = judge_attest_pk_from_key(&key);
+        assert_ne!(pk, key, "pk must be distinct from the private attest key");
     }
 }

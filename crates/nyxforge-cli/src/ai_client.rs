@@ -1,4 +1,4 @@
-//! Claude API client for AI-assisted bond creation.
+//! Claude API client for AI-assisted bounty creation.
 //!
 //! Reads ANTHROPIC_API_KEY from the environment.  The node does not need to
 //! know about this — all AI calls happen directly from the CLI.
@@ -15,8 +15,8 @@ const MODEL:   &str = "claude-sonnet-4-6";
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Deserialize)]
-pub struct SimilarBond {
-    pub bond_id:     String,
+pub struct SimilarBounty {
+    pub bounty_id:     String,
     pub title:       String,
     /// "high", "medium", or "low"
     pub similarity:  String,
@@ -24,7 +24,7 @@ pub struct SimilarBond {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct SuggestedBondParams {
+pub struct SuggestedBountyParams {
     pub title:           String,
     pub description:     String,
     /// Canonical data source ID, e.g. "us.hud.pit_count.unsheltered"
@@ -41,7 +41,7 @@ pub struct SuggestedBondParams {
     pub notes:           Option<String>,
 }
 
-impl SuggestedBondParams {
+impl SuggestedBountyParams {
     /// Map the operator string to an index in the Select widget (0-based).
     pub fn operator_idx(&self) -> usize {
         match self.operator.as_str() {
@@ -56,9 +56,9 @@ impl SuggestedBondParams {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct BondAssistance {
-    pub similar_bonds:  Vec<SimilarBond>,
-    pub suggested_bond: SuggestedBondParams,
+pub struct BountyAssistance {
+    pub similar_bonds:  Vec<SimilarBounty>,
+    pub suggested_bond: SuggestedBountyParams,
     /// 2-3 sentence summary of findings and recommendations.
     pub analysis:       String,
 }
@@ -91,17 +91,17 @@ impl AnthropicClient {
     }
 
     /// Analyse a natural-language goal description against a list of existing
-    /// bonds (JSON values from `bonds.list`) and return matching bonds plus a
-    /// suggested new bond specification.
+    /// bounties (JSON values from `bounties.list`) and return matching bounties plus a
+    /// suggested new bounty specification.
     pub async fn assist_bond_creation(
         &self,
         description: &str,
-        existing_bonds: &[Value],
-    ) -> Result<BondAssistance> {
-        // Build a compact summary of existing bonds to stay within token limits.
-        let bonds_summary: Vec<Value> = existing_bonds.iter().take(30).map(|b| {
+        existing_bounties: &[Value],
+    ) -> Result<BountyAssistance> {
+        // Build a compact summary of existing bounties to stay within token limits.
+        let bonds_summary: Vec<Value> = existing_bounties.iter().take(30).map(|b| {
             serde_json::json!({
-                "bond_id":    b["id"],
+                "bounty_id":    b["id"],
                 "title":      b["goal"]["title"],
                 "description":b["goal"]["description"],
                 "data_id":    b["goal"]["metric"]["data_id"],
@@ -114,7 +114,7 @@ impl AnthropicClient {
 
         let user_message = format!(
             "## User's goal\n{description}\n\n\
-             ## Existing bonds on this network\n{}",
+             ## Existing bounties on this network\n{}",
             serde_json::to_string_pretty(&bonds_summary)?
         );
 
@@ -148,8 +148,8 @@ impl AnthropicClient {
         let json_str = extract_json(text)
             .ok_or_else(|| anyhow!("Could not find JSON in Claude response:\n{text}"))?;
 
-        serde_json::from_str::<BondAssistance>(&json_str)
-            .map_err(|e| anyhow!("Could not parse Claude response as BondAssistance: {e}\n\nRaw JSON:\n{json_str}"))
+        serde_json::from_str::<BountyAssistance>(&json_str)
+            .map_err(|e| anyhow!("Could not parse Claude response as BountyAssistance: {e}\n\nRaw JSON:\n{json_str}"))
     }
 }
 
@@ -187,14 +187,14 @@ fn extract_json(text: &str) -> Option<String> {
 // ---------------------------------------------------------------------------
 
 const SYSTEM_PROMPT: &str = r#"
-You are an expert in social policy bonds — financial instruments that pay out
+You are an expert in social policy bounties — financial instruments that pay out
 only when a measurable social or environmental goal is achieved.  You help
-users design precise, verifiable bonds with unambiguous success criteria.
+users design precise, verifiable bounties with unambiguous success criteria.
 
-Given a user's goal description and a list of existing bonds on this network,
+Given a user's goal description and a list of existing bounties on this network,
 you must:
-1. Identify existing bonds that overlap with the user's goal (may be empty).
-2. Draft a new bond specification based on the user's description.
+1. Identify existing bounties that overlap with the user's goal (may be empty).
+2. Draft a new bounty specification based on the user's description.
 
 Reply with ONLY a valid JSON object — no markdown, no prose outside the JSON.
 Use this exact schema:
@@ -202,8 +202,8 @@ Use this exact schema:
 {
   "similar_bonds": [
     {
-      "bond_id":     "<id field from the existing bonds list>",
-      "title":       "<bond title>",
+      "bounty_id":     "<id field from the existing bounties list>",
+      "title":       "<bounty title>",
       "similarity":  "high|medium|low",
       "explanation": "<1–2 sentences: why similar and what differs>"
     }
@@ -233,6 +233,6 @@ Common examples:
   us.cdc.overdose_deaths_per_100k       CDC drug overdose mortality
   us.bls.unemployment_rate              Bureau of Labor Statistics unemployment
 
-Only include bonds with at least "low" similarity.  If none match, return [].
+Only include bounties with at least "low" similarity.  If none match, return [].
 Prefer specificity in data_id — use the most precise sub-metric available.
 "#;

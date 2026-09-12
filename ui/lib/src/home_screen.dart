@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'theme.dart';
 import 'node_client.dart';
+import 'dashboard_screen.dart';
 import 'bond_market_screen.dart';
 import 'issue_bond_screen.dart';
+import 'exchange_screen.dart';
 import 'wallet_screen.dart';
 import 'mine_screen.dart';
+import 'community_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,20 +21,36 @@ class _HomeScreenState extends State<HomeScreen> {
 
   static const _destinations = [
     NavigationRailDestination(
+      icon:  Icon(Icons.dashboard_outlined),
+      selectedIcon: Icon(Icons.dashboard),
+      label: Text('DASH'),
+    ),
+    NavigationRailDestination(
       icon:  Icon(Icons.search),
-      label: Text('BONDS'),
+      label: Text('VAULT'),
     ),
     NavigationRailDestination(
       icon:  Icon(Icons.add_circle_outline),
       label: Text('ISSUE'),
     ),
     NavigationRailDestination(
+      icon:  Icon(Icons.swap_horizontal_circle_outlined),
+      selectedIcon: Icon(Icons.swap_horizontal_circle),
+      label: Text('DEX'),
+    ),
+    NavigationRailDestination(
       icon:  Icon(Icons.account_balance_wallet_outlined),
+      selectedIcon: Icon(Icons.account_balance_wallet),
       label: Text('WALLET'),
     ),
     NavigationRailDestination(
       icon:  Icon(Icons.bolt),
       label: Text('MINE'),
+    ),
+    NavigationRailDestination(
+      icon:  Icon(Icons.forum_outlined),
+      selectedIcon: Icon(Icons.forum),
+      label: Text('CHAT'),
     ),
     NavigationRailDestination(
       icon:  Icon(Icons.settings_outlined),
@@ -40,10 +59,13 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   static const _screens = [
+    DashboardScreen(),
     BondMarketScreen(),
     IssueBondScreen(),
+    ExchangeScreen(),
     WalletScreen(),
     MineScreen(),
+    CommunityScreen(),
     _NodeStatusScreen(),
   ];
 
@@ -62,7 +84,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const VerticalDivider(width: 1),
           Expanded(
-            child: _screens[_selectedIndex],
+            child: IndexedStack(
+              index: _selectedIndex,
+              children: _screens,
+            ),
           ),
         ],
       ),
@@ -129,6 +154,7 @@ class _NodeStatusScreenState extends State<_NodeStatusScreen> {
   }
 
   Future<void> _fetchStatus() async {
+    if (!mounted) return;
     setState(() { _loading = true; _error = null; });
     try {
       final s = await _client.status();

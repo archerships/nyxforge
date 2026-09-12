@@ -1,11 +1,11 @@
-//! Bond note: the anonymous representation of bond ownership.
+//! Bounty note: the anonymous representation of bounty ownership.
 //!
 //! A note is analogous to a Zcash sapling note.  Its commitment is revealed
 //! on-chain; its plaintext (and thus owner identity) is encrypted to the
 //! recipient.
 
 use nyxforge_core::types::{Amount, Digest, PublicKey};
-use nyxforge_core::bond::BondId;
+use nyxforge_core::bounty::BountyId;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
@@ -14,11 +14,11 @@ use crate::primitives;
 /// Plaintext note — kept secret by the holder.
 #[derive(Debug, Clone, Zeroize, Serialize, Deserialize)]
 #[zeroize(drop)]
-pub struct BondNote {
-    /// Which bond series this note represents.
-    pub bond_id: BondId,
+pub struct BountyNote {
+    /// Which bounty series this note represents.
+    pub bounty_id: BountyId,
 
-    /// Number of bond units held in this note.
+    /// Number of bounty units held in this note.
     pub quantity: u64,
 
     /// Value in base token if redeemed (cached for convenience).
@@ -34,15 +34,15 @@ pub struct BondNote {
     pub serial: [u8; 32],
 }
 
-impl BondNote {
-    /// Poseidon commitment: `Poseidon2(Poseidon2(bond_id, qty), Poseidon2(owner, r))`.
+impl BountyNote {
+    /// Poseidon commitment: `Poseidon2(Poseidon2(bounty_id, qty), Poseidon2(owner, r))`.
     ///
     /// Uses the same hash the in-circuit `MintCircuit` and `TransferCircuit`
     /// prove knowledge of.  Switching from the previous blake3 placeholder
     /// means all prior (test) commitments are invalidated.
     pub fn commitment(&self) -> Digest {
         let fp = primitives::note_commitment(
-            self.bond_id.as_bytes(),
+            self.bounty_id.as_bytes(),
             self.quantity,
             &self.owner.0,
             &self.randomness,
@@ -68,9 +68,9 @@ mod tests {
     const OWNER_KEY:      PublicKey = PublicKey([0xBBu8; 32]);
     const RECIPIENT_KEY:  PublicKey = PublicKey([0xCCu8; 32]);
 
-    fn default_note() -> BondNote {
-        BondNote {
-            bond_id:          Digest::from_bytes([0x01u8; 32]),
+    fn default_note() -> BountyNote {
+        BountyNote {
+            bounty_id:          Digest::from_bytes([0x01u8; 32]),
             quantity:         10,
             redemption_value: nyxforge_core::types::Amount(1_000_000),
             owner:            OWNER_KEY,
@@ -79,9 +79,9 @@ mod tests {
         }
     }
 
-    fn note_for_bond(bond_id: Digest, quantity: u64) -> BondNote {
-        BondNote {
-            bond_id,
+    fn note_for_bounty(bounty_id: Digest, quantity: u64) -> BountyNote {
+        BountyNote {
+            bounty_id,
             quantity,
             redemption_value: nyxforge_core::types::Amount(1_000_000),
             owner:            OWNER_KEY,
@@ -115,7 +115,7 @@ mod tests {
     fn different_bond_ids_produce_different_commitments() {
         let id_a = Digest::from_bytes([0xAAu8; 32]);
         let id_b = Digest::from_bytes([0xBBu8; 32]);
-        assert_ne!(note_for_bond(id_a, 5).commitment(), note_for_bond(id_b, 5).commitment());
+        assert_ne!(note_for_bounty(id_a, 5).commitment(), note_for_bounty(id_b, 5).commitment());
     }
 
     // --- Nullifier ---

@@ -1,6 +1,6 @@
 //! Data source adapters — pluggable backends for fetching goal metric data.
 //!
-//! Each adapter implements `DataSource` and is registered with the oracle node.
+//! Each adapter implements `DataSource` and is registered with the judge node.
 //! Multiple adapters for the same data_id provide redundancy.
 
 use anyhow::Result;
@@ -161,11 +161,11 @@ mod tests {
     }
 
     // --- Goal evaluation using GoalMetric.operator.evaluate() ---
-    // These tests simulate what the oracle verifier does after fetching data.
+    // These tests simulate what the judge verifier does after fetching data.
 
     #[tokio::test]
     async fn homelessness_goal_met_when_below_threshold() {
-        use nyxforge_core::bond::ComparisonOp;
+        use nyxforge_core::bounty::ComparisonOp;
         let threshold = Decimal::from(50_000u32);
         let src = source_below("us.hud.pit_count.unsheltered", threshold);
         let value = src.fetch("us.hud.pit_count.unsheltered").await.unwrap();
@@ -174,7 +174,7 @@ mod tests {
 
     #[tokio::test]
     async fn homelessness_goal_not_met_at_threshold() {
-        use nyxforge_core::bond::ComparisonOp;
+        use nyxforge_core::bounty::ComparisonOp;
         let threshold = Decimal::from(50_000u32);
         let src = source_at("us.hud.pit_count.unsheltered", threshold);
         let value = src.fetch("us.hud.pit_count.unsheltered").await.unwrap();
@@ -183,7 +183,7 @@ mod tests {
 
     #[tokio::test]
     async fn lte_goal_met_exactly_at_threshold() {
-        use nyxforge_core::bond::ComparisonOp;
+        use nyxforge_core::bounty::ComparisonOp;
         let threshold = Decimal::from(50_000u32);
         let src = source_at("m", threshold);
         let value = src.fetch("m").await.unwrap();

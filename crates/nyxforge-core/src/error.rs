@@ -2,13 +2,13 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum NyxError {
-    #[error("bond not found: {0:?}")]
-    BondNotFound(crate::types::Digest),
+    #[error("bounty not found: {0:?}")]
+    BountyNotFound(crate::types::Digest),
 
-    #[error("bond is in state {current:?}, expected {expected:?}")]
-    InvalidBondState {
-        current:  crate::bond::BondState,
-        expected: crate::bond::BondState,
+    #[error("bounty is in state {current:?}, expected {expected:?}")]
+    InvalidBountyState {
+        current:  crate::bounty::BountyState,
+        expected: crate::bounty::BountyState,
     },
 
     #[error("nullifier already spent: {0:?}")]
@@ -17,10 +17,10 @@ pub enum NyxError {
     #[error("ZK proof verification failed")]
     ProofInvalid,
 
-    #[error("oracle quorum not met: {attested}/{required}")]
+    #[error("judge quorum not met: {attested}/{required}")]
     QuorumNotMet { attested: u32, required: u32 },
 
-    #[error("oracle attestation is fraudulent or inconsistent")]
+    #[error("judge attestation is fraudulent or inconsistent")]
     FraudulentAttestation,
 
     #[error("insufficient collateral: have {have}, need {need}")]

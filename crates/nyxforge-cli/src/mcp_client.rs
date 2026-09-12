@@ -5,12 +5,12 @@ use serde::Deserialize;
 use serde_json::Value;
 
 // ---------------------------------------------------------------------------
-// Bond-assist response types (mirrors server's BondAssistance schema)
+// Bounty-assist response types (mirrors server's BountyAssistance schema)
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Deserialize)]
-pub struct SimilarBond {
-    pub bond_id:     String,
+pub struct SimilarBounty {
+    pub bounty_id:     String,
     pub title:       String,
     /// "high", "medium", or "low"
     pub similarity:  String,
@@ -18,7 +18,7 @@ pub struct SimilarBond {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct SuggestedBondParams {
+pub struct SuggestedBountyParams {
     pub title:           String,
     pub description:     String,
     pub data_id:         String,
@@ -31,7 +31,7 @@ pub struct SuggestedBondParams {
     pub notes:           Option<String>,
 }
 
-impl SuggestedBondParams {
+impl SuggestedBountyParams {
     /// Map operator string to Select widget index (0-based).
     pub fn operator_idx(&self) -> usize {
         match self.operator.as_str() {
@@ -46,9 +46,9 @@ impl SuggestedBondParams {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct BondAssistance {
-    pub similar_bonds:  Vec<SimilarBond>,
-    pub suggested_bond: SuggestedBondParams,
+pub struct BountyAssistance {
+    pub similar_bonds:  Vec<SimilarBounty>,
+    pub suggested_bond: SuggestedBountyParams,
     pub analysis:       String,
 }
 
@@ -71,20 +71,20 @@ impl McpClient {
 
     // -- MCP protocol --------------------------------------------------------
 
-    /// Call the `bond_assist` tool on the MCP server.
-    pub async fn bond_assist(
+    /// Call the `bounty_assist` tool on the MCP server.
+    pub async fn bounty_assist(
         &self,
         description:    &str,
-        existing_bonds: &[Value],
-    ) -> Result<BondAssistance> {
+        existing_bounties: &[Value],
+    ) -> Result<BountyAssistance> {
         let body = serde_json::json!({
             "jsonrpc": "2.0",
             "method":  "tools/call",
             "params": {
-                "name": "bond_assist",
+                "name": "bounty_assist",
                 "arguments": {
                     "description":    description,
-                    "existing_bonds": existing_bonds,
+                    "existing_bounties": existing_bounties,
                 }
             },
             "id": 1,
@@ -112,8 +112,8 @@ impl McpClient {
             .as_str()
             .ok_or_else(|| anyhow!("Unexpected MCP response shape:\n{resp}"))?;
 
-        serde_json::from_str::<BondAssistance>(text)
-            .map_err(|e| anyhow!("Could not parse bond_assist result: {e}\n\nRaw:\n{text}"))
+        serde_json::from_str::<BountyAssistance>(text)
+            .map_err(|e| anyhow!("Could not parse bounty_assist result: {e}\n\nRaw:\n{text}"))
     }
 
     // -- Provider management REST --------------------------------------------

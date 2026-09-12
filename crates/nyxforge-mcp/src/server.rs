@@ -124,8 +124,8 @@ fn rpc_initialize(id: Value) -> RpcResponse {
 fn rpc_tools_list(id: Value) -> RpcResponse {
     RpcResponse::ok(id, json!({
         "tools": [{
-            "name": "bond_assist",
-            "description": "Analyse a social-policy-bond goal description, identify similar existing bonds on the network, and draft a new bond specification.",
+            "name": "bounty_assist",
+            "description": "Analyse a social-policy-bounty goal description, identify similar existing bounties on the network, and draft a new bounty specification.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -133,12 +133,12 @@ fn rpc_tools_list(id: Value) -> RpcResponse {
                         "type":        "string",
                         "description": "Natural-language description of the social or environmental goal."
                     },
-                    "existing_bonds": {
+                    "existing_bounties": {
                         "type":        "array",
-                        "description": "Array of bond objects from bonds.list."
+                        "description": "Array of bounty objects from bounties.list."
                     }
                 },
-                "required": ["description", "existing_bonds"]
+                "required": ["description", "existing_bounties"]
             }
         }]
     }))
@@ -162,7 +162,7 @@ async fn rpc_tools_call(
         Err(e) => return RpcResponse::err(id, -32602, format!("Invalid params: {e}")),
     };
 
-    if tc.name != "bond_assist" {
+    if tc.name != "bounty_assist" {
         return RpcResponse::err(id, -32602, format!("Unknown tool: {}", tc.name));
     }
 
@@ -170,7 +170,7 @@ async fn rpc_tools_call(
         Some(s) => s.to_owned(),
         None    => return RpcResponse::err(id, -32602, "Missing 'description' argument"),
     };
-    let existing_bonds = tc.arguments["existing_bonds"]
+    let existing_bounties = tc.arguments["existing_bounties"]
         .as_array()
         .cloned()
         .unwrap_or_default();
@@ -183,10 +183,10 @@ async fn rpc_tools_call(
     };
     drop(cfg);
 
-    info!("Calling {} provider for bond_assist", entry.kind);
+    info!("Calling {} provider for bounty_assist", entry.kind);
 
     // Call the AI provider.
-    let raw_text = match call_provider(&entry, &description, &existing_bonds).await {
+    let raw_text = match call_provider(&entry, &description, &existing_bounties).await {
         Ok(t)  => t,
         Err(e) => return RpcResponse::err(id, -32002, format!("Provider error: {e}")),
     };

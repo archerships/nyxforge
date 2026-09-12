@@ -5,22 +5,22 @@
 //!
 //! Endpoints (POST /rpc, JSON body `{"method": "...", "params": {...}}`):
 //!
-//!   bonds.propose              — publish a bond proposal for community review
-//!   bonds.submit_for_approval  — send bond to listed oracles for acceptance
-//!   bonds.oracle_accept        — oracle accepts responsibility for judging
-//!   bonds.oracle_reject        — oracle declines (with reason)
-//!   bonds.oracle_status        — show acceptance status for each oracle
-//!   bonds.revise_oracles       — replace oracle list (resets responses)
-//!   bonds.list                 — list all known bond series
-//!   bonds.get                  — fetch a single bond by ID
-//!   bonds.issue                — lock collateral and activate a Draft bond
-//!   bonds.auction_price        — current Dutch auction ask price for a bond
-//!   bonds.buy                  — purchase N bonds at the current auction price
-//!   bonds.comment              — post a question or suggestion on a proposal
-//!   bonds.comments             — list comments on a bond
+//!   bounties.propose              — publish a bounty proposal for community review
+//!   bounties.submit_for_approval  — send bounty to listed judges for acceptance
+//!   bounties.judge_accept        — judge accepts responsibility for judging
+//!   bounties.judge_reject        — judge declines (with reason)
+//!   bounties.judge_status        — show acceptance status for each judge
+//!   bounties.revise_judges       — replace judge list (resets responses)
+//!   bounties.list                 — list all known bounty series
+//!   bounties.get                  — fetch a single bounty by ID
+//!   bounties.issue                — lock collateral and activate a Draft bounty
+//!   bounties.auction_price        — current Dutch auction ask price for a bounty
+//!   bounties.buy                  — purchase N bounties at the current auction price
+//!   bounties.comment              — post a question or suggestion on a proposal
+//!   bounties.comments             — list comments on a bounty
 //!   orders.place            — post a bid/ask
 //!   orders.cancel           — cancel a resting order
-//!   status                  — node version + bond count
+//!   status                  — node version + bounty count
 //!
 //!   wallet.create           — generate a new wallet (xmr + drk)
 //!   wallet.import           — import wallet from existing XMR spend key (hex)
@@ -33,15 +33,15 @@
 //!   miner.stop              — stop mining
 //!   miner.set_threads       — change thread count
 //!
-//!   oracle.announce         — oracle registers its supported data IDs
+//!   judge.announce         — judge registers its supported data IDs
 
 use anyhow::Result;
 use axum::{extract::State, response::Json, routing::post, Router};
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
-use nyxforge_contract::bond_market::{process_issue_bond, IssueBondParams};
-use nyxforge_core::bond::{Bond, BondComment, BondState, OracleResponse};
+use nyxforge_contract::bounty_market::{process_issue_bounty, IssueBountyParams};
+use nyxforge_core::bounty::{Bounty, BountyComment, BountyState, JudgeResponse};
 use nyxforge_core::types::{Digest, PublicKey};
 use std::time::{SystemTime, UNIX_EPOCH};
 use chrono::Utc;
@@ -108,18 +108,18 @@ async fn dispatch(state: &NodeState, req: RpcRequest) -> RpcResponse {
     match req.method.as_str() {
         // -- Node -----------------------------------------------------------
         "status" => RpcResponse::ok(serde_json::json!({
-            "bonds":   state.bond_count().await,
+            "bounties":   state.bounty_count().await,
             "version": env!("CARGO_PKG_VERSION"),
         })),
 
-        // -- Bonds ----------------------------------------------------------
+        // -- Bounties ----------------------------------------------------------
 
-        "bonds.list" => {
-            let bonds = state.list_bonds().await;
-            RpcResponse::ok(serde_json::json!({ "bonds": bonds }))
+        "bounties.list" => {
+            let bounties = state.list_bounties().await;
+            RpcResponse::ok(serde_json::json!({ "bounties": bounties }))
         }
 
-        "bonds.get" => {
+        "bounties.get" => {
             let id_hex = req.params["id"].as_str().unwrap_or("");
             let id_bytes = match hex::decode(id_hex) {
                 Ok(b) if b.len() == 32 => {
@@ -127,109 +127,109 @@ async fn dispatch(state: &NodeState, req: RpcRequest) -> RpcResponse {
                     arr.copy_from_slice(&b);
                     arr
                 }
-                _ => return RpcResponse::err("invalid bond ID: expected 32-byte hex"),
+                _ => return RpcResponse::err("invalid bounty ID: expected 32-byte hex"),
             };
-            match state.get_bond(&Digest::from_bytes(id_bytes)).await {
-                Some(bond) => RpcResponse::ok(bond),
-                None => RpcResponse::err("bond not found"),
+            match state.get_bounty(&Digest::from_bytes(id_bytes)).await {
+                Some(bounty) => RpcResponse::ok(bounty),
+                None => RpcResponse::err("bounty not found"),
             }
         }
 
-        "bonds.issue" => {
-            // bonds.issue activates an existing Draft bond by locking collateral.
-            // The bond must have already passed oracle approval (state = Draft),
+        "bounties.issue" => {
+            // bounties.issue activates an existing Draft bounty by locking collateral.
+            // The bounty must have already passed judge approval (state = Draft),
             // unless the node was started with --allow-unverifiable.
-            let bond_id_hex = req.params["bond_id"].as_str().unwrap_or("");
+            let bond_id_hex = req.params["bounty_id"].as_str().unwrap_or("");
             let id_bytes = match parse_hex32(bond_id_hex) {
                 Some(b) => b,
-                None => return RpcResponse::err("invalid bond_id: expected 32-byte hex"),
+                None => return RpcResponse::err("invalid bounty_id: expected 32-byte hex"),
             };
-            let bond_id = Digest::from_bytes(id_bytes);
-            let mut bond = match state.get_bond(&bond_id).await {
+            let bounty_id = Digest::from_bytes(id_bytes);
+            let mut bounty = match state.get_bounty(&bounty_id).await {
                 Some(b) => b,
-                None => return RpcResponse::err("bond not found"),
+                None => return RpcResponse::err("bounty not found"),
             };
 
             if !state.is_unverifiable_allowed() {
-                if bond.state != BondState::Draft {
+                if bounty.state != BountyState::Draft {
                     return RpcResponse::err(format!(
-                        "bond is in '{}' state — oracle approval required before issuance. \
-                         Use bonds.submit_for_approval first.",
-                        serde_json::to_value(&bond.state)
+                        "bounty is in '{}' state — judge approval required before issuance. \
+                         Use bounties.submit_for_approval first.",
+                        serde_json::to_value(&bounty.state)
                             .ok().and_then(|v| v.as_str().map(str::to_owned))
                             .unwrap_or_default()
                     ));
                 }
-                for goal in &bond.goals {
+                for goal in &bounty.goals {
                     let data_id = &goal.metric.data_id;
                     if !state.is_data_id_supported(data_id).await {
                         return RpcResponse::err(format!(
-                            "no oracle supports data_id '{data_id}' — \
-                             start an oracle node that covers this data source"
+                            "no judge supports data_id '{data_id}' — \
+                             start an judge node that covers this data source"
                         ));
                     }
                 }
             }
 
-            let params = IssueBondParams {
-                bond: bond.clone(),
+            let params = IssueBountyParams {
+                bounty: bounty.clone(),
                 collateral_proof: vec![0xde, 0xad], // stub: real ZK proof in v2
             };
-            match process_issue_bond(&params) {
+            match process_issue_bounty(&params) {
                 Err(e) => RpcResponse::err(e.to_string()),
                 Ok(_) => {
-                    bond.state = BondState::Active;
-                    bond.activated_at_secs = Some(
+                    bounty.state = BountyState::Active;
+                    bounty.activated_at_secs = Some(
                         SystemTime::now()
                             .duration_since(UNIX_EPOCH)
                             .unwrap_or_default()
                             .as_secs(),
                     );
-                    bond.bonds_remaining = bond.total_supply;
-                    let id_hex = hex::encode(bond.id.as_bytes());
-                    state.insert_bond(bond).await;
-                    info!(bond_id = %id_hex, "bond issued and activated");
-                    RpcResponse::ok(serde_json::json!({ "bond_id": id_hex }))
+                    bounty.bounties_remaining = bounty.total_supply;
+                    let id_hex = hex::encode(bounty.id.as_bytes());
+                    state.insert_bounty(bounty).await;
+                    info!(bounty_id = %id_hex, "bounty issued and activated");
+                    RpcResponse::ok(serde_json::json!({ "bounty_id": id_hex }))
                 }
             }
         }
 
-        "bonds.propose" => {
-            let mut bond: Bond = match serde_json::from_value(req.params["bond"].clone()) {
+        "bounties.propose" => {
+            let mut bounty: Bounty = match serde_json::from_value(req.params["bounty"].clone()) {
                 Ok(b) => b,
-                Err(e) => return RpcResponse::err(format!("invalid bond params: {e}")),
+                Err(e) => return RpcResponse::err(format!("invalid bounty params: {e}")),
             };
-            if bond.oracle.oracle_keys.is_empty() {
-                return RpcResponse::err("bond must have at least one oracle key");
+            if bounty.judge.judge_keys.is_empty() {
+                return RpcResponse::err("bounty must have at least one judge key");
             }
             // Always recompute the canonical ID server-side so clients don't
             // need to replicate the blake3 derivation.
-            bond.id = Bond::compute_id(
-                &bond.goals,
-                &bond.issuer,
-                bond.created_at_block,
-                &bond.return_address,
+            bounty.id = Bounty::compute_id(
+                &bounty.goals,
+                &bounty.issuer,
+                bounty.created_at_block,
+                &bounty.return_address,
             );
-            bond.state = BondState::Proposed;
-            let bond_id = hex::encode(bond.id.as_bytes());
-            state.insert_bond(bond).await;
-            info!(bond_id = %bond_id, "bond proposal published");
-            RpcResponse::ok(serde_json::json!({ "bond_id": bond_id }))
+            bounty.state = BountyState::Proposed;
+            let bounty_id = hex::encode(bounty.id.as_bytes());
+            state.insert_bounty(bounty).await;
+            info!(bounty_id = %bounty_id, "bounty proposal published");
+            RpcResponse::ok(serde_json::json!({ "bounty_id": bounty_id }))
         }
 
-        "bonds.comment" => {
-            let bond_id_hex = req.params["bond_id"].as_str().unwrap_or("");
+        "bounties.comment" => {
+            let bond_id_hex = req.params["bounty_id"].as_str().unwrap_or("");
             let id_bytes = match hex::decode(bond_id_hex) {
                 Ok(b) if b.len() == 32 => { let mut arr = [0u8; 32]; arr.copy_from_slice(&b); arr }
-                _ => return RpcResponse::err("invalid bond_id: expected 32-byte hex"),
+                _ => return RpcResponse::err("invalid bounty_id: expected 32-byte hex"),
             };
-            let bond_id = Digest::from_bytes(id_bytes);
+            let bounty_id = Digest::from_bytes(id_bytes);
 
-            // Bond must exist and be in Proposed state.
-            match state.get_bond(&bond_id).await {
-                None => return RpcResponse::err("bond not found"),
-                Some(b) if b.state != BondState::Proposed =>
-                    return RpcResponse::err("comments are only accepted on Proposed bonds"),
+            // Bounty must exist and be in Proposed state.
+            match state.get_bounty(&bounty_id).await {
+                None => return RpcResponse::err("bounty not found"),
+                Some(b) if b.state != BountyState::Proposed =>
+                    return RpcResponse::err("comments are only accepted on Proposed bounties"),
                 _ => {}
             }
 
@@ -248,199 +248,199 @@ async fn dispatch(state: &NodeState, req: RpcRequest) -> RpcResponse {
                 _ => return RpcResponse::err("missing or empty 'body' param"),
             };
 
-            let comment = BondComment::new(bond_id, author, body);
+            let comment = BountyComment::new(bounty_id, author, body);
             let comment_id = hex::encode(comment.id.as_bytes());
             state.insert_comment(comment).await;
-            info!(bond_id = %bond_id_hex, comment_id = %comment_id, "comment posted");
+            info!(bounty_id = %bond_id_hex, comment_id = %comment_id, "comment posted");
             RpcResponse::ok(serde_json::json!({ "comment_id": comment_id }))
         }
 
-        "bonds.comments" => {
-            let bond_id_hex = req.params["bond_id"].as_str().unwrap_or("");
+        "bounties.comments" => {
+            let bond_id_hex = req.params["bounty_id"].as_str().unwrap_or("");
             let id_bytes = match hex::decode(bond_id_hex) {
                 Ok(b) if b.len() == 32 => { let mut arr = [0u8; 32]; arr.copy_from_slice(&b); arr }
-                _ => return RpcResponse::err("invalid bond_id: expected 32-byte hex"),
+                _ => return RpcResponse::err("invalid bounty_id: expected 32-byte hex"),
             };
-            let bond_id = Digest::from_bytes(id_bytes);
-            let comments = state.get_comments(&bond_id).await;
+            let bounty_id = Digest::from_bytes(id_bytes);
+            let comments = state.get_comments(&bounty_id).await;
             RpcResponse::ok(serde_json::json!({ "comments": comments }))
         }
 
         // ------------------------------------------------------------------ //
-        // Oracle approval flow
+        // Judge approval flow
         // ------------------------------------------------------------------ //
 
-        "bonds.submit_for_approval" => {
-            // Accept either a fresh bond (params["bond"]) or an existing
-            // Proposed bond (params["bond_id"]).
-            let mut bond: Bond = if req.params["bond_id"].is_string() {
-                let id_bytes = match parse_hex32(req.params["bond_id"].as_str().unwrap_or("")) {
+        "bounties.submit_for_approval" => {
+            // Accept either a fresh bounty (params["bounty"]) or an existing
+            // Proposed bounty (params["bounty_id"]).
+            let mut bounty: Bounty = if req.params["bounty_id"].is_string() {
+                let id_bytes = match parse_hex32(req.params["bounty_id"].as_str().unwrap_or("")) {
                     Some(b) => b,
-                    None => return RpcResponse::err("invalid bond_id"),
+                    None => return RpcResponse::err("invalid bounty_id"),
                 };
-                match state.get_bond(&Digest::from_bytes(id_bytes)).await {
+                match state.get_bounty(&Digest::from_bytes(id_bytes)).await {
                     Some(b) => b,
-                    None => return RpcResponse::err("bond not found"),
+                    None => return RpcResponse::err("bounty not found"),
                 }
             } else {
-                match serde_json::from_value(req.params["bond"].clone()) {
+                match serde_json::from_value(req.params["bounty"].clone()) {
                     Ok(b) => b,
-                    Err(e) => return RpcResponse::err(format!("invalid bond params: {e}")),
+                    Err(e) => return RpcResponse::err(format!("invalid bounty params: {e}")),
                 }
             };
 
-            if bond.oracle.oracle_keys.is_empty() {
-                return RpcResponse::err("bond must have at least one oracle key");
+            if bounty.judge.judge_keys.is_empty() {
+                return RpcResponse::err("bounty must have at least one judge key");
             }
-            if matches!(bond.state, BondState::Active | BondState::Redeemable | BondState::Settled | BondState::Expired) {
-                return RpcResponse::err("bond is already past the approval stage");
+            if matches!(bounty.state, BountyState::Active | BountyState::Redeemable | BountyState::Settled | BountyState::Expired) {
+                return RpcResponse::err("bounty is already past the approval stage");
             }
 
-            bond.state = BondState::PendingOracleApproval;
-            let bond_id_hex = hex::encode(bond.id.as_bytes());
+            bounty.state = BountyState::PendingJudgeApproval;
+            let bond_id_hex = hex::encode(bounty.id.as_bytes());
             // Clear any previous responses if re-submitted after a rejection.
-            state.clear_oracle_responses(&bond.id).await;
-            state.insert_bond(bond.clone()).await;
-            info!(bond_id = %bond_id_hex, oracles = bond.oracle.oracle_keys.len(),
-                  "bond submitted for oracle approval");
+            state.clear_judge_responses(&bounty.id).await;
+            state.insert_bounty(bounty.clone()).await;
+            info!(bounty_id = %bond_id_hex, judges = bounty.judge.judge_keys.len(),
+                  "bounty submitted for judge approval");
             RpcResponse::ok(serde_json::json!({
-                "bond_id":      bond_id_hex,
-                "awaiting":     bond.oracle.oracle_keys.len(),
+                "bounty_id":      bond_id_hex,
+                "awaiting":     bounty.judge.judge_keys.len(),
             }))
         }
 
-        "bonds.oracle_accept" => {
-            let bond_id_bytes = match parse_hex32(req.params["bond_id"].as_str().unwrap_or("")) {
+        "bounties.judge_accept" => {
+            let bond_id_bytes = match parse_hex32(req.params["bounty_id"].as_str().unwrap_or("")) {
                 Some(b) => b,
-                None => return RpcResponse::err("invalid bond_id"),
+                None => return RpcResponse::err("invalid bounty_id"),
             };
-            let bond_id = Digest::from_bytes(bond_id_bytes);
+            let bounty_id = Digest::from_bytes(bond_id_bytes);
 
-            let bond = match state.get_bond(&bond_id).await {
+            let bounty = match state.get_bounty(&bounty_id).await {
                 Some(b) => b,
-                None => return RpcResponse::err("bond not found"),
+                None => return RpcResponse::err("bounty not found"),
             };
-            if bond.state != BondState::PendingOracleApproval {
-                return RpcResponse::err("bond is not awaiting oracle approval");
+            if bounty.state != BountyState::PendingJudgeApproval {
+                return RpcResponse::err("bounty is not awaiting judge approval");
             }
 
-            let oracle_key_bytes = match parse_hex32(req.params["oracle_key"].as_str().unwrap_or("")) {
+            let oracle_key_bytes = match parse_hex32(req.params["judge_key"].as_str().unwrap_or("")) {
                 Some(b) => b,
-                None => return RpcResponse::err("invalid oracle_key"),
+                None => return RpcResponse::err("invalid judge_key"),
             };
-            let oracle_key = PublicKey(oracle_key_bytes);
+            let judge_key = PublicKey(oracle_key_bytes);
 
-            // Verify this key is actually listed in the bond.
-            if !bond.oracle.oracle_keys.contains(&oracle_key) {
-                return RpcResponse::err("oracle_key is not listed in this bond's OracleSpec");
+            // Verify this key is actually listed in the bounty.
+            if !bounty.judge.judge_keys.contains(&judge_key) {
+                return RpcResponse::err("judge_key is not listed in this bounty's JudgeSpec");
             }
 
-            let response = OracleResponse {
-                bond_id,
-                oracle_key,
+            let response = JudgeResponse {
+                bounty_id,
+                judge_key,
                 accepted: true,
                 reason: None,
                 responded_at: Utc::now(),
                 signature: vec![], // stub
             };
-            let all_accepted = state.record_oracle_response(response).await;
-            let bond_id_hex = hex::encode(bond_id.as_bytes());
+            let all_accepted = state.record_judge_response(response).await;
+            let bond_id_hex = hex::encode(bounty_id.as_bytes());
 
             if all_accepted {
-                // Advance bond to Draft.
-                let mut draft_bond = bond;
-                draft_bond.state = BondState::Draft;
-                state.insert_bond(draft_bond).await;
-                info!(bond_id = %bond_id_hex, "all oracles accepted — bond advanced to Draft");
+                // Advance bounty to Draft.
+                let mut draft_bounty = bounty;
+                draft_bounty.state = BountyState::Draft;
+                state.insert_bounty(draft_bounty).await;
+                info!(bounty_id = %bond_id_hex, "all judges accepted — bounty advanced to Draft");
                 RpcResponse::ok(serde_json::json!({
-                    "bond_id": bond_id_hex,
+                    "bounty_id": bond_id_hex,
                     "bond_state": "Draft",
-                    "message": "All oracles have accepted. Bond is now in Draft state and ready for issuance.",
+                    "message": "All judges have accepted. Bounty is now in Draft state and ready for issuance.",
                 }))
             } else {
-                let responses = state.get_oracle_responses(&bond_id).await;
-                let pending: Vec<String> = bond.oracle.oracle_keys.iter()
-                    .filter(|k| !responses.iter().any(|r| r.oracle_key == **k && r.accepted))
+                let responses = state.get_judge_responses(&bounty_id).await;
+                let pending: Vec<String> = bounty.judge.judge_keys.iter()
+                    .filter(|k| !responses.iter().any(|r| r.judge_key == **k && r.accepted))
                     .map(|k| hex::encode(&k.0))
                     .collect();
-                info!(bond_id = %bond_id_hex, still_pending = pending.len(), "oracle accepted");
+                info!(bounty_id = %bond_id_hex, still_pending = pending.len(), "judge accepted");
                 RpcResponse::ok(serde_json::json!({
-                    "bond_id":        bond_id_hex,
-                    "bond_state":     "PendingOracleApproval",
+                    "bounty_id":        bond_id_hex,
+                    "bond_state":     "PendingJudgeApproval",
                     "still_pending":  pending,
                 }))
             }
         }
 
-        "bonds.oracle_reject" => {
-            let bond_id_bytes = match parse_hex32(req.params["bond_id"].as_str().unwrap_or("")) {
+        "bounties.judge_reject" => {
+            let bond_id_bytes = match parse_hex32(req.params["bounty_id"].as_str().unwrap_or("")) {
                 Some(b) => b,
-                None => return RpcResponse::err("invalid bond_id"),
+                None => return RpcResponse::err("invalid bounty_id"),
             };
-            let bond_id = Digest::from_bytes(bond_id_bytes);
+            let bounty_id = Digest::from_bytes(bond_id_bytes);
 
-            let bond = match state.get_bond(&bond_id).await {
+            let bounty = match state.get_bounty(&bounty_id).await {
                 Some(b) => b,
-                None => return RpcResponse::err("bond not found"),
+                None => return RpcResponse::err("bounty not found"),
             };
-            if bond.state != BondState::PendingOracleApproval {
-                return RpcResponse::err("bond is not awaiting oracle approval");
+            if bounty.state != BountyState::PendingJudgeApproval {
+                return RpcResponse::err("bounty is not awaiting judge approval");
             }
 
-            let oracle_key_bytes = match parse_hex32(req.params["oracle_key"].as_str().unwrap_or("")) {
+            let oracle_key_bytes = match parse_hex32(req.params["judge_key"].as_str().unwrap_or("")) {
                 Some(b) => b,
-                None => return RpcResponse::err("invalid oracle_key"),
+                None => return RpcResponse::err("invalid judge_key"),
             };
-            let oracle_key = PublicKey(oracle_key_bytes);
-            if !bond.oracle.oracle_keys.contains(&oracle_key) {
-                return RpcResponse::err("oracle_key is not listed in this bond's OracleSpec");
+            let judge_key = PublicKey(oracle_key_bytes);
+            if !bounty.judge.judge_keys.contains(&judge_key) {
+                return RpcResponse::err("judge_key is not listed in this bounty's JudgeSpec");
             }
 
             let reason = req.params["reason"].as_str()
                 .filter(|s| !s.trim().is_empty())
                 .map(str::to_owned);
 
-            let response = OracleResponse {
-                bond_id,
-                oracle_key,
+            let response = JudgeResponse {
+                bounty_id,
+                judge_key,
                 accepted: false,
                 reason: reason.clone(),
                 responded_at: Utc::now(),
                 signature: vec![],
             };
-            state.record_oracle_response(response).await;
-            let bond_id_hex = hex::encode(bond_id.as_bytes());
-            info!(bond_id = %bond_id_hex, ?reason, "oracle rejected bond");
+            state.record_judge_response(response).await;
+            let bond_id_hex = hex::encode(bounty_id.as_bytes());
+            info!(bounty_id = %bond_id_hex, ?reason, "judge rejected bounty");
             RpcResponse::ok(serde_json::json!({
-                "bond_id": bond_id_hex,
-                "message": "Rejection recorded. Issuer must revise oracle list or threshold and re-submit.",
+                "bounty_id": bond_id_hex,
+                "message": "Rejection recorded. Issuer must revise judge list or threshold and re-submit.",
             }))
         }
 
-        "bonds.oracle_status" => {
-            let bond_id_bytes = match parse_hex32(req.params["bond_id"].as_str().unwrap_or("")) {
+        "bounties.judge_status" => {
+            let bond_id_bytes = match parse_hex32(req.params["bounty_id"].as_str().unwrap_or("")) {
                 Some(b) => b,
-                None => return RpcResponse::err("invalid bond_id"),
+                None => return RpcResponse::err("invalid bounty_id"),
             };
-            let bond_id = Digest::from_bytes(bond_id_bytes);
-            let bond = match state.get_bond(&bond_id).await {
+            let bounty_id = Digest::from_bytes(bond_id_bytes);
+            let bounty = match state.get_bounty(&bounty_id).await {
                 Some(b) => b,
-                None => return RpcResponse::err("bond not found"),
+                None => return RpcResponse::err("bounty not found"),
             };
-            let responses = state.get_oracle_responses(&bond_id).await;
+            let responses = state.get_judge_responses(&bounty_id).await;
 
-            let status: Vec<serde_json::Value> = bond.oracle.oracle_keys.iter().map(|key| {
+            let status: Vec<serde_json::Value> = bounty.judge.judge_keys.iter().map(|key| {
                 let key_hex = hex::encode(&key.0);
-                match responses.iter().find(|r| r.oracle_key == *key) {
+                match responses.iter().find(|r| r.judge_key == *key) {
                     None => serde_json::json!({
-                        "oracle": key_hex, "status": "pending"
+                        "judge": key_hex, "status": "pending"
                     }),
                     Some(r) if r.accepted => serde_json::json!({
-                        "oracle": key_hex, "status": "accepted",
+                        "judge": key_hex, "status": "accepted",
                         "responded_at": r.responded_at,
                     }),
                     Some(r) => serde_json::json!({
-                        "oracle": key_hex, "status": "rejected",
+                        "judge": key_hex, "status": "rejected",
                         "reason": r.reason,
                         "responded_at": r.responded_at,
                     }),
@@ -448,125 +448,125 @@ async fn dispatch(state: &NodeState, req: RpcRequest) -> RpcResponse {
             }).collect();
 
             RpcResponse::ok(serde_json::json!({
-                "bond_id":    hex::encode(bond_id.as_bytes()),
-                "bond_state": bond.state,
-                "oracles":    status,
+                "bounty_id":    hex::encode(bounty_id.as_bytes()),
+                "bond_state": bounty.state,
+                "judges":    status,
             }))
         }
 
-        "bonds.revise_oracles" => {
-            // Allows the issuer to replace the oracle list on a
-            // PendingOracleApproval bond after one or more rejections.
-            // Clears all existing responses so oracles must re-accept.
-            let bond_id_bytes = match parse_hex32(req.params["bond_id"].as_str().unwrap_or("")) {
+        "bounties.revise_judges" => {
+            // Allows the issuer to replace the judge list on a
+            // PendingJudgeApproval bounty after one or more rejections.
+            // Clears all existing responses so judges must re-accept.
+            let bond_id_bytes = match parse_hex32(req.params["bounty_id"].as_str().unwrap_or("")) {
                 Some(b) => b,
-                None => return RpcResponse::err("invalid bond_id"),
+                None => return RpcResponse::err("invalid bounty_id"),
             };
-            let bond_id = Digest::from_bytes(bond_id_bytes);
-            let mut bond = match state.get_bond(&bond_id).await {
+            let bounty_id = Digest::from_bytes(bond_id_bytes);
+            let mut bounty = match state.get_bounty(&bounty_id).await {
                 Some(b) => b,
-                None => return RpcResponse::err("bond not found"),
+                None => return RpcResponse::err("bounty not found"),
             };
-            if bond.state != BondState::PendingOracleApproval {
-                return RpcResponse::err("bond must be in PendingOracleApproval state to revise oracles");
+            if bounty.state != BountyState::PendingJudgeApproval {
+                return RpcResponse::err("bounty must be in PendingJudgeApproval state to revise judges");
             }
 
-            let keys_raw = match req.params["oracle_keys"].as_array() {
+            let keys_raw = match req.params["judge_keys"].as_array() {
                 Some(a) => a.clone(),
-                None => return RpcResponse::err("missing 'oracle_keys' array"),
+                None => return RpcResponse::err("missing 'judge_keys' array"),
             };
             let mut new_keys = Vec::new();
             for v in &keys_raw {
                 let hex = v.as_str().unwrap_or("");
                 match parse_hex32(hex) {
                     Some(b) => new_keys.push(PublicKey(b)),
-                    None => return RpcResponse::err(format!("invalid oracle key: '{hex}'")),
+                    None => return RpcResponse::err(format!("invalid judge key: '{hex}'")),
                 }
             }
             if new_keys.is_empty() {
-                return RpcResponse::err("bond must have at least one oracle key");
+                return RpcResponse::err("bounty must have at least one judge key");
             }
 
-            bond.oracle.oracle_keys = new_keys;
-            state.clear_oracle_responses(&bond_id).await;
-            state.insert_bond(bond).await;
-            info!(bond_id = %hex::encode(bond_id.as_bytes()), "oracle list revised; responses cleared");
+            bounty.judge.judge_keys = new_keys;
+            state.clear_judge_responses(&bounty_id).await;
+            state.insert_bounty(bounty).await;
+            info!(bounty_id = %hex::encode(bounty_id.as_bytes()), "judge list revised; responses cleared");
             RpcResponse::ok(serde_json::json!({
-                "bond_id": hex::encode(bond_id.as_bytes()),
-                "message": "Oracle list updated. All previous responses cleared. Oracles must re-accept.",
+                "bounty_id": hex::encode(bounty_id.as_bytes()),
+                "message": "Judge list updated. All previous responses cleared. Judges must re-accept.",
             }))
         }
 
-        "bonds.auction_price" => {
-            let bond_id_hex = req.params["bond_id"].as_str().unwrap_or("");
+        "bounties.auction_price" => {
+            let bond_id_hex = req.params["bounty_id"].as_str().unwrap_or("");
             let id_bytes = match parse_hex32(bond_id_hex) {
                 Some(b) => b,
-                None => return RpcResponse::err("invalid bond_id: expected 32-byte hex"),
+                None => return RpcResponse::err("invalid bounty_id: expected 32-byte hex"),
             };
-            let bond = match state.get_bond(&Digest::from_bytes(id_bytes)).await {
+            let bounty = match state.get_bounty(&Digest::from_bytes(id_bytes)).await {
                 Some(b) => b,
-                None => return RpcResponse::err("bond not found"),
+                None => return RpcResponse::err("bounty not found"),
             };
-            let elapsed = bond.activated_at_secs.map(|t| {
+            let elapsed = bounty.activated_at_secs.map(|t| {
                 let now = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .unwrap_or_default()
                     .as_secs();
                 now.saturating_sub(t)
             }).unwrap_or(0);
-            let price = bond.auction.current_price(elapsed);
+            let price = bounty.auction.current_price(elapsed);
             RpcResponse::ok(serde_json::json!({
-                "bond_id":       bond_id_hex,
+                "bounty_id":       bond_id_hex,
                 "price_micro_drk": price.0,
             }))
         }
 
-        "bonds.buy" => {
-            let bond_id_hex = req.params["bond_id"].as_str().unwrap_or("");
+        "bounties.buy" => {
+            let bond_id_hex = req.params["bounty_id"].as_str().unwrap_or("");
             let quantity = req.params["quantity"].as_u64().unwrap_or(0);
             if quantity == 0 {
                 return RpcResponse::err("quantity must be > 0");
             }
             let id_bytes = match parse_hex32(bond_id_hex) {
                 Some(b) => b,
-                None => return RpcResponse::err("invalid bond_id: expected 32-byte hex"),
+                None => return RpcResponse::err("invalid bounty_id: expected 32-byte hex"),
             };
-            let mut bond = match state.get_bond(&Digest::from_bytes(id_bytes)).await {
+            let mut bounty = match state.get_bounty(&Digest::from_bytes(id_bytes)).await {
                 Some(b) => b,
-                None => return RpcResponse::err("bond not found"),
+                None => return RpcResponse::err("bounty not found"),
             };
-            if bond.state != BondState::Active {
-                return RpcResponse::err("bond is not active");
+            if bounty.state != BountyState::Active {
+                return RpcResponse::err("bounty is not active");
             }
-            if bond.bonds_remaining < quantity {
+            if bounty.bounties_remaining < quantity {
                 return RpcResponse::err(format!(
-                    "only {} bond(s) remaining", bond.bonds_remaining
+                    "only {} bounty(s) remaining", bounty.bounties_remaining
                 ));
             }
-            let elapsed = bond.activated_at_secs.map(|t| {
+            let elapsed = bounty.activated_at_secs.map(|t| {
                 let now = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .unwrap_or_default()
                     .as_secs();
                 now.saturating_sub(t)
             }).unwrap_or(0);
-            let price = bond.auction.current_price(elapsed);
-            bond.bonds_remaining = bond.bonds_remaining.saturating_sub(quantity);
-            state.insert_bond(bond).await;
+            let price = bounty.auction.current_price(elapsed);
+            bounty.bounties_remaining = bounty.bounties_remaining.saturating_sub(quantity);
+            state.insert_bounty(bounty).await;
             RpcResponse::ok(serde_json::json!({
                 "purchased":       quantity,
                 "price_micro_drk": price.0,
             }))
         }
 
-        "oracle.announce" => {
+        "judge.announce" => {
             let ids: Vec<String> = match serde_json::from_value(req.params["data_ids"].clone()) {
                 Ok(v) => v,
                 Err(e) => return RpcResponse::err(format!("invalid data_ids: {e}")),
             };
             let count = ids.len();
             state.register_data_ids(ids).await;
-            info!(count, "oracle announced data IDs");
+            info!(count, "judge announced data IDs");
             RpcResponse::ok(serde_json::json!({ "registered": count }))
         }
 
@@ -718,7 +718,7 @@ async fn dispatch(state: &NodeState, req: RpcRequest) -> RpcResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nyxforge_test_fixtures::bonds::draft_bond;
+    use nyxforge_test_fixtures::bounties::draft_bounty;
 
     async fn test_state() -> (NodeState, tempfile::TempDir) {
         let dir = tempfile::tempdir().unwrap();
@@ -730,23 +730,23 @@ mod tests {
         RpcRequest { method: method.into(), params }
     }
 
-    // --- bonds.list ---
+    // --- bounties.list ---
 
     #[tokio::test]
     async fn bonds_list_empty_on_fresh_state() {
         let (state, _dir) = test_state().await;
-        let resp = dispatch(&state, req("bonds.list", serde_json::json!({}))).await;
+        let resp = dispatch(&state, req("bounties.list", serde_json::json!({}))).await;
         assert!(resp.error.is_none());
-        let bonds = resp.result.unwrap()["bonds"].as_array().unwrap().clone();
-        assert!(bonds.is_empty());
+        let bounties = resp.result.unwrap()["bounties"].as_array().unwrap().clone();
+        assert!(bounties.is_empty());
     }
 
-    // --- bonds.get ---
+    // --- bounties.get ---
 
     #[tokio::test]
     async fn bonds_get_unknown_id_returns_error() {
         let (state, _dir) = test_state().await;
-        let resp = dispatch(&state, req("bonds.get", serde_json::json!({
+        let resp = dispatch(&state, req("bounties.get", serde_json::json!({
             "id": "a".repeat(64)
         }))).await;
         assert!(resp.error.is_some());
@@ -756,34 +756,34 @@ mod tests {
     #[tokio::test]
     async fn bonds_get_invalid_id_returns_error() {
         let (state, _dir) = test_state().await;
-        let resp = dispatch(&state, req("bonds.get", serde_json::json!({
+        let resp = dispatch(&state, req("bounties.get", serde_json::json!({
             "id": "not-hex"
         }))).await;
         assert!(resp.error.is_some());
     }
 
-    // --- bonds.propose then bonds.list and bonds.get ---
+    // --- bounties.propose then bounties.list and bounties.get ---
 
     #[tokio::test]
     async fn propose_bond_appears_in_list_and_get() {
         let (state, _dir) = test_state().await;
-        let bond = draft_bond();
-        let bond_id_hex = hex::encode(bond.id.as_bytes());
+        let bounty = draft_bounty();
+        let bond_id_hex = hex::encode(bounty.id.as_bytes());
 
         // Propose
-        let propose_resp = dispatch(&state, req("bonds.propose", serde_json::json!({
-            "bond": serde_json::to_value(&bond).unwrap()
+        let propose_resp = dispatch(&state, req("bounties.propose", serde_json::json!({
+            "bounty": serde_json::to_value(&bounty).unwrap()
         }))).await;
         assert!(propose_resp.error.is_none(), "{:?}", propose_resp.error);
 
         // List
-        let list_resp = dispatch(&state, req("bonds.list", serde_json::json!({}))).await;
-        let bonds = list_resp.result.unwrap()["bonds"].as_array().unwrap().clone();
-        assert_eq!(bonds.len(), 1);
+        let list_resp = dispatch(&state, req("bounties.list", serde_json::json!({}))).await;
+        let bounties = list_resp.result.unwrap()["bounties"].as_array().unwrap().clone();
+        assert_eq!(bounties.len(), 1);
 
-        // Get — bond.id serialises as a byte array (Digest is [u8;32]), so just
+        // Get — bounty.id serialises as a byte array (Digest is [u8;32]), so just
         // verify the RPC succeeded and returned the expected goal title.
-        let get_resp = dispatch(&state, req("bonds.get", serde_json::json!({
+        let get_resp = dispatch(&state, req("bounties.get", serde_json::json!({
             "id": bond_id_hex
         }))).await;
         assert!(get_resp.error.is_none(), "{:?}", get_resp.error);
@@ -791,24 +791,24 @@ mod tests {
         assert_eq!(result["goals"][0]["title"].as_str().unwrap_or(""), "Test Goal");
     }
 
-    // --- bonds.issue (allow_unverifiable = true) ---
+    // --- bounties.issue (allow_unverifiable = true) ---
 
     #[tokio::test]
     async fn issue_draft_bond_sets_active_state() {
         let (state, _dir) = test_state().await;
-        let bond = draft_bond();
-        let bond_id_hex = hex::encode(bond.id.as_bytes());
+        let bounty = draft_bounty();
+        let bond_id_hex = hex::encode(bounty.id.as_bytes());
 
-        // Store bond as Draft first
-        state.insert_bond(bond).await;
+        // Store bounty as Draft first
+        state.insert_bounty(bounty).await;
 
-        let resp = dispatch(&state, req("bonds.issue", serde_json::json!({
-            "bond_id": bond_id_hex
+        let resp = dispatch(&state, req("bounties.issue", serde_json::json!({
+            "bounty_id": bond_id_hex
         }))).await;
         assert!(resp.error.is_none(), "{:?}", resp.error);
 
         // Confirm state is now Active
-        let get_resp = dispatch(&state, req("bonds.get", serde_json::json!({
+        let get_resp = dispatch(&state, req("bounties.get", serde_json::json!({
             "id": bond_id_hex
         }))).await;
         let state_val = get_resp.result.unwrap()["state"].clone();
@@ -818,8 +818,8 @@ mod tests {
     #[tokio::test]
     async fn issue_nonexistent_bond_returns_error() {
         let (state, _dir) = test_state().await;
-        let resp = dispatch(&state, req("bonds.issue", serde_json::json!({
-            "bond_id": "b".repeat(64)
+        let resp = dispatch(&state, req("bounties.issue", serde_json::json!({
+            "bounty_id": "b".repeat(64)
         }))).await;
         assert!(resp.error.is_some());
         assert!(resp.error.unwrap().contains("not found"));
@@ -905,7 +905,7 @@ mod tests {
         assert!(resp.error.is_none());
         let result = resp.result.unwrap();
         assert!(result["version"].as_str().is_some());
-        assert_eq!(result["bonds"].as_u64().unwrap(), 0);
+        assert_eq!(result["bounties"].as_u64().unwrap(), 0);
     }
 }
 

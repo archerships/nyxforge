@@ -5,13 +5,14 @@
 //! transitions atomically.
 //!
 //! Contracts:
-//!   - `bond_market`  — issue and list bond series
-//!   - `order_book`   — anonymous DEX for bond trading
-//!   - `settlement`   — oracle-triggered redemption and payout
+//!   - `bounty_market`  — issue and list bounty series
+//!   - `order_book`   — anonymous DEX for bounty trading
+//!   - `settlement`   — judge-triggered redemption and payout
 
-pub mod bond_market;
+pub mod bounty_market;
 pub mod order_book;
 pub mod settlement;
+pub mod actor;
 
 use nyxforge_core::error::NyxError;
 
