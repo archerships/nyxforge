@@ -23,6 +23,10 @@ ui/node_modules/
 ui/test-results/
 ui/playwright-report/
 
+# Python (tests/)
+__pycache__/
+*.pyc
+
 # Environment and secrets
 .env
 node_data/wallet.json

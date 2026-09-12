@@ -1,0 +1,521 @@
+{
+  "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "lastMigration": 32,
+  "name": "NyxForge Mock API",
+  "endpointPrefix": "",
+  "latency": 0,
+  "port": 8888,
+  "hostname": "127.0.0.1",
+  "folders": [],
+  "routes": [
+    {
+      "uuid": "r001-bonds-list",
+      "documentation": "bonds.list -- returns all bonds in a directory",
+      "method": "post",
+      "endpoint": "rpc",
+      "responses": [
+        {
+          "uuid": "rsp001-draft",
+          "label": "bonds.list",
+          "statusCode": 200,
+          "latency": 0,
+          "bodyType": "INLINE",
+          "body": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"bonds\":[{\"file\":\"SPB-2026-0001.bond\",\"series_id\":\"SPB-2026\",\"serial\":1,\"state\":\"DRAFT\",\"title\":\"Monero Lobbying Fund Q3 2026\",\"goal_type\":\"quantitative\",\"deadline\":\"2026-09-30\",\"expiry\":\"2026-10-31\",\"amount\":\"2500.0\",\"oracle_count\":3,\"quorum\":2,\"grace_days\":30,\"currency\":\"xmr\",\"lock_mechanism\":\"dleq_xmr\",\"chain_id\":null},{\"file\":\"NRC-2026-0001.bond\",\"series_id\":\"NRC-2026\",\"serial\":1,\"state\":\"ACTIVE\",\"title\":\"Valar Atomics NRC License 2027\",\"goal_type\":\"quantitative\",\"deadline\":\"2027-06-30\",\"expiry\":\"2027-07-31\",\"amount\":\"10000.0\",\"oracle_count\":5,\"quorum\":3,\"grace_days\":60,\"currency\":\"btc\",\"lock_mechanism\":\"ptlc_btc\",\"chain_id\":null},{\"file\":\"ONC-2026-0001.bond\",\"series_id\":\"ONC-2026\",\"serial\":1,\"state\":\"REDEEMABLE\",\"title\":\"Phase II Oncology Trial Enrollment\",\"goal_type\":\"hybrid\",\"deadline\":\"2026-12-31\",\"expiry\":\"2027-01-31\",\"amount\":\"500.0\",\"oracle_count\":3,\"quorum\":2,\"grace_days\":30,\"currency\":\"zec\",\"lock_mechanism\":\"dleq_zec_sapling\",\"chain_id\":null},{\"file\":\"TST-2025-0001.bond\",\"series_id\":\"TST-2025\",\"serial\":1,\"state\":\"EXPIRED\",\"title\":\"Test Bond Expired\",\"goal_type\":\"qualitative\",\"deadline\":\"2025-12-31\",\"expiry\":\"2026-01-15\",\"amount\":\"1.0\",\"oracle_count\":1,\"quorum\":1,\"grace_days\":30,\"currency\":\"xmr\",\"lock_mechanism\":\"dleq_xmr\",\"chain_id\":null},{\"file\":\"SET-2025-0001.bond\",\"series_id\":\"SET-2025\",\"serial\":1,\"state\":\"SETTLED\",\"title\":\"Test Bond Settled\",\"goal_type\":\"quantitative\",\"deadline\":\"2025-06-30\",\"expiry\":\"2025-07-31\",\"grace_days\":30,\"amount\":\"5.0\",\"oracle_count\":3,\"quorum\":2,\"currency\":\"eth\",\"lock_mechanism\":\"eth_escrow\",\"chain_id\":1},{\"file\":\"RCL-2025-0001.bond\",\"series_id\":\"RCL-2025\",\"serial\":1,\"state\":\"RECLAIMED\",\"title\":\"Test Bond Reclaimed\",\"goal_type\":\"qualitative\",\"deadline\":\"2025-03-31\",\"expiry\":\"2025-04-30\",\"grace_days\":30,\"amount\":\"2.0\",\"oracle_count\":1,\"quorum\":1,\"currency\":\"eth\",\"lock_mechanism\":\"eth_escrow\",\"chain_id\":11155111}]}}",
+          "mimeType": "application/json",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "method",
+              "value": "bonds.list",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false
+        },
+        {
+          "uuid": "rsp001-bonds-get",
+          "label": "bonds.get -- DRAFT",
+          "statusCode": 200,
+          "latency": 0,
+          "bodyType": "INLINE",
+          "body": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"file\":\"SPB-2026-0001.bond\",\"series_id\":\"SPB-2026\",\"serial\":1,\"state\":\"DRAFT\",\"title\":\"Monero Lobbying Fund Q3 2026\",\"description\":\"Fund lobbying efforts to defeat CBDC legislation in the US Congress by Q3 2026. Bond pays out if S.1234 fails to pass committee by the deadline.\",\"goal_type\":\"quantitative\",\"deadline\":\"2026-09-30\",\"expiry\":\"2026-10-31\",\"amount\":\"2500.0\",\"oracle_panel\":[{\"pubkey\":\"a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456\",\"role\":\"quantitative\",\"fee\":\"10.0\"},{\"pubkey\":\"b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef1234567a\",\"role\":\"quantitative\",\"fee\":\"10.0\"},{\"pubkey\":\"c3d4e5f6789012345678901234567890abcdef1234567890abcdef1234567ab2\",\"role\":\"qualitative\",\"fee\":\"15.0\"}],\"quorum\":2,\"challenge_days\":7,\"created_at\":\"2026-04-01T00:00:00Z\",\"issued_at\":null,\"accepted_at\":null,\"attestations\":[],\"grace_days\":30,\"holder_pubkey\":null,\"currency\":\"xmr\",\"lock_mechanism\":\"dleq_xmr\",\"chain_id\":null,\"terms\":[{\"goal_type\":\"quantitative\",\"criterion\":\"S.1234 fails to pass Senate Banking Committee by deadline\",\"data_id\":\"usgov.senate.cbdc_bill_s1234.committee_pass\",\"operator\":\"eq\",\"threshold\":0,\"aggregation\":null}]}}",
+          "mimeType": "application/json",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "method",
+              "value": "bonds.get",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "params.state",
+              "value": "DRAFT",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false
+        },
+        {
+          "uuid": "rsp001-bonds-get-active",
+          "label": "bonds.get -- ACTIVE",
+          "statusCode": 200,
+          "latency": 0,
+          "bodyType": "INLINE",
+          "body": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"file\":\"NRC-2026-0001.bond\",\"series_id\":\"NRC-2026\",\"serial\":1,\"state\":\"ACTIVE\",\"title\":\"Valar Atomics NRC License 2027\",\"description\":\"Bond pays out if Valar Atomics receives NRC construction and operating license for its microreactor design by June 2027.\",\"goal_type\":\"quantitative\",\"deadline\":\"2027-06-30\",\"expiry\":\"2027-07-31\",\"amount\":\"10000.0\",\"oracle_panel\":[{\"pubkey\":\"d4e5f6789012345678901234567890abcdef1234567890abcdef1234567ab2c3\",\"role\":\"quantitative\",\"fee\":\"50.0\"},{\"pubkey\":\"e5f6789012345678901234567890abcdef1234567890abcdef1234567ab2c3d4\",\"role\":\"quantitative\",\"fee\":\"50.0\"},{\"pubkey\":\"f6789012345678901234567890abcdef1234567890abcdef1234567ab2c3d4e5\",\"role\":\"qualitative\",\"fee\":\"75.0\"},{\"pubkey\":\"789012345678901234567890abcdef1234567890abcdef1234567ab2c3d4e5f6\",\"role\":\"quantitative\",\"fee\":\"50.0\"},{\"pubkey\":\"89012345678901234567890abcdef1234567890abcdef1234567ab2c3d4e5f67\",\"role\":\"qualitative\",\"fee\":\"75.0\"}],\"quorum\":3,\"challenge_days\":14,\"created_at\":\"2026-01-15T00:00:00Z\",\"issued_at\":\"2026-01-20T12:00:00Z\",\"accepted_at\":\"2026-01-22T09:30:00Z\",\"attestations\":[],\"grace_days\":60,\"holder_pubkey\":\"d4e5f6789012345678901234567890abcdef1234567890abcdef1234567ab2c3\",\"currency\":\"btc\",\"lock_mechanism\":\"ptlc_btc\",\"chain_id\":null,\"terms\":[{\"goal_type\":\"quantitative\",\"criterion\":\"Valar Atomics receives NRC construction and operating license for microreactor design\",\"data_id\":\"valar.atomics.nrc_license_granted\",\"operator\":\"gte\",\"threshold\":1,\"aggregation\":null},{\"goal_type\":\"quantitative\",\"criterion\":\"US federal nuclear energy budget increases by at least 10%\",\"data_id\":\"usgov.cbo.nuclear_budget_increase_pct\",\"operator\":\"gte\",\"threshold\":10,\"aggregation\":\"annual_mean\"}],\"term_aggregation\":\"AND\"}}",
+          "mimeType": "application/json",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "method",
+              "value": "bonds.get",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "params.state",
+              "value": "ACTIVE",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false
+        },
+        {
+          "uuid": "rsp001-bonds-get-redeemable",
+          "label": "bonds.get -- REDEEMABLE",
+          "statusCode": 200,
+          "latency": 0,
+          "bodyType": "INLINE",
+          "body": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"file\":\"ONC-2026-0001.bond\",\"series_id\":\"ONC-2026\",\"serial\":1,\"state\":\"REDEEMABLE\",\"title\":\"Phase II Oncology Trial Enrollment\",\"description\":\"Bond pays out if the Phase II trial for compound NX-47 achieves 300 enrolled patients by Dec 2026.\",\"goal_type\":\"hybrid\",\"deadline\":\"2026-12-31\",\"expiry\":\"2027-01-31\",\"amount\":\"500.0\",\"oracle_panel\":[{\"pubkey\":\"9012345678901234567890abcdef1234567890abcdef1234567ab2c3d4e5f678\",\"role\":\"both\",\"fee\":\"5.0\"},{\"pubkey\":\"012345678901234567890abcdef1234567890abcdef1234567ab2c3d4e5f6789\",\"role\":\"quantitative\",\"fee\":\"3.0\"},{\"pubkey\":\"12345678901234567890abcdef1234567890abcdef1234567ab2c3d4e5f67890\",\"role\":\"qualitative\",\"fee\":\"4.0\"}],\"quorum\":2,\"challenge_days\":7,\"created_at\":\"2026-02-01T00:00:00Z\",\"issued_at\":\"2026-02-05T10:00:00Z\",\"accepted_at\":\"2026-02-07T14:00:00Z\",\"attestations\":[{\"oracle_pubkey\":\"9012345678901234567890abcdef1234567890abcdef1234567ab2c3d4e5f678\",\"result\":\"met\",\"attested_at\":\"2026-04-10T08:00:00Z\",\"evidence_sha256\":\"abc123def456\"},{\"oracle_pubkey\":\"012345678901234567890abcdef1234567890abcdef1234567ab2c3d4e5f6789\",\"result\":\"met\",\"attested_at\":\"2026-04-11T09:00:00Z\",\"evidence_sha256\":\"def456abc123\"}],\"s_met\":\"aabbccdd1122334455667788990011223344556677889900aabbccdd11223344\",\"grace_days\":30,\"holder_pubkey\":\"9012345678901234567890abcdef1234567890abcdef1234567ab2c3d4e5f678\",\"currency\":\"zec\",\"lock_mechanism\":\"dleq_zec_sapling\",\"chain_id\":null,\"terms\":[{\"goal_type\":\"quantitative\",\"criterion\":\"Phase II trial NCT04567890 achieves 300 enrolled patients\",\"data_id\":\"clinicaltrials.gov.NCT04567890.enrollment\",\"operator\":\"gte\",\"threshold\":300,\"aggregation\":\"count\"},{\"goal_type\":\"qualitative\",\"criterion\":\"Independent safety monitoring board confirms acceptable adverse event profile\"}],\"term_aggregation\":\"AND\"}}",
+          "mimeType": "application/json",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "method",
+              "value": "bonds.get",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "params.state",
+              "value": "REDEEMABLE",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false
+        },
+        {
+          "uuid": "rsp001-bonds-status",
+          "label": "bonds.status",
+          "statusCode": 200,
+          "latency": 0,
+          "bodyType": "INLINE",
+          "body": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"file\":\"NRC-2026-0001.bond\",\"state\":\"ACTIVE\",\"title\":\"Valar Atomics NRC License 2027\",\"amount\":\"10000.0\",\"deadline\":\"2027-06-30\",\"expiry\":\"2027-07-31\",\"days_to_deadline\":437,\"oracle_count\":5,\"attestations_received\":0,\"quorum_required\":3,\"quorum_reached\":false}}",
+          "mimeType": "application/json",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "method",
+              "value": "bonds.status",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false
+        },
+        {
+          "uuid": "rsp001-oracle-status",
+          "label": "oracle.status",
+          "statusCode": 200,
+          "latency": 0,
+          "bodyType": "INLINE",
+          "body": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"file\":\"NRC-2026-0001.bond\",\"oracle_pubkey\":\"d4e5f6789012345678901234567890abcdef1234567890abcdef1234567ab2c3\",\"role\":\"quantitative\",\"accepted\":true,\"accepted_at\":\"2026-01-22T09:30:00Z\",\"attested\":false,\"fee\":\"50.0\",\"bond_state\":\"ACTIVE\",\"goal_met\":null}}",
+          "mimeType": "application/json",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "method",
+              "value": "oracle.status",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false
+        },
+        {
+          "uuid": "rsp001-oracle-attest",
+          "label": "oracle.attest",
+          "statusCode": 200,
+          "latency": 120,
+          "bodyType": "INLINE",
+          "body": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"file\":\"NRC-2026-0001.bond\",\"attested\":true,\"result\":\"met\",\"attested_at\":\"2026-04-18T14:00:00Z\",\"evidence_sha256\":\"cafebabe12345678cafebabe12345678cafebabe12345678cafebabe12345678\",\"quorum_reached\":false,\"attestations_so_far\":1,\"quorum_required\":3}}",
+          "mimeType": "application/json",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "method",
+              "value": "oracle.attest",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false
+        },
+        {
+          "uuid": "rsp001-oracle-accept",
+          "label": "oracle.accept",
+          "statusCode": 200,
+          "latency": 80,
+          "bodyType": "INLINE",
+          "body": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"file\":\"NRC-2026-0001.bond\",\"accepted\":true,\"accepted_at\":\"2026-04-18T14:05:00Z\",\"oracle_pubkey\":\"d4e5f6789012345678901234567890abcdef1234567890abcdef1234567ab2c3\"}}",
+          "mimeType": "application/json",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "method",
+              "value": "oracle.accept",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false
+        },
+        {
+          "uuid": "rsp001-oracle-reject",
+          "label": "oracle.reject",
+          "statusCode": 200,
+          "latency": 80,
+          "bodyType": "INLINE",
+          "body": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"file\":\"NRC-2026-0001.bond\",\"rejected\":true,\"rejected_at\":\"2026-04-18T14:05:00Z\",\"reason\":\"Goal spec is ambiguous. 'win' data_id does not reference a specific NRC docket number.\"}}",
+          "mimeType": "application/json",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "method",
+              "value": "oracle.reject",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false
+        },
+        {
+          "uuid": "rsp001-dev-mock-attest",
+          "label": "dev.mock_attest",
+          "statusCode": 200,
+          "latency": 50,
+          "bodyType": "INLINE",
+          "body": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"file\":\"NRC-2026-0001.bond\",\"mock_attested\":true,\"result\":\"met\",\"message\":\"Dev mock attestation written. Bond state updated to REDEEMABLE if quorum now reached.\"}}",
+          "mimeType": "application/json",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "method",
+              "value": "dev.mock_attest",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false
+        },
+        {
+          "uuid": "rsp001-dev-force-state",
+          "label": "dev.force_state",
+          "statusCode": 200,
+          "latency": 50,
+          "bodyType": "INLINE",
+          "body": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"file\":\"NRC-2026-0001.bond\",\"previous_state\":\"ACTIVE\",\"new_state\":\"REDEEMABLE\",\"message\":\"State forced for dev/testing. s_met stub written.\"}}",
+          "mimeType": "application/json",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "method",
+              "value": "dev.force_state",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false
+        },
+        {
+          "uuid": "rsp001-bonds-get-settled",
+          "label": "bonds.get -- SETTLED",
+          "statusCode": 200,
+          "latency": 0,
+          "bodyType": "INLINE",
+          "body": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"file\":\"SET-2025-0001.bond\",\"series_id\":\"SET-2025\",\"serial\":1,\"state\":\"SETTLED\",\"title\":\"Test Bond Settled\",\"description\":\"A completed bond whose goal was met. XMR swept to holder wallet.\",\"goal_type\":\"quantitative\",\"deadline\":\"2025-06-30\",\"expiry\":\"2025-07-31\",\"grace_days\":30,\"amount\":\"5.0\",\"holder_pubkey\":\"aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899\",\"oracle_panel\":[{\"pubkey\":\"aabb1122334455667788990011223344556677889900aabbccdd112233445566\",\"role\":\"quantitative\",\"fee\":\"5.0\"},{\"pubkey\":\"bbcc2233445566778899001122334455667788990011bbccdd2233445566aa77\",\"role\":\"quantitative\",\"fee\":\"5.0\"},{\"pubkey\":\"ccdd3344556677889900112233445566778899001122ccddee334455667788bb\",\"role\":\"qualitative\",\"fee\":\"7.5\"}],\"quorum\":2,\"challenge_days\":7,\"created_at\":\"2025-01-01T00:00:00Z\",\"issued_at\":\"2025-01-05T12:00:00Z\",\"accepted_at\":\"2025-01-07T09:00:00Z\",\"settled_at\":\"2025-07-15T10:30:00Z\",\"attestations\":[{\"oracle_pubkey\":\"aabb1122334455667788990011223344556677889900aabbccdd112233445566\",\"result\":\"met\",\"attested_at\":\"2025-07-01T08:00:00Z\",\"evidence_sha256\":\"aa11bb22cc33dd44ee55ff66\"},{\"oracle_pubkey\":\"bbcc2233445566778899001122334455667788990011bbccdd2233445566aa77\",\"result\":\"met\",\"attested_at\":\"2025-07-02T09:00:00Z\",\"evidence_sha256\":\"bb22cc33dd44ee55ff66aa11\"}],\"s_met\":\"deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef\",\"currency\":\"eth\",\"lock_mechanism\":\"eth_escrow\",\"chain_id\":1,\"terms\":[{\"goal_type\":\"quantitative\",\"criterion\":\"Valar Atomics receives NRC license\",\"data_id\":\"valar.atomics.win\",\"operator\":\"gte\",\"threshold\":1,\"aggregation\":null}]}}",
+          "mimeType": "application/json",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "method",
+              "value": "bonds.get",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "params.state",
+              "value": "SETTLED",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false
+        },
+        {
+          "uuid": "rsp001-bonds-get-reclaimed",
+          "label": "bonds.get -- RECLAIMED",
+          "statusCode": 200,
+          "latency": 0,
+          "bodyType": "INLINE",
+          "body": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"file\":\"RCL-2025-0001.bond\",\"series_id\":\"RCL-2025\",\"serial\":1,\"state\":\"RECLAIMED\",\"title\":\"Test Bond Reclaimed\",\"description\":\"A bond whose goal was not met. Collateral returned to issuer after expiry.\",\"goal_type\":\"qualitative\",\"deadline\":\"2025-03-31\",\"expiry\":\"2025-04-30\",\"grace_days\":30,\"amount\":\"2.0\",\"holder_pubkey\":null,\"oracle_panel\":[{\"pubkey\":\"ddee4455667788990011223344556677889900112233ddeeff445566778899cc\",\"role\":\"qualitative\",\"fee\":\"2.0\"}],\"quorum\":1,\"challenge_days\":7,\"created_at\":\"2024-12-01T00:00:00Z\",\"issued_at\":\"2024-12-05T12:00:00Z\",\"accepted_at\":\"2024-12-07T09:00:00Z\",\"reclaimed_at\":\"2025-06-01T08:00:00Z\",\"attestations\":[],\"currency\":\"eth\",\"lock_mechanism\":\"eth_escrow\",\"chain_id\":11155111,\"terms\":[{\"goal_type\":\"qualitative\",\"criterion\":\"Independent panel confirms policy goal was not achieved by deadline\"}]}}",
+          "mimeType": "application/json",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "method",
+              "value": "bonds.get",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "params.state",
+              "value": "RECLAIMED",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false
+        },
+        {
+          "uuid": "rsp001-bonds-prove",
+          "label": "bonds.prove",
+          "statusCode": 200,
+          "latency": 0,
+          "bodyType": "INLINE",
+          "body": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"listing_record\":{\"schema_version\":1,\"bond_id\":\"cafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebabe\",\"series_id\":\"NRC-2026\",\"serial\":1,\"state\":\"ACTIVE\",\"title\":\"Valar Atomics NRC License 2027\",\"goal_type\":\"quantitative\",\"deadline\":\"2027-06-30\",\"expiry\":\"2027-07-31\",\"amount\":\"10000.0\",\"quorum\":3,\"oracle_count\":5,\"holder_pubkey\":\"d4e5f6789012345678901234567890abcdef1234567890abcdef1234567ab2c3\",\"ask\":\"10200.0\",\"list_expiry\":\"2026-05-01\",\"nonce\":\"deadbeef12345678\",\"signature\":\"0011223344556677889900aabbccddeeff00112233445566778899aabbccddee0011223344556677889900aabbccddeeff00112233445566778899aabbccddee00\"}}}",
+          "mimeType": "application/json",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "method",
+              "value": "bonds.prove",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false
+        },
+        {
+          "uuid": "rsp001-bonds-get-expired",
+          "label": "bonds.get -- EXPIRED",
+          "statusCode": 200,
+          "latency": 0,
+          "bodyType": "INLINE",
+          "body": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"file\":\"TST-2025-0001.bond\",\"series_id\":\"TST-2025\",\"serial\":1,\"state\":\"EXPIRED\",\"title\":\"Test Bond Expired\",\"description\":\"A bond whose goal was not met and whose expiry has passed. Awaiting reclaim.\",\"goal_type\":\"qualitative\",\"deadline\":\"2025-12-31\",\"expiry\":\"2026-01-15\",\"grace_days\":30,\"amount\":\"1.0\",\"holder_pubkey\":\"eeff00112233445566778899aabbccddeeff00112233445566778899aabbccdd\",\"oracle_panel\":[{\"pubkey\":\"ff00112233445566778899aabbccddeeff00112233445566778899aabbccddee\",\"role\":\"qualitative\",\"fee\":\"1.0\"}],\"quorum\":1,\"challenge_days\":7,\"created_at\":\"2025-10-01T00:00:00Z\",\"issued_at\":\"2025-10-05T12:00:00Z\",\"accepted_at\":\"2025-10-07T09:00:00Z\",\"attestations\":[],\"currency\":\"xmr\",\"lock_mechanism\":\"dleq_xmr\",\"chain_id\":null,\"terms\":[{\"goal_type\":\"qualitative\",\"criterion\":\"Oracle panel confirms policy goal was not achieved\"}]}}",
+          "mimeType": "application/json",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "method",
+              "value": "bonds.get",
+              "invert": false,
+              "operator": "equals"
+            },
+            {
+              "target": "body",
+              "modifier": "params.state",
+              "value": "EXPIRED",
+              "invert": false,
+              "operator": "equals"
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false
+        },
+        {
+          "uuid": "rsp001-default",
+          "label": "default -- method not found",
+          "statusCode": 200,
+          "latency": 0,
+          "bodyType": "INLINE",
+          "body": "{\"jsonrpc\":\"2.0\",\"id\":1,\"error\":{\"code\":-32601,\"message\":\"Method not found\"}}",
+          "mimeType": "application/json",
+          "headers": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true
+        }
+      ],
+      "enabled": true,
+      "responseMode": "RULES"
+    }
+  ],
+  "proxyMode": false,
+  "proxyHost": "",
+  "proxyRemovePrefix": false,
+  "tlsOptions": {
+    "enabled": false
+  },
+  "cors": true,
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json"
+    },
+    {
+      "key": "Access-Control-Allow-Origin",
+      "value": "*"
+    }
+  ]
+}
