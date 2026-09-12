@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NyxForge Wallet</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #080a12; font-family: 'Inter', system-ui, sans-serif;
+       display: flex; flex-direction: column; align-items: center;
+       min-height: 100vh; padding: 24px 16px; }
+.tab-bar { display: flex; gap: 4px; margin-bottom: 20px;
+           background: #131524; border: 1px solid #2a2d3e;
+           border-radius: 8px; padding: 4px; max-width: 900px; }
+.tab { padding: 7px 18px; border-radius: 6px; cursor: pointer;
+       font-size: 12px; color: #8b95b0; transition: all 0.15s; }
+.tab.active { background: #5e6ad2; color: #e8eaf0; font-weight: 700; }
+.tab:hover:not(.active) { color: #e8eaf0; }
+.viewport { display: flex; align-items: flex-start; width: 900px; }
+.nav { display: flex; gap: 12px; margin-top: 16px; align-items: center; }
+.nav-btn { padding: 8px 20px; border-radius: 6px; cursor: pointer;
+           font-size: 13px; background: #131524; border: 1px solid #2a2d3e;
+           color: #b8c0d8; }
+.nav-btn:hover { border-color: #5e6ad2; color: #e8eaf0; }
+.frame-label { font-size: 12px; color: #8b95b0; min-width: 140px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="tab-bar" id="tabBar"></div>
+<div class="viewport" id="viewport"></div>
+<div class="nav">
+  <div class="nav-btn" onclick="go(-1)">&larr; Prev</div>
+  <div class="frame-label" id="frameLabel"></div>
+  <div class="nav-btn" onclick="go(1)">Next &rarr;</div>
+</div>
+<script>
+const TABS   = ["Portfolio",
+"Coin Detail",
+"Receive",
+"Send",
+"Mining"];
+const FRAMES = [`<div class="frame" style="width:900px;background:#0d0f1a;border:1px solid #2a2d3e;border-radius:10px;overflow:hidden;">
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:#2d3068;
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:11px;font-weight:700;color:#5e6ad2;">NYX</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#e8eaf0;">NyxForge Wallet</div>
+        <div style="font-size:11px;color:#8b95b0;">Hold, send, and lock collateral</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="font-size:12px;font-family:monospace;color:#8b95b0;">4AB...f9c2</div>
+      <div style="width:8px;height:8px;border-radius:50%;background:#4ade80;"></div>
+    </div>
+  </div><div style="padding:18px 24px;">
+<div style="background:#131524;border:1px solid #2a2d3e;border-radius:10px;
+            padding:20px 22px;margin-bottom:18px;">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+    <div>
+      <div style="font-size:12px;color:#8b95b0;margin-bottom:6px;letter-spacing:0.8px;">
+        TOTAL BALANCE</div>
+      <div style="font-size:34px;font-weight:700;color:#e8eaf0;line-height:1;">
+        $4,218.40</div>
+      <div style="font-size:13px;color:#4ade80;margin-top:6px;">
+        +$142.30 (+3.5%) today</div>
+    </div>
+    <div>
+      <svg width="180" height="56" xmlns="http://www.w3.org/2000/svg" style="display:block;"><path d="M 0.0,56 L 0.0,37.6 L 9.5,35.2 L 18.9,38.6 L 28.4,32.8 L 37.9,33.8 L 47.4,25.6 L 56.8,28.0 L 66.3,22.2 L 75.8,24.2 L 85.3,18.4 L 94.7,19.4 L 104.2,16.0 L 113.7,17.4 L 123.2,13.6 L 132.6,15.0 L 142.1,11.2 L 151.6,12.2 L 161.1,8.8 L 170.5,9.8 L 180.0,6.9 L 180.0,56 Z" fill="#5e6ad2" opacity="0.10"/><path d="M 0.0,37.6 L 9.5,35.2 L 18.9,38.6 L 28.4,32.8 L 37.9,33.8 L 47.4,25.6 L 56.8,28.0 L 66.3,22.2 L 75.8,24.2 L 85.3,18.4 L 94.7,19.4 L 104.2,16.0 L 113.7,17.4 L 123.2,13.6 L 132.6,15.0 L 142.1,11.2 L 151.6,12.2 L 161.1,8.8 L 170.5,9.8 L 180.0,6.9" fill="none" stroke="#5e6ad2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="180.0" cy="6.9" r="4" fill="#5e6ad2" stroke="#0d0f1a" stroke-width="2"/></svg>
+      <div style="font-size:10px;color:#8b95b0;text-align:right;margin-top:4px;">
+        30-day balance</div>
+    </div>
+  </div>
+  <div style="height:1px;background:#2a2d3e;margin:16px 0 14px;"></div>
+  <div style="display:flex;gap:10px;">
+    <div style="display:inline-block;padding:7px 16px;background:#5e6ad2;border-radius:7px;font-size:12px;font-weight:700;color:#e8eaf0;cursor:pointer;letter-spacing:0.3px;">Receive</div>
+    <div style="display:inline-block;padding:7px 16px;background:#1a1d2e;border-radius:7px;font-size:12px;font-weight:700;color:#b8c0d8;cursor:pointer;letter-spacing:0.3px;">Send</div>
+  </div>
+</div><div style="display:flex;gap:20px;"><div style="flex:1;min-width:0;"><div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">ASSETS</div><div style="display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid #2a2d3e;cursor:pointer;" onmouseover="this.style.background='#1a1d2e'" onmouseout="this.style.background='transparent'"><div style="width:36px;height:36px;border-radius:50%;background:#ff660022;border:2px solid #ff6600;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#ff6600;flex-shrink:0;">XMR</div><div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:700;color:#e8eaf0;">Monero  <span style="font-size:12px;font-weight:400;color:#8b95b0;">XMR</span><span style="font-size:10px;color:#fbbf24;margin-left:8px;">0.90 XMR locked</span></div><div style="font-size:12px;color:#8b95b0;margin-top:2px;">9.842 XMR</div></div><div style="text-align:right;"><div style="font-size:14px;font-weight:700;color:#e8eaf0;">$2,951.20</div><div style="font-size:12px;color:#4ade80;margin-top:2px;">+2.8%</div></div></div><div style="display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid #2a2d3e;cursor:pointer;" onmouseover="this.style.background='#1a1d2e'" onmouseout="this.style.background='transparent'"><div style="width:36px;height:36px;border-radius:50%;background:#9b59f522;border:2px solid #9b59f5;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#9b59f5;flex-shrink:0;">TARI</div><div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:700;color:#e8eaf0;">Tari  <span style="font-size:12px;font-weight:400;color:#8b95b0;">TARI</span></div><div style="font-size:12px;color:#8b95b0;margin-top:2px;">4,400 TARI</div></div><div style="text-align:right;"><div style="font-size:14px;font-weight:700;color:#e8eaf0;">$880.00</div><div style="font-size:12px;color:#4ade80;margin-top:2px;">+5.1%</div></div></div><div style="display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid #2a2d3e;cursor:pointer;" onmouseover="this.style.background='#1a1d2e'" onmouseout="this.style.background='transparent'"><div style="width:36px;height:36px;border-radius:50%;background:#5e6ad222;border:2px solid #5e6ad2;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#5e6ad2;flex-shrink:0;">NYX</div><div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:700;color:#e8eaf0;">NyxForge Token  <span style="font-size:12px;font-weight:400;color:#8b95b0;">NYX</span></div><div style="font-size:12px;color:#8b95b0;margin-top:2px;">38,720 NYX</div></div><div style="text-align:right;"><div style="font-size:14px;font-weight:700;color:#e8eaf0;">$387.20</div><div style="font-size:12px;color:#f87171;margin-top:2px;">-1.2%</div></div></div></div><div style="width:310px;flex-shrink:0;"><div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">RECENT ACTIVITY</div><div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #2a2d3e;"><div style="width:30px;height:30px;border-radius:50%;background:#4ade8022;display:flex;align-items:center;justify-content:center;font-size:16px;color:#4ade80;flex-shrink:0;">&darr;</div><div style="flex:1;min-width:0;"><div style="font-size:13px;color:#e8eaf0;">Received from exchange</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">Today, 09:14</div></div><div style="text-align:right;"><div style="font-size:13px;font-weight:700;color:#4ade80;">+2.00 XMR</div><div style="margin-top:3px;"><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#8b95b0;background:#1a1d2e;">CONFIRMED</span></div></div></div><div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #2a2d3e;"><div style="width:30px;height:30px;border-radius:50%;background:#f8717122;display:flex;align-items:center;justify-content:center;font-size:16px;color:#f87171;flex-shrink:0;">&uarr;</div><div style="flex:1;min-width:0;"><div style="font-size:13px;color:#e8eaf0;">Sent to 8Bf...3ac</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">Today, 07:32</div></div><div style="text-align:right;"><div style="font-size:13px;font-weight:700;color:#f87171;">-500 TARI</div><div style="margin-top:3px;"><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#8b95b0;background:#1a1d2e;">CONFIRMED</span></div></div></div><div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #2a2d3e;"><div style="width:30px;height:30px;border-radius:50%;background:#f8717122;display:flex;align-items:center;justify-content:center;font-size:16px;color:#f87171;flex-shrink:0;">&uarr;</div><div style="flex:1;min-width:0;"><div style="font-size:13px;color:#e8eaf0;">Locked: ALZ-2040 collateral</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">Yesterday</div></div><div style="text-align:right;"><div style="font-size:13px;font-weight:700;color:#f87171;">-0.45 XMR</div><div style="margin-top:3px;"><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#8b95b0;background:#1a1d2e;">CONFIRMED</span></div></div></div><div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #2a2d3e;"><div style="width:30px;height:30px;border-radius:50%;background:#4ade8022;display:flex;align-items:center;justify-content:center;font-size:16px;color:#4ade80;flex-shrink:0;">&darr;</div><div style="flex:1;min-width:0;"><div style="font-size:13px;color:#e8eaf0;">Staking reward</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">2 days ago</div></div><div style="text-align:right;"><div style="font-size:13px;font-weight:700;color:#4ade80;">+120 NYX</div><div style="margin-top:3px;"><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#8b95b0;background:#1a1d2e;">CONFIRMED</span></div></div></div><div style="font-size:11px;color:#5e6ad2;margin-top:8px;cursor:pointer;">View all transactions &rarr;</div></div></div></div></div>`,
+`<div class="frame" style="width:900px;background:#0d0f1a;border:1px solid #2a2d3e;border-radius:10px;overflow:hidden;">
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:#2d3068;
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:11px;font-weight:700;color:#5e6ad2;">NYX</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#e8eaf0;">NyxForge Wallet</div>
+        <div style="font-size:11px;color:#8b95b0;">Monero (XMR)</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="font-size:12px;font-family:monospace;color:#8b95b0;">4AB...f9c2</div>
+      <div style="width:8px;height:8px;border-radius:50%;background:#4ade80;"></div>
+    </div>
+  </div>
+<div style="padding:13px 24px;border-bottom:1px solid #2a2d3e;
+            display:flex;align-items:center;gap:12px;">
+  <div style="font-size:12px;color:#5e6ad2;cursor:pointer;">&larr; Portfolio</div>
+  <div style="width:1px;height:16px;background:#2a2d3e;"></div>
+  <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Monero (XMR)</div>
+</div><div style="padding:18px 24px;">
+<div style="background:#131524;border:1px solid #2a2d3e;border-radius:10px;
+            padding:18px 20px;margin-bottom:16px;">
+  <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px;">
+    <div style="width:36px;height:36px;border-radius:50%;background:#ff660022;border:2px solid #ff6600;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#ff6600;flex-shrink:0;">XMR</div>
+    <div>
+      <div style="font-size:18px;font-weight:700;color:#e8eaf0;">Monero</div>
+      <div style="font-size:12px;color:#8b95b0;">XMR &middot; Privacy coin</div>
+    </div>
+    <div style="margin-left:auto;text-align:right;">
+      <div style="font-size:22px;font-weight:700;color:#e8eaf0;">$2,951.20</div>
+      <div style="font-size:13px;color:#4ade80;">+2.8% today</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
+              padding-bottom:14px;border-bottom:1px solid #2a2d3e;margin-bottom:14px;">
+    <div style="background:#1a1d2e;border-radius:7px;padding:10px 12px;"><div style="font-size:11px;color:#8b95b0;margin-bottom:4px;">Available</div><div style="font-size:14px;font-weight:700;color:#e8eaf0;">8.952 XMR</div></div><div style="background:#1a1d2e;border-radius:7px;padding:10px 12px;"><div style="font-size:11px;color:#8b95b0;margin-bottom:4px;">Locked</div><div style="font-size:14px;font-weight:700;color:#fbbf24;">0.890 XMR</div></div><div style="background:#1a1d2e;border-radius:7px;padding:10px 12px;"><div style="font-size:11px;color:#8b95b0;margin-bottom:4px;">Pending</div><div style="font-size:14px;font-weight:700;color:#8b95b0;">0.000 XMR</div></div>
+  </div>
+
+  <svg width="828" height="60" xmlns="http://www.w3.org/2000/svg" style="display:block;"><path d="M 0.0,60 L 0.0,35.2 L 43.6,36.2 L 87.2,32.6 L 130.7,30.0 L 174.3,31.0 L 217.9,27.4 L 261.5,29.0 L 305.1,24.8 L 348.6,23.2 L 392.2,25.8 L 435.8,22.2 L 479.4,19.6 L 522.9,20.6 L 566.5,17.0 L 610.1,18.6 L 653.7,15.4 L 697.3,14.4 L 740.8,16.0 L 784.4,11.8 L 828.0,9.2 L 828.0,60 Z" fill="#ff6600" opacity="0.10"/><path d="M 0.0,35.2 L 43.6,36.2 L 87.2,32.6 L 130.7,30.0 L 174.3,31.0 L 217.9,27.4 L 261.5,29.0 L 305.1,24.8 L 348.6,23.2 L 392.2,25.8 L 435.8,22.2 L 479.4,19.6 L 522.9,20.6 L 566.5,17.0 L 610.1,18.6 L 653.7,15.4 L 697.3,14.4 L 740.8,16.0 L 784.4,11.8 L 828.0,9.2" fill="none" stroke="#ff6600" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="828.0" cy="9.2" r="4" fill="#ff6600" stroke="#0d0f1a" stroke-width="2"/></svg>
+  <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:#8b95b0;">
+    <span>30 days ago</span><span>15 days ago</span><span>Today</span>
+  </div>
+</div><div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">TRANSACTION HISTORY</div><div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #2a2d3e;"><div style="width:30px;height:30px;border-radius:50%;background:#4ade8022;display:flex;align-items:center;justify-content:center;font-size:16px;color:#4ade80;flex-shrink:0;">&darr;</div><div style="flex:1;min-width:0;"><div style="font-size:13px;color:#e8eaf0;">Received from Kraken</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">Apr 23, 09:14</div></div><div style="text-align:right;"><div style="font-size:13px;font-weight:700;color:#4ade80;">+2.000 XMR</div><div style="margin-top:3px;"><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#8b95b0;background:#1a1d2e;">CONFIRMED</span></div></div></div><div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #2a2d3e;"><div style="width:30px;height:30px;border-radius:50%;background:#f8717122;display:flex;align-items:center;justify-content:center;font-size:16px;color:#f87171;flex-shrink:0;">&uarr;</div><div style="flex:1;min-width:0;"><div style="font-size:13px;color:#e8eaf0;">Locked: ALZ-2040 collateral</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">Apr 22, 14:08</div></div><div style="text-align:right;"><div style="font-size:13px;font-weight:700;color:#f87171;">-0.450 XMR</div><div style="margin-top:3px;"><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#8b95b0;background:#1a1d2e;">CONFIRMED</span></div></div></div><div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #2a2d3e;"><div style="width:30px;height:30px;border-radius:50%;background:#f8717122;display:flex;align-items:center;justify-content:center;font-size:16px;color:#f87171;flex-shrink:0;">&uarr;</div><div style="flex:1;min-width:0;"><div style="font-size:13px;color:#e8eaf0;">Locked: TB-2038 collateral</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">Apr 21, 11:22</div></div><div style="text-align:right;"><div style="font-size:13px;font-weight:700;color:#f87171;">-0.900 XMR</div><div style="margin-top:3px;"><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#8b95b0;background:#1a1d2e;">CONFIRMED</span></div></div></div><div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #2a2d3e;"><div style="width:30px;height:30px;border-radius:50%;background:#4ade8022;display:flex;align-items:center;justify-content:center;font-size:16px;color:#4ade80;flex-shrink:0;">&darr;</div><div style="flex:1;min-width:0;"><div style="font-size:13px;color:#e8eaf0;">Received from 9Cf...77a</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">Apr 20, 16:45</div></div><div style="text-align:right;"><div style="font-size:13px;font-weight:700;color:#4ade80;">+1.500 XMR</div><div style="margin-top:3px;"><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#8b95b0;background:#1a1d2e;">CONFIRMED</span></div></div></div><div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #2a2d3e;"><div style="width:30px;height:30px;border-radius:50%;background:#f8717122;display:flex;align-items:center;justify-content:center;font-size:16px;color:#f87171;flex-shrink:0;">&uarr;</div><div style="flex:1;min-width:0;"><div style="font-size:13px;color:#e8eaf0;">Sent to 8Bf...3ac</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">Apr 18, 08:30</div></div><div style="text-align:right;"><div style="font-size:13px;font-weight:700;color:#f87171;">-0.200 XMR</div><div style="margin-top:3px;"><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#8b95b0;background:#1a1d2e;">CONFIRMED</span></div></div></div><div style="display:flex;gap:10px;margin-top:16px;"><div style="display:inline-block;padding:13px 28px;background:#5e6ad2;border-radius:7px;font-size:14px;font-weight:700;color:#e8eaf0;cursor:pointer;letter-spacing:0.3px;">Receive XMR</div>&nbsp;&nbsp;<div style="display:inline-block;padding:12px 27px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:14px;color:#b8c0d8;cursor:pointer;">Send XMR</div></div></div></div>`,
+`<div class="frame" style="width:900px;background:#0d0f1a;border:1px solid #2a2d3e;border-radius:10px;overflow:hidden;">
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:#2d3068;
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:11px;font-weight:700;color:#5e6ad2;">NYX</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#e8eaf0;">NyxForge Wallet</div>
+        <div style="font-size:11px;color:#8b95b0;">Receive crypto</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="font-size:12px;font-family:monospace;color:#8b95b0;">4AB...f9c2</div>
+      <div style="width:8px;height:8px;border-radius:50%;background:#4ade80;"></div>
+    </div>
+  </div>
+<div style="padding:13px 24px;border-bottom:1px solid #2a2d3e;
+            display:flex;align-items:center;gap:12px;">
+  <div style="font-size:12px;color:#5e6ad2;cursor:pointer;">&larr; Portfolio</div>
+  <div style="width:1px;height:16px;background:#2a2d3e;"></div>
+  <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Receive</div>
+</div><div style="padding:18px 24px;">
+<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">SELECT COIN</div>
+<div style="display:flex;gap:8px;margin-bottom:20px;">
+  <div style="flex:1;padding:10px 14px;border-radius:7px;cursor:pointer;background:#2d3068;border:2px solid #ff6600;display:flex;align-items:center;gap:8px;"><div style="width:36px;height:36px;border-radius:50%;background:#ff660022;border:2px solid #ff6600;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#ff6600;flex-shrink:0;">XMR</div><div><div style="font-size:13px;font-weight:700;color:#e8eaf0;">XMR</div><div style="font-size:11px;color:#8b95b0;">Monero</div></div></div><div style="flex:1;padding:10px 14px;border-radius:7px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;display:flex;align-items:center;gap:8px;"><div style="width:36px;height:36px;border-radius:50%;background:#9b59f522;border:2px solid #9b59f5;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#9b59f5;flex-shrink:0;">TARI</div><div><div style="font-size:13px;font-weight:700;color:#e8eaf0;">TARI</div><div style="font-size:11px;color:#8b95b0;">Tari</div></div></div><div style="flex:1;padding:10px 14px;border-radius:7px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;display:flex;align-items:center;gap:8px;"><div style="width:36px;height:36px;border-radius:50%;background:#5e6ad222;border:2px solid #5e6ad2;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#5e6ad2;flex-shrink:0;">NYX</div><div><div style="font-size:13px;font-weight:700;color:#e8eaf0;">NYX</div><div style="font-size:11px;color:#8b95b0;">NyxForge</div></div></div>
+</div>
+<div style="background:#131524;border:1px solid #2a2d3e;border-radius:10px;
+            padding:20px 22px;margin-bottom:16px;">
+  <div style="display:flex;gap:20px;align-items:flex-start;">
+    <div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;
+                padding:16px;flex-shrink:0;">
+      <div style="font-family:monospace;font-size:9px;line-height:1.35;color:#8b95b0;letter-spacing:1px;">######## ## ####  ## ## ########</div><div style="font-family:monospace;font-size:9px;line-height:1.35;color:#8b95b0;letter-spacing:1px;">##    ## ##  ##   ## ## ##    ##</div><div style="font-family:monospace;font-size:9px;line-height:1.35;color:#8b95b0;letter-spacing:1px;">##    ## ##  ## #### ## ##    ##</div><div style="font-family:monospace;font-size:9px;line-height:1.35;color:#8b95b0;letter-spacing:1px;">########    ####    ## ########</div><div style="font-family:monospace;font-size:9px;line-height:1.35;color:#8b95b0;letter-spacing:1px;">   ##    ## ## ## ##   ##   ##  </div><div style="font-family:monospace;font-size:9px;line-height:1.35;color:#8b95b0;letter-spacing:1px;">####  ## ## ##  #### #### ####  </div><div style="font-family:monospace;font-size:9px;line-height:1.35;color:#8b95b0;letter-spacing:1px;">######## ## ####  ## ## ########</div>
+      <div style="font-size:9px;color:#8b95b0;text-align:center;margin-top:8px;">
+        Scan to receive XMR</div>
+    </div>
+    <div style="flex:1;">
+      <div style="font-size:12px;color:#8b95b0;margin-bottom:8px;">
+        Your XMR deposit address</div>
+      <div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:6px;
+                  padding:10px 13px;font-family:monospace;font-size:11px;
+                  color:#b8c0d8;word-break:break-all;line-height:1.6;
+                  margin-bottom:10px;">
+        46bUt5XaSiCjMvPJM1KRbWiqwLbEGV9YLs<br>
+        FJezCsWBn1s8A7FLAFHhQM4Jn9wMDKe<br>
+        yU7BwXqnQNr5GT</div>
+      <div style="display:flex;gap:8px;">
+        <div style="display:inline-block;padding:7px 16px;background:#5e6ad2;border-radius:7px;font-size:12px;font-weight:700;color:#e8eaf0;cursor:pointer;letter-spacing:0.3px;">Copy Address</div>
+        <div style="display:inline-block;padding:6px 14px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:12px;color:#b8c0d8;cursor:pointer;">New Address</div>
+      </div>
+      <div style="font-size:11px;color:#8b95b0;margin-top:12px;line-height:1.6;">
+        Subaddress &bull; never reused &bull; no linking to other transactions
+      </div>
+      <div style="background:rgba(251,191,36,0.10);border:1px solid #fbbf24;border-radius:6px;
+                  padding:10px 12px;margin-top:12px;font-size:12px;
+                  color:#b8c0d8;line-height:1.5;">
+        Only send XMR to this address. Sending a different coin will result in
+        permanent loss.
+      </div>
+    </div>
+  </div>
+</div>
+<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">PENDING DEPOSITS</div>
+<div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;
+            padding:12px 16px;">
+  <div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #2a2d3e;"><div style="width:30px;height:30px;border-radius:50%;background:#4ade8022;display:flex;align-items:center;justify-content:center;font-size:16px;color:#4ade80;flex-shrink:0;">&darr;</div><div style="flex:1;min-width:0;"><div style="font-size:13px;color:#e8eaf0;">Incoming &mdash; 0 confirmations</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">Detected 1 min ago</div></div><div style="text-align:right;"><div style="font-size:13px;font-weight:700;color:#4ade80;">+2.00 XMR</div><div style="margin-top:3px;"><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#fbbf24;background:rgba(251,191,36,0.10);">PENDING</span></div></div></div>
+  <div style="font-size:11px;color:#8b95b0;padding-top:8px;">
+    XMR requires 10 confirmations (&asymp;20 min) before funds are spendable.
+  </div>
+</div></div></div>`,
+`<div class="frame" style="width:900px;background:#0d0f1a;border:1px solid #2a2d3e;border-radius:10px;overflow:hidden;">
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:#2d3068;
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:11px;font-weight:700;color:#5e6ad2;">NYX</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#e8eaf0;">NyxForge Wallet</div>
+        <div style="font-size:11px;color:#8b95b0;">Send crypto</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="font-size:12px;font-family:monospace;color:#8b95b0;">4AB...f9c2</div>
+      <div style="width:8px;height:8px;border-radius:50%;background:#4ade80;"></div>
+    </div>
+  </div>
+<div style="padding:13px 24px;border-bottom:1px solid #2a2d3e;
+            display:flex;align-items:center;gap:12px;">
+  <div style="font-size:12px;color:#5e6ad2;cursor:pointer;">&larr; Portfolio</div>
+  <div style="width:1px;height:16px;background:#2a2d3e;"></div>
+  <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Send XMR</div>
+</div><div style="padding:18px 24px;display:flex;gap:20px;"><div style="flex:1;min-width:0;"><div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Recipient address</div><div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#8b95b0;font-family:monospace;">4Bc...e91f &nbsp; (paste or scan)</div><div style="font-size:11px;color:#8b95b0;margin-top:4px;">Supports standard, integrated, and subaddresses</div></div><div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;"><div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Amount</div><div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#8b95b0;font-family:inherit;">1.5</div><div style="font-size:11px;color:#8b95b0;margin-top:4px;">Available: 8.952 XMR</div></div><div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Currency</div><div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#8b95b0;font-family:inherit;">XMR</div></div></div><div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Memo (optional, stored locally only)</div><div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#8b95b0;font-family:inherit;">Exchange withdrawal</div></div>
+<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">NETWORK FEE</div>
+<div style="display:flex;gap:8px;margin-bottom:16px;">
+  <div style="flex:1;padding:10px 12px;border-radius:7px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;"><div style="font-size:12px;font-weight:700;color:#8b95b0;">Economy</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">0.00001 XMR</div><div style="font-size:11px;color:#8b95b0;">~30 min</div></div><div style="flex:1;padding:10px 12px;border-radius:7px;cursor:pointer;background:#2d3068;border:2px solid #5e6ad2;"><div style="font-size:12px;font-weight:700;color:#e8eaf0;">Standard</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">0.00006 XMR</div><div style="font-size:11px;color:#8b95b0;">~5 min</div></div><div style="flex:1;padding:10px 12px;border-radius:7px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;"><div style="font-size:12px;font-weight:700;color:#8b95b0;">Priority</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">0.00020 XMR</div><div style="font-size:11px;color:#8b95b0;">~2 min</div></div>
+</div></div><div style="width:280px;flex-shrink:0;">
+<div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;
+            padding:13px 16px;margin-bottom:16px;">
+  <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">TRANSACTION SUMMARY</div>
+  <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><div style="font-size:13px;color:#8b95b0;">Sending</div><div style="font-size:13px;color:#e8eaf0;font-weight:700;">1.50000 XMR</div></div><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><div style="font-size:13px;color:#8b95b0;">Network fee</div><div style="font-size:13px;color:#8b95b0;font-weight:400;">0.00006 XMR</div></div><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><div style="font-size:13px;color:#8b95b0;">Total deducted</div><div style="font-size:13px;color:#e8eaf0;font-weight:700;">1.50006 XMR</div></div><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><div style="font-size:13px;color:#8b95b0;">Remaining</div><div style="font-size:13px;color:#b8c0d8;font-weight:400;">7.45194 XMR</div></div>
+</div><div style="display:flex;flex-direction:column;gap:8px;"><div style="width:100%;display:block;text-align:center;padding:13px 28px;background:#f87171;border-radius:7px;font-size:14px;font-weight:700;color:#e8eaf0;cursor:pointer;letter-spacing:0.3px;">Send 1.50 XMR</div><div style="width:100%;display:block;text-align:center;padding:12px 27px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:14px;color:#b8c0d8;cursor:pointer;">Cancel</div></div><div style="font-size:11px;color:#8b95b0;margin-top:12px;line-height:1.6;">XMR transactions are private by default. Recipient cannot trace this payment back to your address.</div></div></div></div>`,
+`<div class="frame" style="width:900px;background:#0d0f1a;border:1px solid #2a2d3e;border-radius:10px;overflow:hidden;">
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:#2d3068;
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:11px;font-weight:700;color:#5e6ad2;">NYX</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#e8eaf0;">NyxForge Wallet</div>
+        <div style="font-size:11px;color:#8b95b0;">Mine XMR &middot; NYX &middot; TARI</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="font-size:12px;font-family:monospace;color:#8b95b0;">4AB...f9c2</div>
+      <div style="width:8px;height:8px;border-radius:50%;background:#4ade80;"></div>
+    </div>
+  </div>
+<div style="padding:13px 24px;border-bottom:1px solid #2a2d3e;
+            display:flex;align-items:center;justify-content:space-between;">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Mining</div>
+    <div style="width:1px;height:16px;background:#2a2d3e;"></div>
+    <div style="font-size:12px;color:#8b95b0;">RandomX &middot; merge-mines XMR + NYX + TARI</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <div style="width:8px;height:8px;border-radius:50%;background:#4ade80;"></div>
+    <span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#4ade80;background:rgba(74,222,128,0.10);">MINING</span>
+  </div>
+</div><div style="padding:18px 24px;display:flex;gap:20px;">
+<div style="flex:1;min-width:0;">
+
+  <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">HASHRATE</div>
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;
+              padding:14px 16px;margin-bottom:16px;">
+    <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;">
+      <div style="font-size:32px;font-weight:700;color:#e8eaf0;">4,820</div>
+      <div style="font-size:14px;color:#8b95b0;">H/s</div>
+      <div style="margin-left:auto;font-size:12px;color:#8b95b0;">
+        Peak: <span style="color:#b8c0d8;">5,140 H/s</span>
+      </div>
+    </div>
+    <div style="height:6px;background:#1a1d2e;border-radius:3px;overflow:hidden;"><div style="height:100%;width:94%;background:#4ade80;border-radius:3px;transition:width 0.3s;"></div></div>
+    <div style="display:flex;justify-content:space-between;margin-top:6px;
+                font-size:11px;color:#8b95b0;">
+      <span>0</span><span>CPU load: 94%</span><span>5,140 H/s max</span>
+    </div>
+  </div>
+
+  <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">EARNINGS</div>
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;
+              padding:0;margin-bottom:16px;overflow:hidden;">
+    <div style="display:flex;align-items:center;gap:14px;padding:13px 16px;border-bottom:1px solid #2a2d3e;"><div style="width:36px;height:36px;border-radius:50%;background:#ff660022;border:2px solid #ff6600;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#ff6600;flex-shrink:0;">XMR</div><div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#e8eaf0;">XMR  <span style="font-size:11px;font-weight:400;color:#8b95b0;">primary chain</span></div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">Total earned: 0.00312 XMR</div></div><div style="text-align:right;"><div style="font-size:14px;font-weight:700;color:#e8eaf0;">+0.00041 XMR</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">today</div></div></div><div style="display:flex;align-items:center;gap:14px;padding:13px 16px;border-bottom:1px solid #2a2d3e;"><div style="width:36px;height:36px;border-radius:50%;background:#5e6ad222;border:2px solid #5e6ad2;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#5e6ad2;flex-shrink:0;">NYX</div><div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#e8eaf0;">NYX  <span style="font-size:11px;font-weight:400;color:#8b95b0;">merge-mined, free</span></div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">Total earned: 1,084 NYX</div></div><div style="text-align:right;"><div style="font-size:14px;font-weight:700;color:#e8eaf0;">+142 NYX</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">today</div></div></div><div style="display:flex;align-items:center;gap:14px;padding:13px 16px;border-bottom:1px solid #2a2d3e;"><div style="width:36px;height:36px;border-radius:50%;background:#9b59f522;border:2px solid #9b59f5;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#9b59f5;flex-shrink:0;">TARI</div><div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#e8eaf0;">TARI  <span style="font-size:11px;font-weight:400;color:#8b95b0;">merge-mined, free</span></div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">Total earned: 291 TARI</div></div><div style="text-align:right;"><div style="font-size:14px;font-weight:700;color:#e8eaf0;">+38 TARI</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">today</div></div></div>
+  </div>
+
+  <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">CONTROLS</div>
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;
+              padding:14px 16px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">CPU threads</div><div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#8b95b0;font-family:inherit;">10 / 12</div><div style="font-size:11px;color:#8b95b0;margin-top:4px;">2 threads reserved for system</div></div>
+      <div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Mining mode</div><div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#8b95b0;font-family:inherit;">Pool</div></div>
+    </div>
+    <div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Pool address</div><div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#8b95b0;font-family:monospace;">pool.supportxmr.com:3333</div><div style="font-size:11px;color:#8b95b0;margin-top:4px;">Connected &bull; 23 ms latency &bull; 38 miners in share</div></div>
+    <div style="display:flex;gap:10px;">
+      <div style="display:inline-block;padding:6px 14px;background:transparent;border:1px solid #f87171;border-radius:7px;font-size:12px;color:#f87171;cursor:pointer;">Stop Mining</div>
+      <div style="display:inline-block;padding:7px 16px;background:#1a1d2e;border-radius:7px;font-size:12px;font-weight:700;color:#b8c0d8;cursor:pointer;letter-spacing:0.3px;">Benchmark</div>
+    </div>
+  </div>
+
+</div>
+<div style="width:310px;flex-shrink:0;">
+
+  <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">NYX EMISSION SCHEDULE</div>
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;
+              padding:14px 16px;margin-bottom:14px;">
+    
+<svg width="278" height="150" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+  <line x1="52" y1="89.0" x2="262" y2="89.0" stroke="#2a2d3e" stroke-width="1"/><line x1="52" y1="64.0" x2="262" y2="64.0" stroke="#2a2d3e" stroke-width="1"/><line x1="52" y1="39.0" x2="262" y2="39.0" stroke="#2a2d3e" stroke-width="1"/><line x1="104.5" y1="14" x2="104.5" y2="114" stroke="#2a2d3e" stroke-width="1"/><line x1="157.0" y1="14" x2="157.0" y2="114" stroke="#2a2d3e" stroke-width="1"/><line x1="209.5" y1="14" x2="209.5" y2="114" stroke="#2a2d3e" stroke-width="1"/><line x1="54.1" y1="14" x2="54.1" y2="114" stroke="#5e6ad2" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="52" y1="14" x2="52" y2="114"
+        stroke="#2a2d3e" stroke-width="1"/>
+  <line x1="52" y1="114" x2="262" y2="114"
+        stroke="#2a2d3e" stroke-width="1"/>
+  <polygon points="52.0,114.0 52.0,114.0 54.1,113.7 56.2,113.4 58.3,113.2 60.4,112.9 62.5,112.7 64.6,112.4 66.7,112.2 68.8,112.0 70.9,111.8 73.0,111.7 75.1,111.5 77.2,111.3 79.3,111.2 81.4,111.0 83.5,110.9 85.6,110.8 87.7,110.6 89.8,110.5 91.9,110.4 94.0,110.3 96.1,110.2 98.2,110.1 100.3,110.0 102.4,110.0 104.5,109.9 106.6,109.8 108.7,109.7 110.8,109.7 112.9,109.6 115.0,109.5 117.1,109.5 119.2,109.4 121.3,109.4 123.4,109.3 125.5,109.3 127.6,109.2 129.7,109.2 131.8,109.2 133.9,109.1 136.0,109.1 138.1,109.1 140.2,109.0 142.3,109.0 144.4,109.0 146.5,108.9 148.6,108.9 150.7,108.9 152.8,108.9 154.9,108.9 157.0,108.8 159.1,108.8 161.2,108.8 163.3,108.8 165.4,108.8 167.5,108.7 169.6,108.7 171.7,108.7 173.8,108.7 175.9,108.7 178.0,108.7 180.1,108.7 182.2,108.7 184.3,108.7 186.4,108.6 188.5,108.6 190.6,108.6 192.7,108.6 194.8,108.6 196.9,108.6 199.0,108.6 201.1,108.6 203.2,108.6 205.3,108.6 207.4,108.6 209.5,108.6 211.6,108.6 213.7,108.6 215.8,108.6 217.9,108.5 220.0,108.5 222.1,108.5 224.2,108.5 226.3,108.5 228.4,108.5 230.5,108.5 232.6,108.5 234.7,108.5 236.8,108.5 238.9,108.5 241.0,108.5 243.1,108.5 245.2,108.5 247.3,108.5 249.4,108.5 251.5,108.5 253.6,108.5 255.7,108.5 257.8,108.5 259.9,108.5 262.0,108.5 262.0,114.0" fill="#5e6ad2" opacity="0.08"/>
+  <polyline points="52.0,114.0 54.1,113.7 56.2,113.4 58.3,113.2 60.4,112.9 62.5,112.7 64.6,112.4 66.7,112.2 68.8,112.0 70.9,111.8 73.0,111.7 75.1,111.5 77.2,111.3 79.3,111.2 81.4,111.0 83.5,110.9 85.6,110.8 87.7,110.6 89.8,110.5 91.9,110.4 94.0,110.3 96.1,110.2 98.2,110.1 100.3,110.0 102.4,110.0 104.5,109.9 106.6,109.8 108.7,109.7 110.8,109.7 112.9,109.6 115.0,109.5 117.1,109.5 119.2,109.4 121.3,109.4 123.4,109.3 125.5,109.3 127.6,109.2 129.7,109.2 131.8,109.2 133.9,109.1 136.0,109.1 138.1,109.1 140.2,109.0 142.3,109.0 144.4,109.0 146.5,108.9 148.6,108.9 150.7,108.9 152.8,108.9 154.9,108.9 157.0,108.8 159.1,108.8 161.2,108.8 163.3,108.8 165.4,108.8 167.5,108.7 169.6,108.7 171.7,108.7 173.8,108.7 175.9,108.7 178.0,108.7 180.1,108.7 182.2,108.7 184.3,108.7 186.4,108.6 188.5,108.6 190.6,108.6 192.7,108.6 194.8,108.6 196.9,108.6 199.0,108.6 201.1,108.6 203.2,108.6 205.3,108.6 207.4,108.6 209.5,108.6 211.6,108.6 213.7,108.6 215.8,108.6 217.9,108.5 220.0,108.5 222.1,108.5 224.2,108.5 226.3,108.5 228.4,108.5 230.5,108.5 232.6,108.5 234.7,108.5 236.8,108.5 238.9,108.5 241.0,108.5 243.1,108.5 245.2,108.5 247.3,108.5 249.4,108.5 251.5,108.5 253.6,108.5 255.7,108.5 257.8,108.5 259.9,108.5 262.0,108.5" fill="none" stroke="#5e6ad2" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="94.0" cy="110.31573420812951" r="3.5" fill="#5e6ad2" opacity="0.6"/><text x="94.0" y="103.31573420812951" text-anchor="middle" font-size="9" fill="#8b95b0">65%</text><circle cx="157.0" cy="108.83047657595705" r="3.5" fill="#5e6ad2" opacity="0.6"/><text x="157.0" y="101.83047657595705" text-anchor="middle" font-size="9" fill="#8b95b0">90%</text>
+  <circle cx="54.1" cy="113.70446051140323" r="5" fill="#5e6ad2"
+          stroke="#0d0f1a" stroke-width="2"/>
+  <text x="46" y="118.0" text-anchor="end" font-size="10" fill="#8b95b0">0T</text><text x="46" y="93.0" text-anchor="end" font-size="10" fill="#8b95b0">2T</text><text x="46" y="68.0" text-anchor="end" font-size="10" fill="#8b95b0">5T</text><text x="46" y="43.0" text-anchor="end" font-size="10" fill="#8b95b0">7T</text><text x="46" y="18.0" text-anchor="end" font-size="10" fill="#8b95b0">10T</text>
+  <text x="52.0" y="132" text-anchor="middle" font-size="10" fill="#8b95b0">0</text><text x="104.5" y="132" text-anchor="middle" font-size="10" fill="#8b95b0">25y</text><text x="157.0" y="132" text-anchor="middle" font-size="10" fill="#8b95b0">50y</text><text x="209.5" y="132" text-anchor="middle" font-size="10" fill="#8b95b0">75y</text><text x="262.0" y="132" text-anchor="middle" font-size="10" fill="#8b95b0">100y</text>
+  <rect x="60.1" y="99.70446051140323" width="72" height="20" rx="4" fill="#2d3068" stroke="#5e6ad2" stroke-width="1"/><text x="96.1" y="115.70446051140323" text-anchor="middle" font-size="10" font-weight="700" fill="#5e6ad2">Year 1</text>
+</svg>
+    <div style="display:flex;justify-content:space-between;margin-top:8px;
+                font-size:11px;color:#8b95b0;">
+      <span>Total supply: <span style="color:#b8c0d8;">10 trillion NYX</span></span>
+      <span>Over 100 years</span>
+    </div>
+    <div style="height:1px;background:#2a2d3e;margin:10px 0;"></div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><div style="font-size:12px;color:#8b95b0;">Schedule</div><div style="font-size:12px;color:#b8c0d8;">Exponential decay</div></div><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><div style="font-size:12px;color:#8b95b0;">By year 20</div><div style="font-size:12px;color:#b8c0d8;">~65% emitted</div></div><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><div style="font-size:12px;color:#8b95b0;">By year 50</div><div style="font-size:12px;color:#b8c0d8;">~90% emitted</div></div><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><div style="font-size:12px;color:#8b95b0;">Tail emission</div><div style="font-size:12px;color:#b8c0d8;">~10% over years 50-100</div></div><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><div style="font-size:12px;color:#8b95b0;">Current rate</div><div style="font-size:12px;color:#b8c0d8;">142 NYX / block</div></div>
+  </div>
+
+  <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">MERGE MINING</div>
+  <div style="background:rgba(94,106,210,0.12);border:1px solid #5e6ad2;border-radius:8px;
+              padding:12px 14px;font-size:12px;color:#b8c0d8;line-height:1.6;">
+    NYX and TARI share XMR's RandomX proof-of-work via merge mining.
+    No extra computation. The same hash that earns XMR simultaneously
+    earns NYX and TARI at no additional CPU cost.
+  </div>
+
+</div></div></div>`];
+let cur = 0;
+function render() {
+  const tb = document.getElementById('tabBar');
+  tb.innerHTML = TABS.map((t,i) =>
+    `<div class="tab${i===cur?' active':''}" onclick="jump(${i})">${t}</div>`
+  ).join('');
+  document.getElementById('viewport').innerHTML = FRAMES[cur];
+  document.getElementById('frameLabel').textContent =
+    (cur+1) + ' / ' + FRAMES.length + ' — ' + TABS[cur];
+}
+function jump(i) { cur = i; render(); }
+function go(d) { cur = (cur + d + FRAMES.length) % FRAMES.length; render(); }
+render();
+</script>
+</body>
+</html>
