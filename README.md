@@ -112,4 +112,4 @@ cargo test --workspace
 
 ## License
 
-AGPL-3.0.  Contributions welcome.
+BSD 3-Clause.  Contributions welcome.
