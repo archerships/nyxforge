@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>NyxForge Judge Onboarding Mockup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #080a12; font-family: Inter, system-ui, sans-serif;
+          display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+  #tabs { display: flex; gap: 2px; background: #0d0f1a; padding: 8px 16px 0;
+           border-bottom: 1px solid #2a2d3e; flex-shrink: 0; overflow-x: auto; }
+  .tab { padding: 8px 16px; font-size: 12px; color: #6b7280; cursor: pointer;
+          border-radius: 6px 6px 0 0; border: 1px solid transparent;
+          border-bottom: none; user-select: none; white-space: nowrap; }
+  .tab:hover { color: #e8eaf0; background: #131524; }
+  .tab.active { color: #e8eaf0; background: #131524; border-color: #2a2d3e; }
+  #viewport { flex: 1; display: flex; align-items: flex-start; justify-content: center;
+               overflow: auto; padding: 32px; }
+  #frame-wrap { position: relative; flex-shrink: 0; }
+  #frame { position: relative; overflow: hidden; border: 1px solid #2a2d3e; }
+  #nav { display: flex; align-items: center; justify-content: space-between;
+          padding: 10px 16px; background: #0d0f1a; border-top: 1px solid #2a2d3e;
+          flex-shrink: 0; }
+  #nav button { background: #1a1d2e; color: #e8eaf0; border: 1px solid #3a3d5c;
+                 padding: 6px 20px; border-radius: 6px; font-size: 12px;
+                 cursor: pointer; font-family: inherit; }
+  #nav button:hover { background: #2a2d3e; }
+  #nav button:disabled { opacity: 0.3; cursor: default; }
+  #counter { font-size: 12px; color: #6b7280; }
+</style>
+</head><body>
+
+<div id="tabs"></div>
+<div id="viewport"><div id="frame-wrap"><div id="frame"></div></div></div>
+<div id="nav">
+  <button id="btn-prev" onclick="go(-1)">&#8592; Prev</button>
+  <span id="counter"></span>
+  <button id="btn-next" onclick="go(1)">Next &#8594;</button>
+</div>
+
+<script>
+const FRAMES = [
+  { label: `1 -- Invitation Landing`, bg: `#0d0f1a`, w: 900, h: 820, html: `
+<div style="width:900px;height:820px;overflow:hidden;background:#0d0f1a;font-family:Inter,system-ui,sans-serif;color:#e8eaf0;">
+
+  
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:14px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:#2d3068;
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:11px;font-weight:700;color:#5e6ad2;">NYX</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Judge Invitation</div>
+        
+      </div>
+    </div>
+    <div style="font-size:11px;color:#3a3d5c;">NyxForge Judge Portal</div>
+  </div>
+
+  <!-- Invitation banner -->
+  <div style="margin:18px 24px 0;background:#1a1d2e;border:1px solid #5e6ad2;border-radius:8px;
+              padding:16px 20px;display:flex;gap:16px;align-items:flex-start;">
+    <div style="width:42px;height:42px;border-radius:21px;background:#2d3068;flex-shrink:0;
+                display:flex;align-items:center;justify-content:center;
+                font-size:16px;font-weight:700;color:#5e6ad2;">ARA</div>
+    <div>
+      <div style="font-size:13px;color:#8b95b0;margin-bottom:3px;">
+        Alzheimer's Research Alliance has invited you to serve as a bounty judge.
+      </div>
+      <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Alzheimer's Cure Bounty By 2045</div>
+      <div style="font-size:12px;color:#8b95b0;margin-top:2px;">Invited by: Maria Santos, ARA Program Director</div>
+    </div>
+  </div>
+
+  <!-- Role & bounty summary -->
+  <div style="display:flex;gap:14px;margin:14px 24px 0;">
+
+    <!-- Proposed role -->
+    <div style="flex:1;background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">YOUR PROPOSED ROLE</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <img src="https://i.pravatar.cc/88?img=16" width="40" height="40"
+             style="border-radius:20px;object-fit:cover;flex-shrink:0;">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:#e8eaf0;">Dr. Sarah Chen</div>
+          <div style="font-size:12px;color:#8b95b0;">World Health Organization</div>
+          <div style="font-size:12px;color:#8b95b0;">Lead Epidemiologist, Neurological Diseases</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#b8c0d8;line-height:1.55;">
+        You will independently evaluate whether the bounty's outcome conditions were
+        satisfied. Your verdict, combined with those of 2 other judges, determines
+        whether the bounty collateral is paid out to ARA or returned to backers.
+      </div>
+    </div>
+
+    <!-- Bounty summary -->
+    <div style="flex:1;background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">BOUNTY SUMMARY</div>
+      <div style="display:flex;flex-direction:column;gap:7px;">
+        <div style="display:flex;justify-content:space-between;">
+          <span style="font-size:12px;color:#8b95b0;">Deadline</span>
+          <span style="font-size:12px;color:#e8eaf0;font-weight:600;">2045-12-31</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span style="font-size:12px;color:#8b95b0;">Judgment window</span>
+          <span style="font-size:12px;color:#e8eaf0;">90 days after deadline</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span style="font-size:12px;color:#8b95b0;">Quorum required</span>
+          <span style="font-size:12px;color:#e8eaf0;">2 of 3 judges</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span style="font-size:12px;color:#8b95b0;">Collateral at stake</span>
+          <span style="font-size:12px;color:#4ade80;font-weight:600;">14.2 XMR (growing)</span>
+        </div>
+        <div style="height:1px;background:#2a2d3e;margin:4px 0;"></div>
+        <div style="font-size:12px;color:#8b95b0;">Term</div>
+        <div style="font-size:12px;color:#b8c0d8;line-height:1.5;">
+          FDA approves a treatment reducing new Alzheimer's diagnoses by 50%
+          before 2045-12-31, verified by at least 2 of 3 bounty judges.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- What judges do -->
+  <div style="margin:14px 24px 0;background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">WHAT'S EXPECTED OF YOU</div>
+    <div style="display:flex;gap:20px;">
+      <div style="flex:1;display:flex;gap:10px;align-items:flex-start;">
+        <div style="width:28px;height:28px;border-radius:14px;background:#2d3068;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#5e6ad2;">1</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#e8eaf0;margin-bottom:2px;">Monitor the outcome</div>
+          <div style="font-size:12px;color:#8b95b0;line-height:1.5;">Track relevant FDA approvals and Cochrane reviews through the judgment period.</div>
+        </div>
+      </div><div style="flex:1;display:flex;gap:10px;align-items:flex-start;">
+        <div style="width:28px;height:28px;border-radius:14px;background:#2d3068;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#5e6ad2;">2</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#e8eaf0;margin-bottom:2px;">Submit your verdict</div>
+          <div style="font-size:12px;color:#8b95b0;line-height:1.5;">After the deadline, submit a signed verdict with supporting evidence within the 90-day window.</div>
+        </div>
+      </div><div style="flex:1;display:flex;gap:10px;align-items:flex-start;">
+        <div style="width:28px;height:28px;border-radius:14px;background:#2d3068;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#5e6ad2;">3</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#e8eaf0;margin-bottom:2px;">Stand behind it</div>
+          <div style="font-size:12px;color:#8b95b0;line-height:1.5;">Your name and judgment record are publicly visible. Disputed verdicts are reviewed by a neutral panel.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTAs -->
+  <div style="padding:18px 24px 0;display:flex;gap:12px;align-items:center;">
+    <div style="display:inline-block;padding:13px 28px;background:#4ade80;border-radius:8px;font-size:14px;font-weight:700;color:#0d0f1a;cursor:pointer;letter-spacing:0.3px;">Accept Invitation</div>
+    <div style="display:inline-block;padding:12px 27px;background:transparent;border:1px solid #2a2d3e;border-radius:8px;font-size:14px;color:#b8c0d8;cursor:pointer;">Decline</div>
+    <span style="font-size:12px;color:#8b95b0;margin-left:8px;">
+      Questions? Contact Maria Santos at ara.org
+    </span>
+  </div>
+
+</div>
+` },
+  { label: `2 -- Create Judge Profile`, bg: `#0d0f1a`, w: 900, h: 820, html: `
+<div style="width:900px;height:820px;overflow:hidden;background:#0d0f1a;font-family:Inter,system-ui,sans-serif;color:#e8eaf0;">
+
+  
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:14px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:#2d3068;
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:11px;font-weight:700;color:#5e6ad2;">NYX</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Judge Invitation</div>
+        <div style="font-size:11px;color:#8b95b0;margin-top:2px;">Alzheimer's Research Alliance</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#3a3d5c;">NyxForge Judge Portal</div>
+  </div>
+  <div style="display:flex;align-items:flex-start;padding:14px 24px 6px;"><div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:22px;height:22px;border-radius:11px;background:#4ade80;border:2px solid #4ade80;display:flex;align-items:center;justify-content:center;"><div style="width:8px;height:8px;border-radius:4px;background:#0d0f1a;"></div></div><div style="font-size:10px;color:#b8c0d8;white-space:nowrap;">Invitation</div></div><div style="flex:1;height:2px;background:#4ade80;margin-top:11px;"></div><div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:22px;height:22px;border-radius:11px;background:#5e6ad2;border:2px solid #5e6ad2;display:flex;align-items:center;justify-content:center;"></div><div style="font-size:10px;color:#e8eaf0;white-space:nowrap;">Profile</div></div><div style="flex:1;height:2px;background:#2a2d3e;margin-top:11px;"></div><div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:22px;height:22px;border-radius:11px;background:#3a3d5c;border:2px solid #3a3d5c;display:flex;align-items:center;justify-content:center;"></div><div style="font-size:10px;color:#8b95b0;white-space:nowrap;">Review</div></div><div style="flex:1;height:2px;background:#2a2d3e;margin-top:11px;"></div><div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:22px;height:22px;border-radius:11px;background:#3a3d5c;border:2px solid #3a3d5c;display:flex;align-items:center;justify-content:center;"></div><div style="font-size:10px;color:#8b95b0;white-space:nowrap;">Complete</div></div></div>
+
+  <div style="padding:0 24px;display:flex;gap:16px;">
+
+    <!-- Left: profile form -->
+    <div style="flex:1;">
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:16px;margin-bottom:12px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">YOUR PROFILE</div>
+        <div style="display:flex;gap:14px;margin-bottom:12px;">
+          <!-- Photo -->
+          <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:8px;">
+            <img src="https://i.pravatar.cc/88?img=16" width="72" height="72"
+                 style="border-radius:36px;object-fit:cover;border:2px solid #2a2d3e;">
+            <span style="font-size:11px;color:#5e6ad2;cursor:pointer;text-decoration:underline;">Upload photo</span>
+          </div>
+          <!-- Name / org -->
+          <div style="flex:1;">
+            <div style="margin-bottom:10px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Full name</div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#b8c0d8;font-family:inherit;">Dr. Sarah Chen</div></div>
+            <div style="margin-bottom:10px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Organization</div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#b8c0d8;font-family:inherit;">World Health Organization</div></div>
+          </div>
+        </div>
+        <div style="margin-bottom:10px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Role / title</div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#b8c0d8;font-family:inherit;">Lead Epidemiologist, Neurological Diseases</div></div>
+        <div style="margin-bottom:10px;">
+          <div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Bio (shown to backers)</div>
+          <div style="background:#131524;border:1px solid #5e6ad2;border-radius:6px;
+                      padding:9px 13px;font-size:13px;color:#b8c0d8;line-height:1.5;min-height:60px;">
+            20+ years in Alzheimer's epidemiology. Leads the WHO Global Dementia Observatory
+            and previously served as a consultant to the NIH National Institute on Aging.
+          </div>
+        </div>
+        <div style="margin-bottom:10px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Website</div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#b8c0d8;font-family:inherit;">who.int/dementia</div></div>
+      </div>
+
+      <!-- Judgment type -->
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:16px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">JUDGMENT METHOD</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+            <div style="width:16px;height:16px;border-radius:8px;border:2px solid #5e6ad2;
+                        background:#2d3068;flex-shrink:0;margin-top:2px;display:flex;
+                        align-items:center;justify-content:center;">
+              <div style="width:7px;height:7px;border-radius:4px;background:#5e6ad2;"></div>
+            </div>
+            <div>
+              <div style="font-size:13px;color:#e8eaf0;margin-bottom:2px;">Expert review</div>
+              <div style="font-size:12px;color:#8b95b0;line-height:1.5;">
+                I will personally review the evidence and submit a written verdict with supporting citations.
+              </div>
+            </div>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+            <div style="width:16px;height:16px;border-radius:8px;border:2px solid #3a3d5c;
+                        background:#131524;flex-shrink:0;margin-top:2px;"></div>
+            <div>
+              <div style="font-size:13px;color:#8b95b0;margin-bottom:2px;">Automated data feed</div>
+              <div style="font-size:12px;color:#8b95b0;line-height:1.5;">
+                My verdict is generated from an official data source I administer.
+                I am personally responsible for feed integrity and audit.
+              </div>
+            </div>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: keypair -->
+    <div style="width:260px;flex-shrink:0;">
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:16px;margin-bottom:12px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">YOUR SIGNING KEY</div>
+        <div style="font-size:12px;color:#8b95b0;margin-bottom:10px;line-height:1.5;">
+          A cryptographic keypair uniquely identifies you as a judge. Your verdicts
+          are signed with this key -- it cannot be forged by anyone else.
+        </div>
+        <div style="background:#1a1d2e;border:1px solid #4ade80;border-radius:6px;padding:10px 12px;margin-bottom:8px;">
+          <div style="font-size:10px;color:#4ade80;margin-bottom:4px;font-weight:700;">PUBLIC KEY (shared)</div>
+          <div style="font-family:monospace;font-size:10px;color:#b8c0d8;word-break:break-all;line-height:1.5;">
+            ed25519:4AdUndXHHZ9pfQ<br>pHMDqE5ZLqmJMEpF<br>nsMC7oJnzRPqPGEG
+          </div>
+        </div>
+        <div style="background:#1a1d2e;border:1px solid #f87171;border-radius:6px;padding:10px 12px;margin-bottom:10px;">
+          <div style="font-size:10px;color:#f87171;margin-bottom:4px;font-weight:700;">PRIVATE KEY (keep secret)</div>
+          <div style="font-family:monospace;font-size:10px;color:#8b95b0;word-break:break-all;line-height:1.5;">
+            &bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;
+            &bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div style="display:inline-block;padding:8px 18px;background:#5e6ad2;border-radius:8px;font-size:12px;font-weight:700;color:#e8eaf0;cursor:pointer;letter-spacing:0.3px;">Download keyfile</div>
+          <div style="font-size:11px;color:#fbbf24;line-height:1.5;">
+            Save this file somewhere safe. You will need it to sign verdicts.
+            NyxForge cannot recover it.
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:16px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">OR IMPORT EXISTING KEY</div>
+        <div style="font-size:12px;color:#8b95b0;margin-bottom:8px;line-height:1.5;">
+          Already have a NyxForge judge key from another bounty?
+        </div>
+        <div style="display:inline-block;padding:7px 17px;background:transparent;border:1px solid #2a2d3e;border-radius:8px;font-size:12px;color:#b8c0d8;cursor:pointer;">Import keyfile</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Next -->
+  <div style="padding:16px 24px 0;display:flex;align-items:center;justify-content:flex-end;gap:12px;">
+    <div style="display:inline-block;padding:12px 27px;background:transparent;border:1px solid #2a2d3e;border-radius:8px;font-size:14px;color:#b8c0d8;cursor:pointer;">Back</div>
+    <div style="display:inline-block;padding:13px 28px;background:#4ade80;border-radius:8px;font-size:14px;font-weight:700;color:#0d0f1a;cursor:pointer;letter-spacing:0.3px;">Continue</div>
+  </div>
+
+</div>
+` },
+  { label: `3 -- Review & Sign`, bg: `#0d0f1a`, w: 900, h: 820, html: `
+<div style="width:900px;height:820px;overflow:hidden;background:#0d0f1a;font-family:Inter,system-ui,sans-serif;color:#e8eaf0;">
+
+  
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:14px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:#2d3068;
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:11px;font-weight:700;color:#5e6ad2;">NYX</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Judge Invitation</div>
+        <div style="font-size:11px;color:#8b95b0;margin-top:2px;">Alzheimer's Research Alliance</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#3a3d5c;">NyxForge Judge Portal</div>
+  </div>
+  <div style="display:flex;align-items:flex-start;padding:14px 24px 6px;"><div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:22px;height:22px;border-radius:11px;background:#4ade80;border:2px solid #4ade80;display:flex;align-items:center;justify-content:center;"><div style="width:8px;height:8px;border-radius:4px;background:#0d0f1a;"></div></div><div style="font-size:10px;color:#b8c0d8;white-space:nowrap;">Invitation</div></div><div style="flex:1;height:2px;background:#4ade80;margin-top:11px;"></div><div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:22px;height:22px;border-radius:11px;background:#4ade80;border:2px solid #4ade80;display:flex;align-items:center;justify-content:center;"><div style="width:8px;height:8px;border-radius:4px;background:#0d0f1a;"></div></div><div style="font-size:10px;color:#b8c0d8;white-space:nowrap;">Profile</div></div><div style="flex:1;height:2px;background:#4ade80;margin-top:11px;"></div><div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:22px;height:22px;border-radius:11px;background:#5e6ad2;border:2px solid #5e6ad2;display:flex;align-items:center;justify-content:center;"></div><div style="font-size:10px;color:#e8eaf0;white-space:nowrap;">Review</div></div><div style="flex:1;height:2px;background:#2a2d3e;margin-top:11px;"></div><div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:22px;height:22px;border-radius:11px;background:#3a3d5c;border:2px solid #3a3d5c;display:flex;align-items:center;justify-content:center;"></div><div style="font-size:10px;color:#8b95b0;white-space:nowrap;">Complete</div></div></div>
+
+  <div style="padding:0 24px;display:flex;gap:16px;">
+
+    <!-- Left: bounty details -->
+    <div style="flex:1;">
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:16px;margin-bottom:12px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">BOUNTY TERMS (you are agreeing to judge these)</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+          <div style="display:flex;gap:10px;align-items:flex-start;">
+            <div style="width:18px;height:18px;border-radius:9px;border:1px solid #2a2d3e;
+                        background:#1a1d2e;flex-shrink:0;display:flex;align-items:center;
+                        justify-content:center;font-size:10px;color:#5e6ad2;">1</div>
+            <span style="font-size:13px;color:#b8c0d8;line-height:1.5;">FDA approves a treatment reducing new Alzheimer's diagnoses by 50% before 2045-12-31.</span>
+          </div><div style="display:flex;gap:10px;align-items:flex-start;">
+            <div style="width:18px;height:18px;border-radius:9px;border:1px solid #2a2d3e;
+                        background:#1a1d2e;flex-shrink:0;display:flex;align-items:center;
+                        justify-content:center;font-size:10px;color:#5e6ad2;">2</div>
+            <span style="font-size:13px;color:#b8c0d8;line-height:1.5;">Verified by at least 2 of 3 pre-approved independent bounty judges.</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:20px;">
+          <div>
+            <div style="font-size:11px;color:#8b95b0;">Deadline</div>
+            <div style="font-size:13px;font-weight:600;color:#e8eaf0;">2045-12-31</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:#8b95b0;">Judgment window</div>
+            <div style="font-size:13px;font-weight:600;color:#e8eaf0;">90 days (closes 2046-03-31)</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:#8b95b0;">Fellow judges</div>
+            <div style="font-size:13px;font-weight:600;color:#e8eaf0;">Dr. Marcus Webb, Dr. Elena Marchetti</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Responsibilities -->
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:16px;margin-bottom:12px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">JUDGE RESPONSIBILITIES</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:28px;height:28px;border-radius:14px;background:#2d3068;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#5e6ad2;">1</div>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#e8eaf0;margin-bottom:2px;">Monitor and stay informed</div>
+              <div style="font-size:12px;color:#8b95b0;line-height:1.5;">Track FDA drug approval announcements and Cochrane reviews relevant to Alzheimer's treatment from now until the 2045 deadline.</div>
+            </div>
+          </div><div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:28px;height:28px;border-radius:14px;background:#2d3068;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#5e6ad2;">2</div>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#e8eaf0;margin-bottom:2px;">Submit your verdict within the window</div>
+              <div style="font-size:12px;color:#8b95b0;line-height:1.5;">After 2045-12-31, you have 90 days to submit a signed verdict. Missing the window without notice may result in removal from future bounty panels.</div>
+            </div>
+          </div><div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:28px;height:28px;border-radius:14px;background:#2d3068;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#5e6ad2;">3</div>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#e8eaf0;margin-bottom:2px;">Provide evidence with your verdict</div>
+              <div style="font-size:12px;color:#8b95b0;line-height:1.5;">Your verdict must reference specific, verifiable sources (FDA approval number, DOI, etc.). Verdicts without evidence may be disputed.</div>
+            </div>
+          </div><div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:28px;height:28px;border-radius:14px;background:#2d3068;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#5e6ad2;">4</div>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#e8eaf0;margin-bottom:2px;">Respond to disputes if escalated</div>
+              <div style="font-size:12px;color:#8b95b0;line-height:1.5;">If your verdict is challenged, you may be asked to provide additional evidence or clarification within 30 days of the dispute notice.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: agreement -->
+    <div style="width:268px;flex-shrink:0;">
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:16px;margin-bottom:12px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">JUDGE AGREEMENT</div>
+        <div style="font-size:12px;color:#8b95b0;margin-bottom:12px;line-height:1.5;">
+          By accepting you agree to the following:
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;"><div style="width:16px;height:16px;border-radius:3px;background:#2d3068;border:2px solid #5e6ad2;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:#4ade80;">&#10003;</div><span style="font-size:13px;color:#b8c0d8;line-height:1.5;">I will submit my verdict within the 90-day judgment window.</span></div>
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;"><div style="width:16px;height:16px;border-radius:3px;background:#2d3068;border:2px solid #5e6ad2;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:#4ade80;">&#10003;</div><span style="font-size:13px;color:#b8c0d8;line-height:1.5;">My verdict will reference verifiable, publicly accessible evidence.</span></div>
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;"><div style="width:16px;height:16px;border-radius:3px;background:#2d3068;border:2px solid #5e6ad2;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:#4ade80;">&#10003;</div><span style="font-size:13px;color:#b8c0d8;line-height:1.5;">I have no undisclosed conflicts of interest with ARA, the bounty's backers, or any drug manufacturer whose products may be evaluated.</span></div>
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;"><div style="width:16px;height:16px;border-radius:3px;background:#2d3068;border:2px solid #5e6ad2;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:#4ade80;">&#10003;</div><span style="font-size:13px;color:#b8c0d8;line-height:1.5;">I understand my name, organization, and judgment record will be publicly visible to backers.</span></div>
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;"><div style="width:16px;height:16px;border-radius:3px;background:#131524;border:2px solid #3a3d5c;flex-shrink:0;"></div><span style="font-size:13px;color:#b8c0d8;line-height:1.5;">I have saved my private key and understand NyxForge cannot recover it.</span></div>
+      </div>
+
+      <div style="background:rgba(251,191,36,0.10);border:1px solid #fbbf24;border-radius:8px;padding:12px 14px;">
+        <div style="font-size:12px;color:#fbbf24;font-weight:700;margin-bottom:4px;">Before you sign</div>
+        <div style="font-size:11px;color:#8b95b0;line-height:1.5;">
+          Signing commits your judge key to this bounty on-chain.
+          This action cannot be undone. Make sure you have downloaded
+          your keyfile before continuing.
+        </div>
+      </div>
+
+      <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;">
+        <div style="display:inline-block;padding:13px 28px;background:#4ade80;border-radius:8px;font-size:14px;font-weight:700;color:#0d0f1a;cursor:pointer;letter-spacing:0.3px;">Sign & Accept</div>
+        <div style="display:inline-block;padding:12px 27px;background:transparent;border:1px solid #2a2d3e;border-radius:8px;font-size:14px;color:#b8c0d8;cursor:pointer;">Back</div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+` },
+  { label: `4 -- Setup Complete`, bg: `#0d0f1a`, w: 900, h: 760, html: `
+<div style="width:900px;height:760px;overflow:hidden;background:#0d0f1a;font-family:Inter,system-ui,sans-serif;color:#e8eaf0;">
+
+  
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:14px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:#2d3068;
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:11px;font-weight:700;color:#5e6ad2;">NYX</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Judge Invitation</div>
+        <div style="font-size:11px;color:#8b95b0;margin-top:2px;">Alzheimer's Research Alliance</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#3a3d5c;">NyxForge Judge Portal</div>
+  </div>
+  <div style="display:flex;align-items:flex-start;padding:14px 24px 6px;"><div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:22px;height:22px;border-radius:11px;background:#4ade80;border:2px solid #4ade80;display:flex;align-items:center;justify-content:center;"><div style="width:8px;height:8px;border-radius:4px;background:#0d0f1a;"></div></div><div style="font-size:10px;color:#b8c0d8;white-space:nowrap;">Invitation</div></div><div style="flex:1;height:2px;background:#4ade80;margin-top:11px;"></div><div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:22px;height:22px;border-radius:11px;background:#4ade80;border:2px solid #4ade80;display:flex;align-items:center;justify-content:center;"><div style="width:8px;height:8px;border-radius:4px;background:#0d0f1a;"></div></div><div style="font-size:10px;color:#b8c0d8;white-space:nowrap;">Profile</div></div><div style="flex:1;height:2px;background:#4ade80;margin-top:11px;"></div><div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:22px;height:22px;border-radius:11px;background:#4ade80;border:2px solid #4ade80;display:flex;align-items:center;justify-content:center;"><div style="width:8px;height:8px;border-radius:4px;background:#0d0f1a;"></div></div><div style="font-size:10px;color:#b8c0d8;white-space:nowrap;">Review</div></div><div style="flex:1;height:2px;background:#4ade80;margin-top:11px;"></div><div style="display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="width:22px;height:22px;border-radius:11px;background:#5e6ad2;border:2px solid #5e6ad2;display:flex;align-items:center;justify-content:center;"></div><div style="font-size:10px;color:#e8eaf0;white-space:nowrap;">Complete</div></div></div>
+
+  <div style="padding:10px 24px 0;display:flex;gap:16px;align-items:flex-start;">
+
+    <!-- Left: confirmation -->
+    <div style="flex:1;">
+      <div style="display:flex;flex-direction:column;align-items:center;text-align:center;
+                  padding:20px 0 16px;">
+        <div style="width:64px;height:64px;border-radius:32px;border:2px solid #4ade80;
+                    background:rgba(74,222,128,0.10);display:flex;align-items:center;
+                    justify-content:center;margin-bottom:12px;">
+          <span style="font-size:28px;font-weight:700;color:#4ade80;">&#10003;</span>
+        </div>
+        <div style="font-size:22px;font-weight:700;color:#4ade80;margin-bottom:6px;">
+          You're now a registered judge.
+        </div>
+        <div style="font-size:13px;color:#8b95b0;max-width:420px;line-height:1.6;">
+          Your commitment has been signed and recorded. Alzheimer's Research Alliance
+          has been notified. You'll receive an email when the judgment window opens
+          on 2046-01-01.
+        </div>
+      </div>
+
+      <!-- Next steps -->
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:16px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">WHAT HAPPENS NEXT</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:28px;height:28px;border-radius:14px;background:#2d3068;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#5e6ad2;">1</div>
+            <span style="font-size:13px;color:#b8c0d8;line-height:1.5;">Monitor FDA approvals and Cochrane reviews related to Alzheimer's treatment through 2045.</span>
+          </div><div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:28px;height:28px;border-radius:14px;background:#2d3068;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#5e6ad2;">2</div>
+            <span style="font-size:13px;color:#b8c0d8;line-height:1.5;">On 2046-01-01, your judgment window opens. You'll receive an email with a direct link to the verdict submission form.</span>
+          </div><div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:28px;height:28px;border-radius:14px;background:#2d3068;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#5e6ad2;">3</div>
+            <span style="font-size:13px;color:#b8c0d8;line-height:1.5;">Submit your signed verdict with evidence before 2046-03-31. The NyxForge resolution engine tallies the quorum.</span>
+          </div><div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:28px;height:28px;border-radius:14px;background:#2d3068;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#5e6ad2;">4</div>
+            <span style="font-size:13px;color:#b8c0d8;line-height:1.5;">If 2-of-3 judges confirm the terms were met, ARA receives the collateral. If not, collateral is returned to backers.</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:8px;">
+        <div style="display:inline-block;padding:13px 28px;background:#4ade80;border-radius:8px;font-size:14px;font-weight:700;color:#0d0f1a;cursor:pointer;letter-spacing:0.3px;">Go to My Judge Dashboard</div>
+        <div style="display:inline-block;padding:12px 27px;background:transparent;border:1px solid #2a2d3e;border-radius:8px;font-size:14px;color:#b8c0d8;cursor:pointer;">View Bounty Public Page</div>
+      </div>
+    </div>
+
+    <!-- Right: judge card preview -->
+    <div style="width:260px;flex-shrink:0;">
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:16px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">YOUR PUBLIC JUDGE CARD</div>
+        <div style="font-size:11px;color:#8b95b0;margin-bottom:10px;line-height:1.5;">
+          This is how you appear to backers on the bounty landing page.
+        </div>
+        <div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;padding:12px;">
+          <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:8px;">
+            <img src="https://i.pravatar.cc/88?img=16" width="40" height="40"
+                 style="border-radius:20px;flex-shrink:0;object-fit:cover;">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#e8eaf0;">Dr. Sarah Chen</div>
+              <div style="font-size:11px;color:#b8c0d8;">World Health Organization</div>
+              <div style="font-size:11px;color:#8b95b0;">Lead Epidemiologist, Neurological Diseases</div>
+            </div>
+          </div>
+          <div style="font-size:11px;color:#8b95b0;line-height:1.5;margin-bottom:8px;">
+            20+ years in Alzheimer's epidemiology. Leads the WHO Global Dementia
+            Observatory and previously served as a consultant to the NIH National
+            Institute on Aging.
+          </div>
+          <div style="display:flex;gap:14px;">
+            <span style="font-size:11px;color:#5e6ad2;text-decoration:underline;cursor:pointer;">who.int/dementia</span>
+            <span style="font-size:11px;color:#5e6ad2;text-decoration:underline;cursor:pointer;">Judgment Record: 1 bounty</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+` },
+  { label: `5 -- Judge Dashboard`, bg: `#0d0f1a`, w: 900, h: 760, html: `
+<div style="width:900px;height:760px;overflow:hidden;background:#0d0f1a;font-family:Inter,system-ui,sans-serif;color:#e8eaf0;">
+
+  
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:14px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:#2d3068;
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:11px;font-weight:700;color:#5e6ad2;">NYX</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Judge Dashboard</div>
+        <div style="font-size:11px;color:#8b95b0;margin-top:2px;">Dr. Sarah Chen</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#3a3d5c;">NyxForge Judge Portal</div>
+  </div>
+
+  <div style="padding:16px 24px 0;">
+
+    <!-- Stat row -->
+    <div style="display:flex;gap:12px;margin-bottom:16px;">
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:12px 18px;flex:1;">
+        <div style="font-size:11px;color:#8b95b0;margin-bottom:4px;">ASSIGNED BOUNTIES</div>
+        <div style="font-size:22px;font-weight:700;color:#e8eaf0;">3</div>
+      </div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:12px 18px;flex:1;">
+        <div style="font-size:11px;color:#8b95b0;margin-bottom:4px;">WINDOW OPEN</div>
+        <div style="font-size:22px;font-weight:700;color:#fbbf24;">1</div>
+      </div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:12px 18px;flex:1;">
+        <div style="font-size:11px;color:#8b95b0;margin-bottom:4px;">VERDICTS SUBMITTED</div>
+        <div style="font-size:22px;font-weight:700;color:#8b95b0;">0</div>
+      </div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:12px 18px;flex:1;">
+        <div style="font-size:11px;color:#8b95b0;margin-bottom:4px;">DISPUTES</div>
+        <div style="font-size:22px;font-weight:700;color:#8b95b0;">0</div>
+      </div>
+    </div>
+
+    <!-- Bounty table -->
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">YOUR ASSIGNED BOUNTIES</div>
+    <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead>
+          <tr style="border-bottom:1px solid #2a2d3e;">
+            <th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">BOUNTY</th><th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">DEADLINE</th><th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">METHOD</th><th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">STATUS</th><th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">JUDGMENT WINDOW</th><th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">ACTION</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+    <tr style="border-bottom:1px solid #2a2d3e;">
+      <td style="padding:11px 14px;">
+        <div style="font-size:13px;color:#e8eaf0;margin-bottom:2px;">Alzheimer's Cure Bounty By 2045</div>
+        <div style="font-size:11px;color:#8b95b0;">Alzheimer's Research Alliance</div>
+      </td>
+      <td style="padding:11px 14px;font-size:12px;color:#8b95b0;">2045-12-31</td>
+      <td style="padding:11px 14px;font-size:12px;color:#8b95b0;">Expert review</td>
+      <td style="padding:11px 14px;"><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 8px;border-radius:4px;color:#8b95b0;background:#1a1d2e;">MONITORING</span></td>
+      <td style="padding:11px 14px;font-size:11px;color:#8b95b0;">2046-01-01</td>
+      <td style="padding:11px 14px;"><span style="font-size:12px;color:#8b95b0;">Waiting for window</span></td>
+    </tr>
+    <tr style="border-bottom:1px solid #2a2d3e;">
+      <td style="padding:11px 14px;">
+        <div style="font-size:13px;color:#e8eaf0;margin-bottom:2px;">Longevity Index 2040</div>
+        <div style="font-size:11px;color:#8b95b0;">LifeSpan Foundation</div>
+      </td>
+      <td style="padding:11px 14px;font-size:12px;color:#8b95b0;">2040-06-30</td>
+      <td style="padding:11px 14px;font-size:12px;color:#8b95b0;">Expert review</td>
+      <td style="padding:11px 14px;"><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 8px;border-radius:4px;color:#8b95b0;background:#1a1d2e;">MONITORING</span></td>
+      <td style="padding:11px 14px;font-size:11px;color:#8b95b0;">2040-07-01</td>
+      <td style="padding:11px 14px;"><span style="font-size:12px;color:#8b95b0;">Waiting for window</span></td>
+    </tr>
+    <tr style="border-bottom:1px solid #2a2d3e;">
+      <td style="padding:11px 14px;">
+        <div style="font-size:13px;color:#e8eaf0;margin-bottom:2px;">WHO HALE > 80 by 2038</div>
+        <div style="font-size:11px;color:#8b95b0;">Global Health Collective</div>
+      </td>
+      <td style="padding:11px 14px;font-size:12px;color:#8b95b0;">2038-12-31</td>
+      <td style="padding:11px 14px;font-size:12px;color:#8b95b0;">Automated feed</td>
+      <td style="padding:11px 14px;"><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 8px;border-radius:4px;color:#fbbf24;background:rgba(251,191,36,0.10);">WINDOW OPEN</span></td>
+      <td style="padding:11px 14px;font-size:11px;color:#8b95b0;">Closes 2039-03-31</td>
+      <td style="padding:11px 14px;"><div style="display:inline-block;padding:8px 18px;background:#fbbf24;border-radius:8px;font-size:12px;font-weight:700;color:#0d0f1a;cursor:pointer;letter-spacing:0.3px;">Submit Verdict</div></td>
+    </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Alert for open window -->
+    <div style="margin-top:14px;background:rgba(251,191,36,0.10);border:1px solid #fbbf24;border-radius:8px;
+                padding:12px 16px;display:flex;gap:12px;align-items:flex-start;">
+      <span style="font-size:16px;color:#fbbf24;flex-shrink:0;">&#9888;</span>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#fbbf24;margin-bottom:3px;">
+          Judgment window open: WHO HALE > 80 by 2038
+        </div>
+        <div style="font-size:12px;color:#8b95b0;line-height:1.5;">
+          The judgment window for this bounty closes on 2039-03-31. Submit your verdict
+          before the deadline or the bounty will be resolved without your input.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+` },
+  { label: `6 -- Verdict Submission`, bg: `#0d0f1a`, w: 900, h: 820, html: `
+<div style="width:900px;height:820px;overflow:hidden;background:#0d0f1a;font-family:Inter,system-ui,sans-serif;color:#e8eaf0;">
+
+  
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:14px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:#2d3068;
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:11px;font-weight:700;color:#5e6ad2;">NYX</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Submit Verdict</div>
+        <div style="font-size:11px;color:#8b95b0;margin-top:2px;">WHO HALE > 80 by 2038 -- Global Health Collective</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#3a3d5c;">NyxForge Judge Portal</div>
+  </div>
+
+  <div style="padding:14px 24px 0;display:flex;gap:16px;">
+
+    <!-- Left: evidence + verdict -->
+    <div style="flex:1;">
+
+      <!-- Bounty reminder -->
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px;margin-bottom:12px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">BOUNTY TERM</div>
+        <div style="font-size:13px;color:#b8c0d8;line-height:1.5;margin-bottom:8px;">
+          Global average healthy life expectancy (HALE) exceeds 80 years according to
+          WHO GHO data before 2038-12-31.
+        </div>
+        <div style="display:flex;gap:20px;">
+          <div>
+            <div style="font-size:11px;color:#8b95b0;">Data source</div>
+            <div style="font-size:12px;color:#e8eaf0;font-family:monospace;">WHO GHO: WHOSIS_000015</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:#8b95b0;">Window closes</div>
+            <div style="font-size:12px;color:#fbbf24;font-weight:600;">2039-03-31 (62 days remaining)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data feed result (automated judge) -->
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px;margin-bottom:12px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">AUTOMATED DATA FEED RESULT</div>
+        <div style="background:#1a1d2e;border:1px solid #4ade80;border-radius:8px;
+                    padding:14px;margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span style="font-size:13px;color:#b8c0d8;">WHO GHO WHOSIS_000015 (Global, 2038)</span>
+            <span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 8px;border-radius:4px;color:#4ade80;background:rgba(74,222,128,0.10);">FETCHED</span>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:8px;">
+            <span style="font-size:32px;font-weight:700;color:#4ade80;">81.4</span>
+            <span style="font-size:16px;color:#8b95b0;">years HALE</span>
+          </div>
+          <div style="font-size:12px;color:#8b95b0;margin-top:4px;">
+            Fetched 2039-01-14 via TLS-Notary proof &nbsp;&mdash;&nbsp;
+            <span style="color:#5e6ad2;cursor:pointer;text-decoration:underline;">View proof</span>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#8b95b0;line-height:1.5;">
+          The data feed result confirms HALE = 81.4 years, which exceeds the 80-year
+          threshold. As the automated feed administrator, you are attesting to the
+          integrity of this data retrieval.
+        </div>
+      </div>
+
+      <!-- Expert addendum (optional) -->
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px;margin-bottom:12px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">ADDITIONAL NOTES (optional)</div>
+        <div style="background:#131524;border:1px solid #2a2d3e;border-radius:6px;
+                    padding:9px 13px;font-size:13px;color:#8b95b0;min-height:50px;">
+          Note any caveats, methodology changes, or alternative data sources reviewed&hellip;
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right: verdict + sign -->
+    <div style="width:260px;flex-shrink:0;">
+
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:16px;margin-bottom:12px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">YOUR VERDICT</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;
+                        background:rgba(74,222,128,0.10);border:1px solid #4ade80;
+                        border-radius:6px;padding:10px 12px;">
+            <div style="width:16px;height:16px;border-radius:8px;border:2px solid #4ade80;
+                        background:#4ade80;flex-shrink:0;display:flex;align-items:center;
+                        justify-content:center;">
+              <div style="width:7px;height:7px;border-radius:4px;background:#0d0f1a;"></div>
+            </div>
+            <span style="font-size:14px;font-weight:700;color:#4ade80;">Terms met</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;
+                        background:#1a1d2e;border:1px solid #2a2d3e;
+                        border-radius:6px;padding:10px 12px;">
+            <div style="width:16px;height:16px;border-radius:8px;border:2px solid #3a3d5c;
+                        background:#131524;flex-shrink:0;"></div>
+            <span style="font-size:14px;color:#8b95b0;">Terms not met</span>
+          </label>
+        </div>
+
+        <div style="height:1px;background:#2a2d3e;margin:0 0 10px;"></div>
+
+        <div style="font-size:11px;color:#8b95b0;margin-bottom:8px;">
+          Your verdict will be signed with:
+        </div>
+        <div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:6px;
+                    padding:8px 10px;font-family:monospace;font-size:10px;color:#5e6ad2;
+                    word-break:break-all;margin-bottom:12px;">
+          ed25519:4AdUndXHHZ9pfQpHMDqE5ZL...
+        </div>
+
+        <div style="display:inline-block;padding:13px 28px;background:#4ade80;border-radius:8px;font-size:14px;font-weight:700;color:#0d0f1a;cursor:pointer;letter-spacing:0.3px;">Sign & Submit Verdict</div>
+
+        <div style="font-size:11px;color:#8b95b0;margin-top:8px;line-height:1.5;">
+          Your verdict is final once submitted. It will be visible to all backers
+          and may be disputed within 30 days.
+        </div>
+      </div>
+
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">OTHER JUDGES</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <img src="https://i.pravatar.cc/88?img=51" width="26" height="26"
+               style="border-radius:13px;object-fit:cover;flex-shrink:0;">
+          <div style="flex:1;">
+            <div style="font-size:12px;color:#e8eaf0;">Dr. Marcus Webb</div>
+          </div>
+          <span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 8px;border-radius:4px;color:#4ade80;background:rgba(74,222,128,0.10);">SUBMITTED</span>
+        </div><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <img src="https://i.pravatar.cc/88?img=47" width="26" height="26"
+               style="border-radius:13px;object-fit:cover;flex-shrink:0;">
+          <div style="flex:1;">
+            <div style="font-size:12px;color:#e8eaf0;">Dr. Elena Marchetti</div>
+          </div>
+          <span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 8px;border-radius:4px;color:#8b95b0;background:#1a1d2e;">PENDING</span>
+        </div>
+        <div style="font-size:11px;color:#8b95b0;margin-top:4px;line-height:1.5;">
+          1 of 3 verdicts submitted. 2 required for resolution.
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+` }
+];
+let cur = 0;
+
+function render(i) {
+  cur = i;
+  const f = FRAMES[i];
+  const frame = document.getElementById('frame');
+  frame.style.width  = f.w + 'px';
+  frame.style.height = f.h + 'px';
+  frame.style.background = f.bg;
+  frame.innerHTML = f.html;
+  document.getElementById('counter').textContent = (i+1) + ' / ' + FRAMES.length + '  --  ' + f.label;
+  document.getElementById('btn-prev').disabled = (i === 0);
+  document.getElementById('btn-next').disabled = (i === FRAMES.length - 1);
+  document.querySelectorAll('.tab').forEach((t, ti) =>
+    t.classList.toggle('active', ti === i));
+}
+
+function go(d) { render(Math.max(0, Math.min(FRAMES.length-1, cur+d))); }
+
+const tabs = document.getElementById('tabs');
+FRAMES.forEach((f, i) => {
+  const t = document.createElement('div');
+  t.className = 'tab';
+  t.textContent = f.label;
+  t.onclick = () => render(i);
+  tabs.appendChild(t);
+});
+
+render(0);
+</script>
+</body></html>

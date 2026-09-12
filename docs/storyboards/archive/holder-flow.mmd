@@ -1,0 +1,24 @@
+---
+title: Bond Holder Flow
+---
+%%{init: {"fontSize": 18, "theme": "dark", "themeVariables": {"primaryColor": "#1e2030", "primaryTextColor": "#ffffff", "primaryBorderColor": "#5e6ad2", "lineColor": "#a0a8d0", "secondaryColor": "#2a2d3e", "tertiaryColor": "#131421"}, "flowchart": {"diagramPadding": 30, "nodeSpacing": 50, "rankSpacing": 60}}}%%
+flowchart TD
+    LIST([bond list dir]) --> PICK["Select .bond file"]
+    PICK --> STATUS[bond status]
+    STATUS --> STATE{"Current state?"}
+
+    STATE -->|DRAFT| ISSUE["bond issue\nlock XMR collateral\nDLEQ commitment\nPhase 4 TODO"]
+    STATE -->|ACTIVE| ACTIVE_OPT{"Action?"}
+    STATE -->|REDEEMABLE| REDEEM["bond redeem\nadaptor + s_met\nbroadcast XMR sweep\nPhase 4 TODO"]
+    STATE -->|EXPIRED| RECLAIM["bond reclaim\noracle s_fail\nXMR returned to issuer\nPhase 4 TODO"]
+    STATE -->|SETTLED| SETTLED_END([Bond settled\nfunds received])
+    STATE -->|RECLAIMED| RECLAIMED_END([Collateral returned\nto issuer])
+
+    ACTIVE_OPT -->|inspect| INSPECT["bond inspect\nshow all tables\ngoal spec, evidence,\nattestations, history"]
+    ACTIVE_OPT -->|verify| VERIFY["bond verify\nrun WASM verifier\nagainst bundled evidence\nPhase 2 TODO"]
+    ACTIVE_OPT -->|transfer| TRANSFER["bond transfer recipient\nre-encrypt scalar\nto recipient pubkey\nPhase 2 TODO"]
+    ACTIVE_OPT -->|wait| WAIT([Await oracle\nattestations])
+
+    ISSUE --> ACTIVE_END([Bond ACTIVE])
+    REDEEM --> SETTLED_END
+    RECLAIM --> RECLAIMED_END

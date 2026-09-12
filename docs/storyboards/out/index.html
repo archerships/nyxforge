@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NyxForge UI Suite</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #080a12;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: #e8eaf0;
+  min-height: 100vh;
+  padding: 40px 32px;
+}
+h1 { font-size: 22px; font-weight: 700; color: #e8eaf0; margin-bottom: 4px; }
+.subtitle { font-size: 13px; color: #8b95b0; margin-bottom: 36px; }
+.section-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 1.2px;
+  color: #5e6ad2; margin-bottom: 4px; margin-top: 28px;
+}
+.section-note {
+  font-size: 11px; color: #4b5563; margin-bottom: 12px;
+}
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
+.card {
+  background: #131524; border: 1px solid #2a2d3e; border-radius: 10px;
+  padding: 16px 18px; text-decoration: none; display: block; transition: border-color 0.15s;
+}
+.card:hover { border-color: #5e6ad2; }
+.card-tag {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.8px;
+  padding: 2px 8px; border-radius: 4px; margin-bottom: 10px; display: inline-block;
+}
+.card-v2 {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.8px;
+  padding: 2px 8px; border-radius: 4px; margin-bottom: 10px;
+  display: inline-block; margin-left: 6px;
+  background: #1a1200; color: #f59e0b;
+}
+.card-title { font-size: 14px; font-weight: 700; color: #e8eaf0; margin-bottom: 5px; }
+.card-desc { font-size: 12px; color: #8b95b0; line-height: 1.5; margin-bottom: 10px; }
+.card-frames { font-size: 11px; color: #5e6ad2; }
+.card-file { font-size: 10px; font-family: monospace; color: #3a3d5c; margin-top: 6px; }
+hr { border: none; border-top: 1px solid #2a2d3e; margin: 32px 0 0; }
+.footer { font-size: 11px; color: #3a3d5c; margin-top: 12px; }
+</style>
+</head>
+<body>
+
+<h1>NyxForge UI Suite</h1>
+<div class="subtitle">
+  Mockup index &mdash; 15 interfaces &mdash; see
+  <code style="font-family:monospace;color:#5e6ad2;">doc/05_TECH/plugin-architecture.md</code>
+  for plugin boundaries
+</div>
+
+<!-- ============================================================ -->
+<div class="section-label">CORE &mdash; nyxforge-core</div>
+<div class="section-note">Always installed. No plugin required.</div>
+<div class="grid">
+
+  <a class="card" href="bounty-portfolio-mockup.html">
+    <div class="card-tag" style="background:#1a3320;color:#4ade80;">HOLDER</div>
+    <div class="card-title">Bounty Portfolio</div>
+    <div class="card-desc">View, hold, transfer, and redeem .bounty files.
+      Bounty detail, settlement history, import.</div>
+    <div class="card-frames">7 frames</div>
+    <div class="card-file">bin/bounty-portfolio</div>
+  </a>
+
+  <a class="card" href="bounty-claim-mockup.html">
+    <div class="card-tag" style="background:#1a3320;color:#4ade80;">HOLDER</div>
+    <div class="card-title">Bounty Claim</div>
+    <div class="card-desc">File a claim, attach evidence, track judge messages,
+      and withdraw a pending claim.</div>
+    <div class="card-frames">5 frames</div>
+    <div class="card-file">bin/bounty-claim</div>
+  </a>
+
+  <a class="card" href="key-manager-mockup.html">
+    <div class="card-tag" style="background:#1a1d2e;color:#b8c0d8;">INFRA</div>
+    <div class="card-title">Key Manager</div>
+    <div class="card-desc">.nfkey vault: generate, import, export (PEM/QR),
+      and rotate with on-chain revocation.</div>
+    <div class="card-frames">5 frames</div>
+    <div class="card-file">bin/key-manager</div>
+  </a>
+
+</div>
+
+<!-- ============================================================ -->
+<div class="section-label">BOUNTY TOOLS &mdash; plugin-bounty-tools</div>
+<div class="section-note">Requires: crypto-wallet (collateral source)</div>
+<div class="grid">
+
+  <a class="card" href="bounty-wizard-mockup.html">
+    <div class="card-tag" style="background:#2d3068;color:#5e6ad2;">ISSUER</div>
+    <div class="card-title">Bounty Wizard</div>
+    <div class="card-desc">6-step bounty creation wizard: description, terms,
+      timing, collateral lock, judge selection, review.</div>
+    <div class="card-frames">6 steps</div>
+    <div class="card-file">bin/bounty-wizard</div>
+  </a>
+
+  <a class="card" href="issuer-dashboard-mockup.html">
+    <div class="card-tag" style="background:#2d3068;color:#5e6ad2;">ISSUER</div>
+    <div class="card-title">Issuer Dashboard</div>
+    <div class="card-desc">Series overview, unit inventory, claims queue, judge panel,
+      and revenue history.</div>
+    <div class="card-frames">5 frames</div>
+    <div class="card-file">bin/issuer-dashboard</div>
+  </a>
+
+</div>
+
+<!-- ============================================================ -->
+<div class="section-label">JUDGE TOOLS &mdash; plugin-judge-tools</div>
+<div class="section-note">Standalone: only requires a .nfkey signing key</div>
+<div class="grid">
+
+  <a class="card" href="bounty-judge-mockup.html">
+    <div class="card-tag" style="background:#1a1d2e;color:#b8c0d8;">JUDGE</div>
+    <div class="card-title">Judge Interface</div>
+    <div class="card-desc">Judge onboarding, case queue, evidence review,
+      and resolution submission.</div>
+    <div class="card-frames">5 frames</div>
+    <div class="card-file">bin/bounty-judge</div>
+  </a>
+
+  <a class="card" href="judge-registry-mockup.html">
+    <div class="card-tag" style="background:#1a1d2e;color:#b8c0d8;">JUDGE</div>
+    <div class="card-v2">v2+</div>
+    <div class="card-title">Judge Registry</div>
+    <div class="card-desc">Browse and rate judges, invite judges to series,
+      and register as a new judge. MVP uses direct pubkey selection.</div>
+    <div class="card-frames">5 frames</div>
+    <div class="card-file">bin/judge-registry</div>
+  </a>
+
+</div>
+
+<!-- ============================================================ -->
+<div class="section-label">CRYPTO WALLET &mdash; plugin-crypto-wallet</div>
+<div class="section-note">MVP wallet/mining support for XMR, BTC, ZEC, ETH, TARI, and NYX</div>
+<div class="grid">
+
+  <a class="card" href="nyx-wallet-mockup.html">
+    <div class="card-tag" style="background:#3d1f00;color:#ff6600;">WALLET</div>
+    <div class="card-title">NyxForge Wallet</div>
+    <div class="card-desc">XMR / TARI / NYX portfolio, coin detail, receive, send,
+      and built-in merge miner with NYX emission curve.</div>
+    <div class="card-frames">5 frames &mdash; Portfolio, Coin Detail, Receive, Send, Mining</div>
+    <div class="card-file">bin/nyx-wallet</div>
+  </a>
+
+</div>
+
+<!-- ============================================================ -->
+<div class="section-label">TRADING &mdash; plugin-trading</div>
+<div class="section-note">v2+ &mdash; Requires: crypto-wallet, node-tools</div>
+<div class="grid">
+
+  <a class="card" href="bounty-market-mockup.html">
+    <div class="card-tag" style="background:#2d3068;color:#5e6ad2;">MARKET</div>
+    <div class="card-v2">v2+</div>
+    <div class="card-title">Bounty Market</div>
+    <div class="card-desc">Read-only secondary market browser: order book,
+      price history, watchlist, and list-bounty form.</div>
+    <div class="card-frames">5 frames</div>
+    <div class="card-file">bin/bounty-market</div>
+  </a>
+
+  <a class="card" href="bounty-dex-mockup.html">
+    <div class="card-tag" style="background:#2d3068;color:#5e6ad2;">DEX</div>
+    <div class="card-v2">v2+</div>
+    <div class="card-title">Bounty DEX</div>
+    <div class="card-desc">P2P .bounty atomic swap exchange. Gossip order book,
+      PTLC atomic swap execution, Nym-routed privacy.</div>
+    <div class="card-frames">5 frames &mdash; Market, Detail, Create Listing, Swap, My Trades</div>
+    <div class="card-file">bin/bounty-dex</div>
+  </a>
+
+  <a class="card" href="bounty-auction-mockup.html">
+    <div class="card-tag" style="background:#2d3068;color:#5e6ad2;">AUCTION</div>
+    <div class="card-v2">v2+</div>
+    <div class="card-title">Bounty Auction</div>
+    <div class="card-desc">Reverse Dutch auction for batches of identical .bounty files.
+      Price descends exponentially; first movers pay more.</div>
+    <div class="card-frames">5 frames &mdash; Board, Detail, Confirm, Settlement, Create</div>
+    <div class="card-file">bin/bounty-auction</div>
+  </a>
+
+  <a class="card" href="xmr-swap-mockup.html">
+    <div class="card-tag" style="background:#3d1f00;color:#ff6600;">ON-RAMP</div>
+    <div class="card-v2">v2+</div>
+    <div class="card-title">XMR Swap (Retoswap)</div>
+    <div class="card-desc">Haveno/Retoswap integration: fiat-to-XMR via
+      PayPal, Zelle, cash, bank transfer. 2-of-3 multisig escrow.</div>
+    <div class="card-frames">5 frames &mdash; Offer Book, Take Offer, Active Trade, Complete, Create Offer</div>
+    <div class="card-file">bin/xmr-swap</div>
+  </a>
+
+</div>
+
+<!-- ============================================================ -->
+<div class="section-label">NGO &mdash; plugin-ngo</div>
+<div class="section-note">v2+ &mdash; Requires: bounty-tools, crypto-wallet</div>
+<div class="grid">
+
+  <a class="card" href="ngo-admin-mockup.html">
+    <div class="card-tag" style="background:#1a2a1a;color:#4ade80;">NGO</div>
+    <div class="card-v2">v2+</div>
+    <div class="card-title">NGO Admin</div>
+    <div class="card-desc">Accept donations via Stripe, Square, Authorize.net.
+      Auto-purchase XMR via Kraken or Onramper on configurable threshold.</div>
+    <div class="card-frames">5 frames &mdash; Dashboard, Processors, Auto-Convert, Donations, Treasury</div>
+    <div class="card-file">bin/ngo-admin</div>
+  </a>
+
+  <a class="card" href="tax-report-mockup.html">
+    <div class="card-tag" style="background:#1a2a1a;color:#4ade80;">NGO</div>
+    <div class="card-v2">v2+</div>
+    <div class="card-title">Tax Reports</div>
+    <div class="card-desc">Form 990, Schedule B, Form 8949 crypto ledger,
+      custom report generator, 501(c)(3) donor acknowledgment letters.</div>
+    <div class="card-frames">5 frames &mdash; Overview, Donations, Crypto Ledger, Generate, Receipts</div>
+    <div class="card-file">bin/tax-report</div>
+  </a>
+
+</div>
+
+<!-- ============================================================ -->
+<div class="section-label">INFRASTRUCTURE</div>
+<div class="section-note">CLI reference &mdash; all plugins</div>
+<div class="grid">
+  <a class="card" href="cli-suite-mockup.html">
+    <div class="card-tag" style="background:#0f1a0f;color:#4ade80;">CLI</div>
+    <div class="card-title">CLI Suite</div>
+    <div class="card-desc">Terminal mockups for all nyx subcommands: bounty, claim,
+      judge, key, wallet, node, dex, auction, swap, ngo, tax, config.</div>
+    <div class="card-frames">13 frames</div>
+    <div class="card-file">bin/cli-suite</div>
+  </a>
+</div>
+
+<hr>
+<div class="footer">
+  NyxForge UI Suite &mdash; all output in prj/nyxforge/doc/04_STORYBOARDS/out/ &mdash;
+  stale mockups in out/archive/ &mdash; plugin spec in doc/05_TECH/plugin-architecture.md
+</div>
+
+</body>
+</html>

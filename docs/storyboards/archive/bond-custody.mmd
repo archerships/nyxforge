@@ -1,0 +1,29 @@
+%%{init: {"fontSize": 18, "theme": "dark", "themeVariables": {"primaryColor": "#1e2030", "primaryTextColor": "#ffffff", "primaryBorderColor": "#5e6ad2", "lineColor": "#a0a8d0", "secondaryColor": "#2a2d3e", "tertiaryColor": "#131421"}}}%%
+flowchart TD
+    subgraph issuer["Issuer's Computer"]
+        DRAFT["DRAFT\nWizard writes .bond file\nNo collateral locked yet"]
+        RECLAIMED["RECLAIMED\nCollateral returned to issuer\nFile archived"]
+    end
+
+    subgraph oracle["Oracle's Computer(s)"]
+        ORACLE_REVIEW["Reviews goal spec\nSigns acceptance\nWrites accepted_at to file"]
+        ORACLE_ATTEST["Submits evidence BLOB\nSigns attestation\nWrites to attestations table"]
+    end
+
+    subgraph holder["Current Holder's Computer\n(Issuer initially; any buyer after transfer)"]
+        ACTIVE["ACTIVE\nCollateral locked on-chain\nFile + secret scalar held by owner\nTrading open"]
+        REDEEMABLE["REDEEMABLE\nOracle quorum reached\ns_met scalar published by oracle"]
+        SETTLED["SETTLED\nXMR swept to holder wallet\nFile is spent"]
+        EXPIRED["EXPIRED\nExpiry date passed\nGoal not met"]
+    end
+
+    DRAFT -->|"Issuer sends file to each oracle for review"| ORACLE_REVIEW
+    ORACLE_REVIEW -->|"Oracle returns file with acceptance signed"| DRAFT
+    DRAFT -->|"All oracles accepted\nbond issue: XMR locked on-chain"| ACTIVE
+    ACTIVE -->|"Holder sends file to oracle\nfor attestation"| ORACLE_ATTEST
+    ORACLE_ATTEST -->|"Oracle returns file with attestation written"| ACTIVE
+    ACTIVE -->|"Bilateral transfer:\nfile + scalar sent to buyer over Tor/Signal"| ACTIVE
+    ACTIVE -->|"Quorum of met attestations\ns_met published"| REDEEMABLE
+    REDEEMABLE -->|"bond redeem:\nadaptor + s_met broadcasts XMR sweep"| SETTLED
+    ACTIVE -->|"Expiry date passes\nno quorum reached"| EXPIRED
+    EXPIRED -->|"Holder returns file to issuer\n(or issuer holds own copy)"| RECLAIMED

@@ -1,0 +1,21 @@
+---
+title: Wallet "The Vault" Layout
+---
+%%{init: {"fontSize": 18, "theme": "dark", "themeVariables": {"primaryColor": "#1e2030", "primaryTextColor": "#ffffff", "primaryBorderColor": "#5e6ad2", "lineColor": "#a0a8d0", "secondaryColor": "#2a2d3e", "tertiaryColor": "#131421"}}}%%
+graph TD
+    subgraph UI["Main Wallet Window"]
+        SIDE["Sidebar\n---\n[Vault]\n[Hub]\n[Wizard]\n[Settings]"]
+        
+        subgraph CONTENT["Content Area"]
+            HEADER["Header\n[Search] [Filter] [Import .bond]"]
+            
+            subgraph GRID["Bond Grid"]
+                CARD1["Bond Card (Active)\n---\nUS Homelessness\n1.0 XMR\nDays: 1,450"]
+                CARD2["Bond Card (Redeemable)\n---\nMalaria Death Rate\n500 ZEC\n[REDEEM NOW]"]
+                CARD3["Bond Card (Draft)\n---\nPersonal Goal\n0.1 BTC\n[ISSUE]"]
+            end
+        end
+    end
+    
+    SIDE --> CONTENT
+    HEADER --> GRID

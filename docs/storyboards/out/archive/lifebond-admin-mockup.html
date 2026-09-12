@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>NyxForge NGO Admin Mockup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #080a12; font-family: Inter, system-ui, sans-serif;
+          display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+  #tabs { display: flex; gap: 2px; background: #0d0f1a; padding: 8px 16px 0;
+           border-bottom: 1px solid #2a2d3e; flex-shrink: 0; overflow-x: auto; }
+  .tab { padding: 8px 16px; font-size: 12px; color: #6b7280; cursor: pointer;
+          border-radius: 6px 6px 0 0; border: 1px solid transparent;
+          border-bottom: none; user-select: none; white-space: nowrap; }
+  .tab:hover { color: #e8eaf0; background: #131524; }
+  .tab.active { color: #e8eaf0; background: #131524; border-color: #2a2d3e; }
+  #viewport { flex: 1; display: flex; align-items: flex-start; justify-content: center;
+               overflow: auto; padding: 32px; }
+  #frame-wrap { position: relative; flex-shrink: 0; }
+  #frame { position: relative; overflow: hidden; border: 1px solid #2a2d3e; }
+  #nav { display: flex; align-items: center; justify-content: space-between;
+          padding: 10px 16px; background: #0d0f1a; border-top: 1px solid #2a2d3e;
+          flex-shrink: 0; }
+  #nav button { background: #1a1d2e; color: #e8eaf0; border: 1px solid #3a3d5c;
+                 padding: 6px 20px; border-radius: 6px; font-size: 12px;
+                 cursor: pointer; font-family: inherit; }
+  #nav button:hover { background: #2a2d3e; }
+  #nav button:disabled { opacity: 0.3; cursor: default; }
+  #counter { font-size: 12px; color: #6b7280; }
+</style>
+</head><body>
+
+<div id="tabs"></div>
+<div id="viewport"><div id="frame-wrap"><div id="frame"></div></div></div>
+<div id="nav">
+  <button id="btn-prev" onclick="go(-1)">&#8592; Prev</button>
+  <span id="counter"></span>
+  <button id="btn-next" onclick="go(1)">Next &#8594;</button>
+</div>
+
+<script>
+const FRAMES = [
+  { label: `1 -- Dashboard`, bg: `#0d0f1a`, w: 1100, h: 800, html: `
+<div style="width:1100px;height:800px;overflow:hidden;background:#0d0f1a;
+            font-family:Inter,system-ui,sans-serif;color:#e8eaf0;
+            display:flex;flex-direction:row;">
+  
+    <div style="width:196px;flex-shrink:0;background:#131524;border-right:1px solid #2a2d3e;
+                display:flex;flex-direction:column;height:100%;">
+      <div style="padding:16px 16px 12px;border-bottom:1px solid #2a2d3e;">
+        <div style="font-size:11px;font-weight:700;color:#5e6ad2;letter-spacing:1px;margin-bottom:2px;">NGO ADMIN</div>
+        <div style="font-size:13px;font-weight:700;color:#e8eaf0;">Alzheimer's Research Alliance</div>
+      </div>
+      <div style="padding:10px 0;flex:1;">
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 16px;background:#2d3068;border-left:2px solid #5e6ad2;cursor:pointer;margin-bottom:2px;"><span style="font-size:10px;color:#5e6ad2;">&#9632;</span><span style="font-size:13px;color:#e8eaf0;">Dashboard</span></div><div style="display:flex;align-items:center;gap:10px;padding:9px 16px;background:transparent;border-left:2px solid transparent;cursor:pointer;margin-bottom:2px;"><span style="font-size:10px;color:#5e6ad2;">&#9670;</span><span style="font-size:13px;color:#8b95b0;">Campaigns</span></div><div style="display:flex;align-items:center;gap:10px;padding:9px 16px;background:transparent;border-left:2px solid transparent;cursor:pointer;margin-bottom:2px;"><span style="font-size:10px;color:#5e6ad2;">&#9650;</span><span style="font-size:13px;color:#8b95b0;">Judges</span></div><div style="display:flex;align-items:center;gap:10px;padding:9px 16px;background:transparent;border-left:2px solid transparent;cursor:pointer;margin-bottom:2px;"><span style="font-size:10px;color:#5e6ad2;">&#9711;</span><span style="font-size:13px;color:#8b95b0;">Settings</span></div>
+      </div>
+      <div style="padding:12px 16px;border-top:1px solid #2a2d3e;">
+        <div style="font-size:12px;color:#8b95b0;">ara-admin@ara.org</div>
+        <div style="font-size:11px;color:#3a3d5c;margin-top:2px;cursor:pointer;">Sign out</div>
+      </div>
+    </div>
+  <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+    
+  <!-- Top bar -->
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:0 24px;height:50px;
+              display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+    <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Dashboard</div>
+    <div style="display:inline-block;padding:9px 20px;background:#4ade80;border-radius:6px;font-size:13px;font-weight:700;color:#0d0f1a;cursor:pointer;letter-spacing:0.3px;">+ New Campaign</div>
+  </div>
+
+  <div style="padding:20px 24px;overflow:auto;flex:1;">
+
+    <!-- Stat cards -->
+    <div style="display:flex;gap:12px;margin-bottom:20px;">
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:16px 20px;flex:1;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">TOTAL RAISED</div><div style="font-size:26px;font-weight:700;color:#4ade80;">$1,394</div><div style="font-size:11px;color:#8b95b0;margin-top:3px;">across all campaigns</div></div>
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:16px 20px;flex:1;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">ACTIVE BOUNTIES</div><div style="font-size:26px;font-weight:700;color:#e8eaf0;">2</div><div style="font-size:11px;color:#8b95b0;margin-top:3px;">1 draft</div></div>
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:16px 20px;flex:1;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">TOTAL BACKERS</div><div style="font-size:26px;font-weight:700;color:#e8eaf0;">49</div><div style="font-size:11px;color:#8b95b0;margin-top:3px;">+5 this week</div></div>
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:16px 20px;flex:1;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">FEES EARNED</div><div style="font-size:26px;font-weight:700;color:#e8eaf0;">$41.82</div><div style="font-size:11px;color:#8b95b0;margin-top:3px;">processing fees collected</div></div>
+    </div>
+
+    <!-- Campaign table -->
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">CAMPAIGNS</div>
+    <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead>
+          <tr style="border-bottom:1px solid #2a2d3e;">
+            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;
+                       letter-spacing:0.8px;color:#8b95b0;">CAMPAIGN</th>
+            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;
+                       letter-spacing:0.8px;color:#8b95b0;">STATUS</th>
+            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;
+                       letter-spacing:0.8px;color:#8b95b0;">RAISED</th>
+            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;
+                       letter-spacing:0.8px;color:#8b95b0;">GOAL</th>
+            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;
+                       letter-spacing:0.8px;color:#8b95b0;">BACKERS</th>
+            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;
+                       letter-spacing:0.8px;color:#8b95b0;">DEADLINE</th>
+            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;
+                       letter-spacing:0.8px;color:#8b95b0;">ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+    <tr>
+      <td style="padding:11px 14px;font-size:13px;color:#e8eaf0;">Alzheimer's Cure Bounty By 2045</td>
+      <td style="padding:11px 14px;"><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 8px;border-radius:4px;color:#4ade80;background:rgba(74,222,128,0.10);">ACTIVE</span></td>
+      <td style="padding:11px 14px;font-size:13px;color:#b8c0d8;font-family:monospace;">14.2 XMR</td>
+      <td style="padding:11px 14px;font-size:13px;color:#8b95b0;font-family:monospace;">100 XMR</td>
+      <td style="padding:11px 14px;font-size:13px;color:#8b95b0;">37</td>
+      <td style="padding:11px 14px;font-size:13px;color:#8b95b0;">2045-12-31</td>
+      <td style="padding:11px 14px;display:flex;gap:6px;">
+        <div style="display:inline-block;padding:5px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#b8c0d8;cursor:pointer;">View</div>
+        <div style="display:inline-block;padding:5px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#b8c0d8;cursor:pointer;">Edit</div>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:11px 14px;font-size:13px;color:#e8eaf0;">Longevity Index 2040</td>
+      <td style="padding:11px 14px;"><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 8px;border-radius:4px;color:#4ade80;background:rgba(74,222,128,0.10);">ACTIVE</span></td>
+      <td style="padding:11px 14px;font-size:13px;color:#b8c0d8;font-family:monospace;">3.1 XMR</td>
+      <td style="padding:11px 14px;font-size:13px;color:#8b95b0;font-family:monospace;">50 XMR</td>
+      <td style="padding:11px 14px;font-size:13px;color:#8b95b0;">12</td>
+      <td style="padding:11px 14px;font-size:13px;color:#8b95b0;">2040-06-30</td>
+      <td style="padding:11px 14px;display:flex;gap:6px;">
+        <div style="display:inline-block;padding:5px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#b8c0d8;cursor:pointer;">View</div>
+        <div style="display:inline-block;padding:5px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#b8c0d8;cursor:pointer;">Edit</div>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:11px 14px;font-size:13px;color:#e8eaf0;">Clean Water Access 2030</td>
+      <td style="padding:11px 14px;"><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 8px;border-radius:4px;color:#8b95b0;background:#1a1d2e;">DRAFT</span></td>
+      <td style="padding:11px 14px;font-size:13px;color:#b8c0d8;font-family:monospace;">--</td>
+      <td style="padding:11px 14px;font-size:13px;color:#8b95b0;font-family:monospace;">200 XMR</td>
+      <td style="padding:11px 14px;font-size:13px;color:#8b95b0;">0</td>
+      <td style="padding:11px 14px;font-size:13px;color:#8b95b0;">2030-12-31</td>
+      <td style="padding:11px 14px;display:flex;gap:6px;">
+        <div style="display:inline-block;padding:5px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#b8c0d8;cursor:pointer;">View</div>
+        <div style="display:inline-block;padding:5px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#b8c0d8;cursor:pointer;">Edit</div>
+      </td>
+    </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Recent activity -->
+    <div style="margin-top:20px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">RECENT ACTIVITY</div>
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;overflow:hidden;">
+        <div style="padding:10px 16px;border-bottom:1px solid #2a2d3e;
+                    display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:13px;color:#b8c0d8;">New backer on Alzheimer's Cure Bounty (+$50)</span>
+          <span style="font-size:11px;color:#8b95b0;">2026-04-21 09:14</span>
+        </div><div style="padding:10px 16px;border-bottom:1px solid #2a2d3e;
+                    display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:13px;color:#b8c0d8;">New backer on Alzheimer's Cure Bounty (+$100)</span>
+          <span style="font-size:11px;color:#8b95b0;">2026-04-20 17:32</span>
+        </div><div style="padding:10px 16px;border-bottom:1px solid #2a2d3e;
+                    display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:13px;color:#b8c0d8;">New backer on Longevity Index 2040 (+$20)</span>
+          <span style="font-size:11px;color:#8b95b0;">2026-04-20 11:08</span>
+        </div><div style="padding:10px 16px;border-bottom:1px solid #2a2d3e;
+                    display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:13px;color:#b8c0d8;">Clean Water Access 2030 saved as draft</span>
+          <span style="font-size:11px;color:#8b95b0;">2026-04-19 15:55</span>
+        </div><div style="padding:10px 16px;border-bottom:1px solid #2a2d3e;
+                    display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:13px;color:#b8c0d8;">Judge Dr. Elena Marchetti confirmed for Alzheimer's</span>
+          <span style="font-size:11px;color:#8b95b0;">2026-04-18 10:22</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  </div>
+</div>` },
+  { label: `2 -- Campaign Detail`, bg: `#0d0f1a`, w: 1100, h: 800, html: `
+<div style="width:1100px;height:800px;overflow:hidden;background:#0d0f1a;
+            font-family:Inter,system-ui,sans-serif;color:#e8eaf0;
+            display:flex;flex-direction:row;">
+  
+    <div style="width:196px;flex-shrink:0;background:#131524;border-right:1px solid #2a2d3e;
+                display:flex;flex-direction:column;height:100%;">
+      <div style="padding:16px 16px 12px;border-bottom:1px solid #2a2d3e;">
+        <div style="font-size:11px;font-weight:700;color:#5e6ad2;letter-spacing:1px;margin-bottom:2px;">NGO ADMIN</div>
+        <div style="font-size:13px;font-weight:700;color:#e8eaf0;">Alzheimer's Research Alliance</div>
+      </div>
+      <div style="padding:10px 0;flex:1;">
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 16px;background:transparent;border-left:2px solid transparent;cursor:pointer;margin-bottom:2px;"><span style="font-size:10px;color:#5e6ad2;">&#9632;</span><span style="font-size:13px;color:#8b95b0;">Dashboard</span></div><div style="display:flex;align-items:center;gap:10px;padding:9px 16px;background:#2d3068;border-left:2px solid #5e6ad2;cursor:pointer;margin-bottom:2px;"><span style="font-size:10px;color:#5e6ad2;">&#9670;</span><span style="font-size:13px;color:#e8eaf0;">Campaigns</span></div><div style="display:flex;align-items:center;gap:10px;padding:9px 16px;background:transparent;border-left:2px solid transparent;cursor:pointer;margin-bottom:2px;"><span style="font-size:10px;color:#5e6ad2;">&#9650;</span><span style="font-size:13px;color:#8b95b0;">Judges</span></div><div style="display:flex;align-items:center;gap:10px;padding:9px 16px;background:transparent;border-left:2px solid transparent;cursor:pointer;margin-bottom:2px;"><span style="font-size:10px;color:#5e6ad2;">&#9711;</span><span style="font-size:13px;color:#8b95b0;">Settings</span></div>
+      </div>
+      <div style="padding:12px 16px;border-top:1px solid #2a2d3e;">
+        <div style="font-size:12px;color:#8b95b0;">ara-admin@ara.org</div>
+        <div style="font-size:11px;color:#3a3d5c;margin-top:2px;cursor:pointer;">Sign out</div>
+      </div>
+    </div>
+  <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+    
+  <!-- Top bar -->
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:0 24px;height:50px;
+              display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span style="font-size:13px;color:#8b95b0;cursor:pointer;">&larr; Campaigns</span>
+      <span style="font-size:13px;color:#2a2d3e;">/</span>
+      <span style="font-size:13px;color:#e8eaf0;">Alzheimer's Cure Bounty By 2045</span>
+      <span style="margin-left:6px;"><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 8px;border-radius:4px;color:#4ade80;background:rgba(74,222,128,0.10);">ACTIVE</span></span>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <div style="display:inline-block;padding:5px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#b8c0d8;cursor:pointer;">Archive</div>
+      <div style="display:inline-block;padding:6px 14px;background:#5e6ad2;border-radius:6px;font-size:12px;font-weight:700;color:#e8eaf0;cursor:pointer;letter-spacing:0.3px;">Edit Campaign</div>
+    </div>
+  </div>
+
+  <div style="padding:20px 24px;overflow:auto;flex:1;">
+
+    <!-- Stats row -->
+    <div style="display:flex;gap:12px;margin-bottom:20px;">
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:16px 20px;flex:1;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">RAISED</div><div style="font-size:26px;font-weight:700;color:#4ade80;">14.2 XMR</div><div style="font-size:11px;color:#8b95b0;margin-top:3px;">$1,140 at current rate</div></div>
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:16px 20px;flex:1;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">GOAL</div><div style="font-size:26px;font-weight:700;color:#e8eaf0;">100 XMR</div><div style="font-size:11px;color:#8b95b0;margin-top:3px;">14.2% funded</div></div>
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:16px 20px;flex:1;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">BACKERS</div><div style="font-size:26px;font-weight:700;color:#e8eaf0;">37</div><div style="font-size:11px;color:#8b95b0;margin-top:3px;">+3 this week</div></div>
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:16px 20px;flex:1;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">FEES EARNED</div><div style="font-size:26px;font-weight:700;color:#e8eaf0;">$34.20</div><div style="font-size:11px;color:#8b95b0;margin-top:3px;">3% processing fee</div></div>
+    </div>
+
+    <!-- Progress bar -->
+    <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:16px 20px;margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:13px;color:#b8c0d8;">Funding Progress</span>
+        <span style="font-size:13px;font-weight:700;color:#e8eaf0;">14.2 / 100 XMR</span>
+      </div>
+      <div style="background:#1a1d2e;border-radius:4px;height:8px;overflow:hidden;">
+        <div style="background:#4ade80;width:14.2%;height:100%;border-radius:4px;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px;">
+        <span style="font-size:11px;color:#8b95b0;">Deadline: 2045-12-31</span>
+        <span style="font-size:11px;color:#8b95b0;">Judgment window: 90 days after deadline</span>
+      </div>
+    </div>
+
+    <!-- Two columns: backers + judges -->
+    <div style="display:flex;gap:16px;">
+
+      <!-- Backers -->
+      <div style="flex:1;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">RECENT BACKERS</div>
+        <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;overflow:hidden;">
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr style="border-bottom:1px solid #2a2d3e;">
+                <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;
+                           letter-spacing:0.8px;color:#8b95b0;">BACKER</th>
+                <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;
+                           letter-spacing:0.8px;color:#8b95b0;">AMOUNT</th>
+                <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;
+                           letter-spacing:0.8px;color:#8b95b0;">DATE</th>
+                <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;
+                           letter-spacing:0.8px;color:#8b95b0;">EXPIRY PREF</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom:1px solid #2a2d3e;">
+                <td style="padding:9px 12px;font-size:12px;color:#8b95b0;font-family:monospace;">Backer #037</td>
+                <td style="padding:9px 12px;font-size:12px;color:#e8eaf0;font-weight:600;">$100</td>
+                <td style="padding:9px 12px;font-size:12px;color:#8b95b0;">2026-04-21</td>
+                <td style="padding:9px 12px;font-size:12px;color:#8b95b0;">Return XMR</td>
+              </tr><tr style="border-bottom:1px solid #2a2d3e;">
+                <td style="padding:9px 12px;font-size:12px;color:#8b95b0;font-family:monospace;">Backer #036</td>
+                <td style="padding:9px 12px;font-size:12px;color:#e8eaf0;font-weight:600;">$50</td>
+                <td style="padding:9px 12px;font-size:12px;color:#8b95b0;">2026-04-20</td>
+                <td style="padding:9px 12px;font-size:12px;color:#8b95b0;">Return XMR</td>
+              </tr><tr style="border-bottom:1px solid #2a2d3e;">
+                <td style="padding:9px 12px;font-size:12px;color:#8b95b0;font-family:monospace;">Backer #035</td>
+                <td style="padding:9px 12px;font-size:12px;color:#e8eaf0;font-weight:600;">$200</td>
+                <td style="padding:9px 12px;font-size:12px;color:#8b95b0;">2026-04-20</td>
+                <td style="padding:9px 12px;font-size:12px;color:#8b95b0;">Gift to NGO</td>
+              </tr><tr style="border-bottom:1px solid #2a2d3e;">
+                <td style="padding:9px 12px;font-size:12px;color:#8b95b0;font-family:monospace;">Backer #034</td>
+                <td style="padding:9px 12px;font-size:12px;color:#e8eaf0;font-weight:600;">$20</td>
+                <td style="padding:9px 12px;font-size:12px;color:#8b95b0;">2026-04-19</td>
+                <td style="padding:9px 12px;font-size:12px;color:#8b95b0;">Return XMR</td>
+              </tr><tr style="border-bottom:1px solid #2a2d3e;">
+                <td style="padding:9px 12px;font-size:12px;color:#8b95b0;font-family:monospace;">Backer #033</td>
+                <td style="padding:9px 12px;font-size:12px;color:#e8eaf0;font-weight:600;">$100</td>
+                <td style="padding:9px 12px;font-size:12px;color:#8b95b0;">2026-04-18</td>
+                <td style="padding:9px 12px;font-size:12px;color:#8b95b0;">Auto-roll</td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="padding:9px 14px;font-size:12px;color:#8b95b0;border-top:1px solid #2a2d3e;">
+            Showing 5 of 37 backers &nbsp;&mdash;&nbsp;
+            <span style="color:#5e6ad2;cursor:pointer;text-decoration:underline;">Export CSV</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Judges -->
+      <div style="width:280px;flex-shrink:0;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">JUDGES</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:12px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+              <img src="https://i.pravatar.cc/88?img=16" width="32" height="32"
+                   style="border-radius:16px;flex-shrink:0;object-fit:cover;">
+              <div>
+                <div style="font-size:13px;font-weight:700;color:#e8eaf0;">Dr. Sarah Chen</div>
+                <div style="font-size:11px;color:#8b95b0;">WHO</div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:11px;color:#8b95b0;">Verdict</span>
+              <span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 8px;border-radius:4px;color:#fbbf24;background:rgba(251,191,36,0.10);">PENDING</span>
+            </div>
+          </div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:12px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+              <img src="https://i.pravatar.cc/88?img=51" width="32" height="32"
+                   style="border-radius:16px;flex-shrink:0;object-fit:cover;">
+              <div>
+                <div style="font-size:13px;font-weight:700;color:#e8eaf0;">Dr. Marcus Webb</div>
+                <div style="font-size:11px;color:#8b95b0;">FDA</div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:11px;color:#8b95b0;">Verdict</span>
+              <span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 8px;border-radius:4px;color:#fbbf24;background:rgba(251,191,36,0.10);">PENDING</span>
+            </div>
+          </div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:12px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+              <img src="https://i.pravatar.cc/88?img=47" width="32" height="32"
+                   style="border-radius:16px;flex-shrink:0;object-fit:cover;">
+              <div>
+                <div style="font-size:13px;font-weight:700;color:#e8eaf0;">Dr. Elena Marchetti</div>
+                <div style="font-size:11px;color:#8b95b0;">Cochrane</div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:11px;color:#8b95b0;">Verdict</span>
+              <span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 8px;border-radius:4px;color:#fbbf24;background:rgba(251,191,36,0.10);">PENDING</span>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:#8b95b0;line-height:1.5;">
+          Judgment window opens 2045-12-31.
+          2 of 3 verdicts required for resolution.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  </div>
+</div>` },
+  { label: `3 -- Create Campaign`, bg: `#0d0f1a`, w: 1100, h: 800, html: `
+<div style="width:1100px;height:800px;overflow:hidden;background:#0d0f1a;
+            font-family:Inter,system-ui,sans-serif;color:#e8eaf0;
+            display:flex;flex-direction:row;">
+  
+    <div style="width:196px;flex-shrink:0;background:#131524;border-right:1px solid #2a2d3e;
+                display:flex;flex-direction:column;height:100%;">
+      <div style="padding:16px 16px 12px;border-bottom:1px solid #2a2d3e;">
+        <div style="font-size:11px;font-weight:700;color:#5e6ad2;letter-spacing:1px;margin-bottom:2px;">NGO ADMIN</div>
+        <div style="font-size:13px;font-weight:700;color:#e8eaf0;">Alzheimer's Research Alliance</div>
+      </div>
+      <div style="padding:10px 0;flex:1;">
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 16px;background:transparent;border-left:2px solid transparent;cursor:pointer;margin-bottom:2px;"><span style="font-size:10px;color:#5e6ad2;">&#9632;</span><span style="font-size:13px;color:#8b95b0;">Dashboard</span></div><div style="display:flex;align-items:center;gap:10px;padding:9px 16px;background:#2d3068;border-left:2px solid #5e6ad2;cursor:pointer;margin-bottom:2px;"><span style="font-size:10px;color:#5e6ad2;">&#9670;</span><span style="font-size:13px;color:#e8eaf0;">Campaigns</span></div><div style="display:flex;align-items:center;gap:10px;padding:9px 16px;background:transparent;border-left:2px solid transparent;cursor:pointer;margin-bottom:2px;"><span style="font-size:10px;color:#5e6ad2;">&#9650;</span><span style="font-size:13px;color:#8b95b0;">Judges</span></div><div style="display:flex;align-items:center;gap:10px;padding:9px 16px;background:transparent;border-left:2px solid transparent;cursor:pointer;margin-bottom:2px;"><span style="font-size:10px;color:#5e6ad2;">&#9711;</span><span style="font-size:13px;color:#8b95b0;">Settings</span></div>
+      </div>
+      <div style="padding:12px 16px;border-top:1px solid #2a2d3e;">
+        <div style="font-size:12px;color:#8b95b0;">ara-admin@ara.org</div>
+        <div style="font-size:11px;color:#3a3d5c;margin-top:2px;cursor:pointer;">Sign out</div>
+      </div>
+    </div>
+  <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+    
+  <!-- Top bar -->
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:0 24px;height:50px;
+              display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span style="font-size:13px;color:#8b95b0;cursor:pointer;">&larr; Campaigns</span>
+      <span style="font-size:13px;color:#2a2d3e;">/</span>
+      <span style="font-size:13px;color:#e8eaf0;">New Campaign</span>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <div style="display:inline-block;padding:8px 19px;background:transparent;border:1px solid #2a2d3e;border-radius:6px;font-size:13px;color:#b8c0d8;cursor:pointer;">Save Draft</div>
+      <div style="display:inline-block;padding:9px 20px;background:#4ade80;border-radius:6px;font-size:13px;font-weight:700;color:#0d0f1a;cursor:pointer;letter-spacing:0.3px;">Publish</div>
+    </div>
+  </div>
+
+  <div style="padding:20px 24px;overflow:auto;flex:1;display:flex;gap:20px;">
+
+    <!-- Left column: main form -->
+    <div style="flex:1;">
+
+      <!-- Campaign Info -->
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:16px 20px;margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">CAMPAIGN INFO</div>
+        <div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Title</div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#b8c0d8;font-family:inherit;width:100%;box-sizing:border-box;">Alzheimer's Cure Bounty By 2045</div></div>
+        <div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Description</div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#b8c0d8;line-height:1.5;min-height:66px;">Fund the research that ends Alzheimer's disease. Your collateral is returned in full if the goal is not met by the deadline.</div></div>
+        <div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Public URL slug</div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#b8c0d8;font-family:monospace;width:100%;box-sizing:border-box;">alzheimers-cure-2045</div></div>
+      </div>
+
+      <!-- Terms -->
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:16px 20px;margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">TERMS (all must be met for payout)</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div style="flex:1;background:#1a1d2e;border:1px solid #2a2d3e;border-radius:6px;
+                        padding:9px 13px;font-size:13px;color:#b8c0d8;">FDA approves a treatment reducing new Alzheimer's diagnoses by 50% before the deadline.</div>
+            <span style="font-size:16px;color:#f87171;cursor:pointer;flex-shrink:0;">&times;</span>
+          </div><div style="display:flex;gap:8px;align-items:center;">
+            <div style="flex:1;background:#1a1d2e;border:1px solid #2a2d3e;border-radius:6px;
+                        padding:9px 13px;font-size:13px;color:#b8c0d8;">Verified by at least 2 of 3 pre-approved independent bounty judges.</div>
+            <span style="font-size:16px;color:#f87171;cursor:pointer;flex-shrink:0;">&times;</span>
+          </div>
+        </div>
+        <div style="display:inline-block;padding:5px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#b8c0d8;cursor:pointer;">+ Add Term</div>
+      </div>
+
+      <!-- Timeline & Financials -->
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:16px 20px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">TIMELINE & FINANCIALS</div>
+        <div style="display:flex;gap:12px;">
+          <div style="flex:1;"><div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Deadline</div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#b8c0d8;font-family:inherit;width:100%;box-sizing:border-box;">2045-12-31</div></div></div>
+          <div style="flex:1;"><div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Judgment window (days)</div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#b8c0d8;font-family:inherit;width:100%;box-sizing:border-box;">90</div></div></div>
+        </div>
+        <div style="display:flex;gap:12px;">
+          <div style="flex:1;"><div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Funding goal (XMR)</div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#b8c0d8;font-family:inherit;width:100%;box-sizing:border-box;">100</div></div></div>
+          <div style="flex:1;"><div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Processing fee (%)</div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#b8c0d8;font-family:inherit;width:100%;box-sizing:border-box;">3</div></div></div>
+          <div style="flex:1;"><div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Min contribution ($)</div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#b8c0d8;font-family:inherit;width:100%;box-sizing:border-box;">1</div></div></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right column: judges -->
+    <div style="width:280px;flex-shrink:0;">
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:16px;margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">JUDGES</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+          <div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;padding:10px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <img src="https://i.pravatar.cc/88?img=16" width="28" height="28"
+                   style="border-radius:14px;flex-shrink:0;object-fit:cover;">
+              <div>
+                <div style="font-size:12px;font-weight:700;color:#e8eaf0;">Dr. Sarah Chen</div>
+                <div style="font-size:11px;color:#8b95b0;">WHO</div>
+              </div>
+              <span style="margin-left:auto;font-size:15px;color:#f87171;cursor:pointer;">&times;</span>
+            </div>
+          </div><div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;padding:10px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <img src="https://i.pravatar.cc/88?img=51" width="28" height="28"
+                   style="border-radius:14px;flex-shrink:0;object-fit:cover;">
+              <div>
+                <div style="font-size:12px;font-weight:700;color:#e8eaf0;">Dr. Marcus Webb</div>
+                <div style="font-size:11px;color:#8b95b0;">FDA</div>
+              </div>
+              <span style="margin-left:auto;font-size:15px;color:#f87171;cursor:pointer;">&times;</span>
+            </div>
+          </div><div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;padding:10px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <img src="https://i.pravatar.cc/88?img=47" width="28" height="28"
+                   style="border-radius:14px;flex-shrink:0;object-fit:cover;">
+              <div>
+                <div style="font-size:12px;font-weight:700;color:#e8eaf0;">Dr. Elena Marchetti</div>
+                <div style="font-size:11px;color:#8b95b0;">Cochrane</div>
+              </div>
+              <span style="margin-left:auto;font-size:15px;color:#f87171;cursor:pointer;">&times;</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:inline-block;padding:5px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#b8c0d8;cursor:pointer;">+ Add Judge</div>
+        <div style="font-size:11px;color:#8b95b0;margin-top:8px;line-height:1.5;">
+          Minimum 3 judges required. Payout requires a majority verdict.
+        </div>
+      </div>
+
+      <!-- Preview link -->
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">SHARE</div>
+        <div style="font-size:12px;color:#8b95b0;margin-bottom:8px;">
+          Paste this link on your website or social media to start collecting backers.
+        </div>
+        <div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:6px;
+                    padding:8px 12px;font-size:11px;font-family:monospace;color:#5e6ad2;
+                    word-break:break-all;">
+          nyxforge.org/b/alzheimers-cure-2045
+        </div>
+        <div style="margin-top:8px;">
+          <div style="display:inline-block;padding:5px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#b8c0d8;cursor:pointer;">Copy link</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  </div>
+</div>` },
+  { label: `4 -- Judge Management`, bg: `#0d0f1a`, w: 1100, h: 800, html: `
+<div style="width:1100px;height:800px;overflow:hidden;background:#0d0f1a;
+            font-family:Inter,system-ui,sans-serif;color:#e8eaf0;
+            display:flex;flex-direction:row;">
+  
+    <div style="width:196px;flex-shrink:0;background:#131524;border-right:1px solid #2a2d3e;
+                display:flex;flex-direction:column;height:100%;">
+      <div style="padding:16px 16px 12px;border-bottom:1px solid #2a2d3e;">
+        <div style="font-size:11px;font-weight:700;color:#5e6ad2;letter-spacing:1px;margin-bottom:2px;">NGO ADMIN</div>
+        <div style="font-size:13px;font-weight:700;color:#e8eaf0;">Alzheimer's Research Alliance</div>
+      </div>
+      <div style="padding:10px 0;flex:1;">
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 16px;background:transparent;border-left:2px solid transparent;cursor:pointer;margin-bottom:2px;"><span style="font-size:10px;color:#5e6ad2;">&#9632;</span><span style="font-size:13px;color:#8b95b0;">Dashboard</span></div><div style="display:flex;align-items:center;gap:10px;padding:9px 16px;background:transparent;border-left:2px solid transparent;cursor:pointer;margin-bottom:2px;"><span style="font-size:10px;color:#5e6ad2;">&#9670;</span><span style="font-size:13px;color:#8b95b0;">Campaigns</span></div><div style="display:flex;align-items:center;gap:10px;padding:9px 16px;background:#2d3068;border-left:2px solid #5e6ad2;cursor:pointer;margin-bottom:2px;"><span style="font-size:10px;color:#5e6ad2;">&#9650;</span><span style="font-size:13px;color:#e8eaf0;">Judges</span></div><div style="display:flex;align-items:center;gap:10px;padding:9px 16px;background:transparent;border-left:2px solid transparent;cursor:pointer;margin-bottom:2px;"><span style="font-size:10px;color:#5e6ad2;">&#9711;</span><span style="font-size:13px;color:#8b95b0;">Settings</span></div>
+      </div>
+      <div style="padding:12px 16px;border-top:1px solid #2a2d3e;">
+        <div style="font-size:12px;color:#8b95b0;">ara-admin@ara.org</div>
+        <div style="font-size:11px;color:#3a3d5c;margin-top:2px;cursor:pointer;">Sign out</div>
+      </div>
+    </div>
+  <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+    
+  <!-- Top bar -->
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:0 24px;height:50px;
+              display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+    <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Judge Management</div>
+    <div style="display:inline-block;padding:9px 20px;background:#4ade80;border-radius:6px;font-size:13px;font-weight:700;color:#0d0f1a;cursor:pointer;letter-spacing:0.3px;">+ Invite Judge</div>
+  </div>
+
+  <div style="padding:20px 24px;overflow:auto;flex:1;">
+
+    <!-- Judge table -->
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">YOUR JUDGES</div>
+    <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;overflow:hidden;margin-bottom:20px;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead>
+          <tr style="border-bottom:1px solid #2a2d3e;">
+            <th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:700;
+                       letter-spacing:0.8px;color:#8b95b0;">JUDGE</th>
+            <th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:700;
+                       letter-spacing:0.8px;color:#8b95b0;">ORGANIZATION</th>
+            <th style="padding:9px 14px;text-align:center;font-size:10px;font-weight:700;
+                       letter-spacing:0.8px;color:#8b95b0;">CAMPAIGNS</th>
+            <th style="padding:9px 14px;text-align:center;font-size:10px;font-weight:700;
+                       letter-spacing:0.8px;color:#8b95b0;">DISPUTES / VERDICTS</th>
+            <th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:700;
+                       letter-spacing:0.8px;color:#8b95b0;">STATUS</th>
+            <th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:700;
+                       letter-spacing:0.8px;color:#8b95b0;">ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+    <tr style="border-bottom:1px solid #2a2d3e;">
+      <td style="padding:10px 14px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <img src="https://i.pravatar.cc/88?img=16" width="30" height="30"
+               style="border-radius:15px;flex-shrink:0;object-fit:cover;">
+          <div>
+            <div style="font-size:13px;color:#e8eaf0;">Dr. Sarah Chen</div>
+            <div style="font-size:11px;color:#8b95b0;">Lead Epidemiologist</div>
+          </div>
+        </div>
+      </td>
+      <td style="padding:10px 14px;font-size:12px;color:#8b95b0;">World Health Organization</td>
+      <td style="padding:10px 14px;font-size:13px;color:#b8c0d8;text-align:center;">2</td>
+      <td style="padding:10px 14px;font-size:13px;color:#b8c0d8;text-align:center;">0/0</td>
+      <td style="padding:10px 14px;"><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 8px;border-radius:4px;color:#4ade80;background:rgba(74,222,128,0.10);">ACTIVE</span></td>
+      <td style="padding:10px 14px;display:flex;gap:6px;">
+        <div style="display:inline-block;padding:5px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#b8c0d8;cursor:pointer;">View</div>
+        <div style="display:inline-block;padding:5px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#b8c0d8;cursor:pointer;">Remove</div>
+      </td>
+    </tr>
+    <tr style="border-bottom:1px solid #2a2d3e;">
+      <td style="padding:10px 14px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <img src="https://i.pravatar.cc/88?img=51" width="30" height="30"
+               style="border-radius:15px;flex-shrink:0;object-fit:cover;">
+          <div>
+            <div style="font-size:13px;color:#e8eaf0;">Dr. Marcus Webb</div>
+            <div style="font-size:11px;color:#8b95b0;">Data Feed Administrator</div>
+          </div>
+        </div>
+      </td>
+      <td style="padding:10px 14px;font-size:12px;color:#8b95b0;">FDA Office of Neuroscience</td>
+      <td style="padding:10px 14px;font-size:13px;color:#b8c0d8;text-align:center;">2</td>
+      <td style="padding:10px 14px;font-size:13px;color:#b8c0d8;text-align:center;">0/2</td>
+      <td style="padding:10px 14px;"><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 8px;border-radius:4px;color:#4ade80;background:rgba(74,222,128,0.10);">ACTIVE</span></td>
+      <td style="padding:10px 14px;display:flex;gap:6px;">
+        <div style="display:inline-block;padding:5px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#b8c0d8;cursor:pointer;">View</div>
+        <div style="display:inline-block;padding:5px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#b8c0d8;cursor:pointer;">Remove</div>
+      </td>
+    </tr>
+    <tr style="border-bottom:1px solid #2a2d3e;">
+      <td style="padding:10px 14px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <img src="https://i.pravatar.cc/88?img=47" width="30" height="30"
+               style="border-radius:15px;flex-shrink:0;object-fit:cover;">
+          <div>
+            <div style="font-size:13px;color:#e8eaf0;">Dr. Elena Marchetti</div>
+            <div style="font-size:11px;color:#8b95b0;">Systematic Review Coordinator</div>
+          </div>
+        </div>
+      </td>
+      <td style="padding:10px 14px;font-size:12px;color:#8b95b0;">Cochrane Collaboration</td>
+      <td style="padding:10px 14px;font-size:13px;color:#b8c0d8;text-align:center;">2</td>
+      <td style="padding:10px 14px;font-size:13px;color:#b8c0d8;text-align:center;">1/7</td>
+      <td style="padding:10px 14px;"><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 8px;border-radius:4px;color:#4ade80;background:rgba(74,222,128,0.10);">ACTIVE</span></td>
+      <td style="padding:10px 14px;display:flex;gap:6px;">
+        <div style="display:inline-block;padding:5px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#b8c0d8;cursor:pointer;">View</div>
+        <div style="display:inline-block;padding:5px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#b8c0d8;cursor:pointer;">Remove</div>
+      </td>
+    </tr>
+    <tr style="border-bottom:1px solid #2a2d3e;">
+      <td style="padding:10px 14px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <img src="https://i.pravatar.cc/88?img=33" width="30" height="30"
+               style="border-radius:15px;flex-shrink:0;object-fit:cover;">
+          <div>
+            <div style="font-size:13px;color:#e8eaf0;">Dr. James Okafor</div>
+            <div style="font-size:11px;color:#8b95b0;">Senior Research Scientist</div>
+          </div>
+        </div>
+      </td>
+      <td style="padding:10px 14px;font-size:12px;color:#8b95b0;">NIH National Institute</td>
+      <td style="padding:10px 14px;font-size:13px;color:#b8c0d8;text-align:center;">0</td>
+      <td style="padding:10px 14px;font-size:13px;color:#b8c0d8;text-align:center;">0/0</td>
+      <td style="padding:10px 14px;"><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 8px;border-radius:4px;color:#fbbf24;background:rgba(251,191,36,0.10);">PENDING</span></td>
+      <td style="padding:10px 14px;display:flex;gap:6px;">
+        <div style="display:inline-block;padding:5px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#b8c0d8;cursor:pointer;">View</div>
+        <div style="display:inline-block;padding:5px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#b8c0d8;cursor:pointer;">Remove</div>
+      </td>
+    </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Invite panel -->
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">INVITE A NEW JUDGE</div>
+    <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:16px 20px;">
+      <div style="display:flex;gap:12px;align-items:flex-end;">
+        <div style="flex:1;"><div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Name</div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#b8c0d8;font-family:inherit;width:100%;box-sizing:border-box;">Dr. Firstname Lastname</div></div></div>
+        <div style="flex:1;"><div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Organization</div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#b8c0d8;font-family:inherit;width:100%;box-sizing:border-box;">Institution or Agency</div></div></div>
+        <div style="flex:1;"><div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Email or NyxForge ID</div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#b8c0d8;font-family:inherit;width:100%;box-sizing:border-box;">judge@institution.org</div></div></div>
+        <div style="padding-bottom:12px;"><div style="display:inline-block;padding:9px 20px;background:#5e6ad2;border-radius:6px;font-size:13px;font-weight:700;color:#e8eaf0;cursor:pointer;letter-spacing:0.3px;">Send Invite</div></div>
+      </div>
+      <div style="font-size:11px;color:#8b95b0;line-height:1.5;margin-top:4px;">
+        The judge will receive an invitation email with instructions for creating a
+        NyxForge judge account and verifying their identity. They must accept before
+        they can be assigned to a campaign.
+      </div>
+    </div>
+
+  </div>
+
+  </div>
+</div>` }
+];
+let cur = 0;
+
+function render(i) {
+  cur = i;
+  const f = FRAMES[i];
+  const frame = document.getElementById('frame');
+  frame.style.width  = f.w + 'px';
+  frame.style.height = f.h + 'px';
+  frame.style.background = f.bg;
+  frame.innerHTML = f.html;
+  document.getElementById('counter').textContent = (i+1) + ' / ' + FRAMES.length + '  --  ' + f.label;
+  document.getElementById('btn-prev').disabled = (i === 0);
+  document.getElementById('btn-next').disabled = (i === FRAMES.length - 1);
+  document.querySelectorAll('.tab').forEach((t, ti) =>
+    t.classList.toggle('active', ti === i));
+}
+
+function go(d) { render(Math.max(0, Math.min(FRAMES.length-1, cur+d))); }
+
+const tabs = document.getElementById('tabs');
+FRAMES.forEach((f, i) => {
+  const t = document.createElement('div');
+  t.className = 'tab';
+  t.textContent = f.label;
+  t.onclick = () => render(i);
+  tabs.appendChild(t);
+});
+
+render(0);
+</script>
+</body></html>

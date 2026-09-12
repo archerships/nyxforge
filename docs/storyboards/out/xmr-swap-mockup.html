@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Retoswap &mdash; Buy XMR</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #080a12; font-family: 'Inter', system-ui, sans-serif;
+       display: flex; flex-direction: column; align-items: center;
+       min-height: 100vh; padding: 24px 16px; }
+.tab-bar { display: flex; gap: 4px; margin-bottom: 20px;
+           background: #131524; border: 1px solid #2a2d3e;
+           border-radius: 8px; padding: 4px; max-width: 960px; }
+.tab { padding: 7px 18px; border-radius: 6px; cursor: pointer;
+       font-size: 12px; color: #8b95b0; transition: all 0.15s; }
+.tab.active { background: #5e6ad2; color: #e8eaf0; font-weight: 700; }
+.tab:hover:not(.active) { color: #e8eaf0; }
+.viewport { display: flex; align-items: flex-start; width: 960px; }
+.nav { display: flex; gap: 12px; margin-top: 16px; align-items: center; }
+.nav-btn { padding: 8px 20px; border-radius: 6px; cursor: pointer;
+           font-size: 13px; background: #131524; border: 1px solid #2a2d3e;
+           color: #b8c0d8; }
+.nav-btn:hover { border-color: #5e6ad2; color: #e8eaf0; }
+.frame-label { font-size: 12px; color: #8b95b0; min-width: 140px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="tab-bar" id="tabBar"></div>
+<div class="viewport" id="viewport"></div>
+<div class="nav">
+  <div class="nav-btn" onclick="go(-1)">&larr; Prev</div>
+  <div class="frame-label" id="frameLabel"></div>
+  <div class="nav-btn" onclick="go(1)">Next &rarr;</div>
+</div>
+<script>
+const TABS   = ["Offer Book",
+"Take Offer",
+"Active Trade",
+"Complete",
+"Create Offer"];
+const FRAMES = [`<div class="frame" style="width:960px;background:#0d0f1a;border:1px solid #2a2d3e;border-radius:10px;overflow:hidden;">
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:30px;height:30px;border-radius:50%;background:#ff660022;border:2px solid #ff6600;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#ff6600;">XMR</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Retoswap</div>
+        <div style="font-size:11px;color:#8b95b0;">Buy XMR &mdash; 47 offers</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="font-size:12px;color:#8b95b0;">
+        <span style="color:#4ade80;">&#9679;</span>&nbsp; P2P network: 142 peers
+      </div>
+      <div style="font-size:12px;font-family:monospace;color:#8b95b0;">4AB...f9c2</div>
+    </div>
+  </div>
+<div style="display:flex;border-bottom:1px solid #2a2d3e;">
+  <div style="padding:12px 28px;font-size:14px;font-weight:700;color:#4ade80;
+              border-bottom:2px solid #4ade80;cursor:pointer;">Buy XMR</div>
+  <div style="padding:12px 28px;font-size:14px;color:#8b95b0;cursor:pointer;">Sell XMR</div>
+</div>
+<div style="padding:10px 16px;border-bottom:1px solid #2a2d3e;
+            display:flex;gap:24px;align-items:center;
+            background:#131524;font-size:12px;">
+  <div style="color:#8b95b0;">XMR/USD market: <span style="color:#e8eaf0;font-weight:700;">$297.60</span></div>
+  <div style="color:#8b95b0;">Offers listed: <span style="color:#e8eaf0;">47</span></div>
+  <div style="color:#8b95b0;">Active trades: <span style="color:#e8eaf0;">8</span></div>
+  <div style="margin-left:auto;">
+    <div style="display:inline-block;padding:7px 14px;background:#1a1d2e;border-radius:7px;font-size:12px;font-weight:700;color:#b8c0d8;cursor:pointer;letter-spacing:0.3px;">+ Create Offer</div>
+  </div>
+</div>
+<div style="padding:12px 16px;border-bottom:1px solid #2a2d3e;
+            display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+  <div style="font-size:12px;color:#8b95b0;margin-right:4px;">Filter:</div>
+  <div style="padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#2d3068;border:1px solid #5e6ad2;color:#e8eaf0;">All</div><div style="padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">PayPal</div><div style="padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">Zelle</div><div style="padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">Cash by Mail</div><div style="padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">Bank Transfer</div><div style="padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">Venmo</div><div style="padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">Strike</div>
+</div>
+<div style="display:grid;grid-template-columns:160px 110px 130px 130px 80px 110px;
+            gap:0;padding:8px 16px;border-bottom:1px solid #2a2d3e;
+            background:#1a1d2e;">
+  <div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">PAYMENT METHOD</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">PRICE (USD)</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">AMOUNT</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">LIMITS (USD)</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">TRADES</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;"></div>
+</div><div style="display:grid;grid-template-columns:160px 110px 130px 130px 80px 110px;gap:0;padding:11px 16px;border-bottom:1px solid #2a2d3e;background:#1a1d2e;cursor:pointer;" onmouseover="this.style.background='#1a1d2e'" onmouseout="this.style.background='#1a1d2e'"><div style="display:flex;align-items:center;"><span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:4px;color:#0070e0;background:#003087;white-space:nowrap;">PayPal</span></div><div><div style="font-size:13px;font-weight:700;color:#e8eaf0;">$301.20</div><div style="font-size:10px;color:#f87171;">+1.2% market</div></div><div style="font-size:13px;color:#e8eaf0;">3.30 XMR max</div><div style="font-size:13px;color:#8b95b0;">$50 &ndash; $300</div><div style="font-size:12px;color:#8b95b0;">84</div><div style="display:flex;align-items:center;"><div style="display:inline-block;padding:7px 14px;background:#5e6ad2;border-radius:7px;font-size:12px;font-weight:700;color:#e8eaf0;cursor:pointer;letter-spacing:0.3px;">Take Offer</div></div></div><div style="display:grid;grid-template-columns:160px 110px 130px 130px 80px 110px;gap:0;padding:11px 16px;border-bottom:1px solid #2a2d3e;background:transparent;cursor:pointer;" onmouseover="this.style.background='#1a1d2e'" onmouseout="this.style.background='transparent'"><div style="display:flex;align-items:center;"><span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:4px;color:#6c37d4;background:#4b0082;white-space:nowrap;">Zelle</span></div><div><div style="font-size:13px;font-weight:700;color:#e8eaf0;">$299.80</div><div style="font-size:10px;color:#f87171;">+0.7% market</div></div><div style="font-size:13px;color:#e8eaf0;">6.64 XMR max</div><div style="font-size:13px;color:#8b95b0;">$100 &ndash; $500</div><div style="font-size:12px;color:#8b95b0;">231</div><div style="display:flex;align-items:center;"><div style="display:inline-block;padding:7px 14px;background:#5e6ad2;border-radius:7px;font-size:12px;font-weight:700;color:#e8eaf0;cursor:pointer;letter-spacing:0.3px;">Take Offer</div></div></div><div style="display:grid;grid-template-columns:160px 110px 130px 130px 80px 110px;gap:0;padding:11px 16px;border-bottom:1px solid #2a2d3e;background:transparent;cursor:pointer;" onmouseover="this.style.background='#1a1d2e'" onmouseout="this.style.background='transparent'"><div style="display:flex;align-items:center;"><span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:4px;color:#4ade80;background:#1a3320;white-space:nowrap;">Cash by Mail</span></div><div><div style="font-size:13px;font-weight:700;color:#e8eaf0;">$295.00</div><div style="font-size:10px;color:#4ade80;">-0.9% market</div></div><div style="font-size:13px;color:#e8eaf0;">1.68 XMR max</div><div style="font-size:13px;color:#8b95b0;">$25 &ndash; $150</div><div style="font-size:12px;color:#8b95b0;">12</div><div style="display:flex;align-items:center;"><div style="display:inline-block;padding:7px 14px;background:#5e6ad2;border-radius:7px;font-size:12px;font-weight:700;color:#e8eaf0;cursor:pointer;letter-spacing:0.3px;">Take Offer</div></div></div><div style="display:grid;grid-template-columns:160px 110px 130px 130px 80px 110px;gap:0;padding:11px 16px;border-bottom:1px solid #2a2d3e;background:transparent;cursor:pointer;" onmouseover="this.style.background='#1a1d2e'" onmouseout="this.style.background='transparent'"><div style="display:flex;align-items:center;"><span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:4px;color:#3b82f6;background:#0d2233;white-space:nowrap;">Bank Transfer</span></div><div><div style="font-size:13px;font-weight:700;color:#e8eaf0;">$303.40</div><div style="font-size:10px;color:#f87171;">+1.9% market</div></div><div style="font-size:13px;color:#e8eaf0;">33.2 XMR max</div><div style="font-size:13px;color:#8b95b0;">$500 &ndash; $3,000</div><div style="font-size:12px;color:#8b95b0;">410</div><div style="display:flex;align-items:center;"><div style="display:inline-block;padding:7px 14px;background:#5e6ad2;border-radius:7px;font-size:12px;font-weight:700;color:#e8eaf0;cursor:pointer;letter-spacing:0.3px;">Take Offer</div></div></div><div style="display:grid;grid-template-columns:160px 110px 130px 130px 80px 110px;gap:0;padding:11px 16px;border-bottom:1px solid #2a2d3e;background:transparent;cursor:pointer;" onmouseover="this.style.background='#1a1d2e'" onmouseout="this.style.background='transparent'"><div style="display:flex;align-items:center;"><span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:4px;color:#008cff;background:#00487c;white-space:nowrap;">Venmo</span></div><div><div style="font-size:13px;font-weight:700;color:#e8eaf0;">$300.10</div><div style="font-size:10px;color:#f87171;">+0.7% market</div></div><div style="font-size:13px;color:#e8eaf0;">3.32 XMR max</div><div style="font-size:13px;color:#8b95b0;">$50 &ndash; $300</div><div style="font-size:12px;color:#8b95b0;">57</div><div style="display:flex;align-items:center;"><div style="display:inline-block;padding:7px 14px;background:#5e6ad2;border-radius:7px;font-size:12px;font-weight:700;color:#e8eaf0;cursor:pointer;letter-spacing:0.3px;">Take Offer</div></div></div><div style="display:grid;grid-template-columns:160px 110px 130px 130px 80px 110px;gap:0;padding:11px 16px;border-bottom:1px solid #2a2d3e;background:transparent;cursor:pointer;" onmouseover="this.style.background='#1a1d2e'" onmouseout="this.style.background='transparent'"><div style="display:flex;align-items:center;"><span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:4px;color:#f59e0b;background:#1a1a1a;white-space:nowrap;">Strike</span></div><div><div style="font-size:13px;font-weight:700;color:#e8eaf0;">$298.50</div><div style="font-size:10px;color:#f87171;">+0.2% market</div></div><div style="font-size:13px;color:#e8eaf0;">6.64 XMR max</div><div style="font-size:13px;color:#8b95b0;">$100 &ndash; $600</div><div style="font-size:12px;color:#8b95b0;">143</div><div style="display:flex;align-items:center;"><div style="display:inline-block;padding:7px 14px;background:#5e6ad2;border-radius:7px;font-size:12px;font-weight:700;color:#e8eaf0;cursor:pointer;letter-spacing:0.3px;">Take Offer</div></div></div><div style="display:grid;grid-template-columns:160px 110px 130px 130px 80px 110px;gap:0;padding:11px 16px;border-bottom:1px solid #2a2d3e;background:transparent;cursor:pointer;" onmouseover="this.style.background='#1a1d2e'" onmouseout="this.style.background='transparent'"><div style="display:flex;align-items:center;"><span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:4px;color:#4ade80;background:#1a3320;white-space:nowrap;">Cash by Mail</span></div><div><div style="font-size:13px;font-weight:700;color:#e8eaf0;">$288.00</div><div style="font-size:10px;color:#4ade80;">-3.4% market</div></div><div style="font-size:13px;color:#e8eaf0;">0.84 XMR max</div><div style="font-size:13px;color:#8b95b0;">$20 &ndash; $100</div><div style="font-size:12px;color:#8b95b0;">5</div><div style="display:flex;align-items:center;"><div style="display:inline-block;padding:7px 14px;background:#5e6ad2;border-radius:7px;font-size:12px;font-weight:700;color:#e8eaf0;cursor:pointer;letter-spacing:0.3px;">Take Offer</div></div></div><div style="display:grid;grid-template-columns:160px 110px 130px 130px 80px 110px;gap:0;padding:11px 16px;border-bottom:1px solid #2a2d3e;background:transparent;cursor:pointer;" onmouseover="this.style.background='#1a1d2e'" onmouseout="this.style.background='transparent'"><div style="display:flex;align-items:center;"><span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:4px;color:#0070e0;background:#003087;white-space:nowrap;">PayPal</span></div><div><div style="font-size:13px;font-weight:700;color:#e8eaf0;">$302.60</div><div style="font-size:10px;color:#f87171;">+1.6% market</div></div><div style="font-size:13px;color:#e8eaf0;">9.96 XMR max</div><div style="font-size:13px;color:#8b95b0;">$200 &ndash; $1,000</div><div style="font-size:12px;color:#8b95b0;">318</div><div style="display:flex;align-items:center;"><div style="display:inline-block;padding:7px 14px;background:#5e6ad2;border-radius:7px;font-size:12px;font-weight:700;color:#e8eaf0;cursor:pointer;letter-spacing:0.3px;">Take Offer</div></div></div></div>`,
+`<div class="frame" style="width:960px;background:#0d0f1a;border:1px solid #2a2d3e;border-radius:10px;overflow:hidden;">
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:30px;height:30px;border-radius:50%;background:#ff660022;border:2px solid #ff6600;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#ff6600;">XMR</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Retoswap</div>
+        <div style="font-size:11px;color:#8b95b0;">Decentralized XMR exchange</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="font-size:12px;color:#8b95b0;">
+        <span style="color:#4ade80;">&#9679;</span>&nbsp; P2P network: 142 peers
+      </div>
+      <div style="font-size:12px;font-family:monospace;color:#8b95b0;">4AB...f9c2</div>
+    </div>
+  </div>
+<div style="padding:13px 24px;border-bottom:1px solid #2a2d3e;
+            display:flex;align-items:center;gap:12px;">
+  <div style="font-size:12px;color:#5e6ad2;cursor:pointer;">&larr; Offers</div>
+  <div style="width:1px;height:16px;background:#2a2d3e;"></div>
+  <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Take Offer</div>
+</div><div style="padding:18px 24px;display:flex;gap:20px;"><div style="flex:1;min-width:0;">
+<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">OFFER TERMS</div>
+<div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;
+            padding:14px 16px;margin-bottom:16px;">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+    <span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:4px;color:#0070e0;background:#003087;white-space:nowrap;">PayPal</span>
+    <div style="font-size:13px;color:#b8c0d8;">Peer: <span style="font-family:monospace;">9F1...d8</span>
+      &nbsp;&middot;&nbsp; 84 completed trades &nbsp;&middot;&nbsp;
+      <span style="color:#4ade80;">100% completion</span></div>
+    <div style="margin-left:auto;"><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#4ade80;background:rgba(74,222,128,0.10);">ONLINE</span></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><div style="font-size:13px;color:#8b95b0;">Payment method</div><div style="font-size:13px;color:#e8eaf0;">PayPal</div></div><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><div style="font-size:13px;color:#8b95b0;">Price</div><div style="font-size:13px;color:#e8eaf0;">$301.20 / XMR (+1.2% above market)</div></div><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><div style="font-size:13px;color:#8b95b0;">Trade limits</div><div style="font-size:13px;color:#e8eaf0;">$50 &ndash; $300</div></div><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><div style="font-size:13px;color:#8b95b0;">Payment window</div><div style="font-size:13px;color:#e8eaf0;">60 minutes after trade opens</div></div><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><div style="font-size:13px;color:#8b95b0;">Maker account</div><div style="font-size:13px;color:#e8eaf0;">PayPal account verified >6 months</div></div>
+</div>
+<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">TRADE AMOUNT</div>
+<div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;
+            padding:14px 16px;margin-bottom:16px;">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px;">
+    <div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">You send (USD)</div><div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#8b95b0;font-family:inherit;">$150.00</div><div style="font-size:11px;color:#8b95b0;margin-top:4px;">Min $50 &bull; Max $300</div></div>
+    <div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">You receive (XMR)</div><div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#8b95b0;font-family:inherit;">0.4982 XMR</div><div style="font-size:11px;color:#8b95b0;margin-top:4px;">At $301.20 / XMR</div></div>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <div style="padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">$50</div><div style="padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">$100</div><div style="padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">$150</div><div style="padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">$200</div><div style="padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">$300 MAX</div>
+  </div>
+</div>
+<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">SECURITY DEPOSITS</div>
+<div style="background:rgba(251,191,36,0.10);border:1px solid #fbbf24;border-radius:8px;
+            padding:13px 16px;margin-bottom:16px;">
+  <div style="font-size:13px;color:#b8c0d8;margin-bottom:10px;line-height:1.6;">
+    Both parties lock XMR deposits into a 2-of-3 multisig before trade begins.
+    Deposits are returned when the trade completes. They are only at risk if
+    you fail to follow through.
+  </div>
+  <div style="display:flex;justify-content:space-between;margin-bottom:7px;"><div style="font-size:13px;color:#8b95b0;">Your security deposit (15%)</div><div style="font-size:13px;color:#fbbf24;font-weight:700;">0.0747 XMR  (&asymp; $22.50)</div></div><div style="display:flex;justify-content:space-between;margin-bottom:7px;"><div style="font-size:13px;color:#8b95b0;">Maker security deposit</div><div style="font-size:13px;color:#fbbf24;font-weight:700;">0.0747 XMR  (&asymp; $22.50)</div></div><div style="display:flex;justify-content:space-between;margin-bottom:7px;"><div style="font-size:13px;color:#8b95b0;">Trade amount (held in escrow)</div><div style="font-size:13px;color:#fbbf24;font-weight:700;">0.4982 XMR  (&asymp; $150.00)</div></div><div style="display:flex;justify-content:space-between;margin-bottom:7px;"><div style="font-size:13px;color:#8b95b0;">Total XMR you must have ready</div><div style="font-size:13px;color:#fbbf24;font-weight:700;">0.5729 XMR</div></div>
+</div>
+<div style="background:rgba(94,106,210,0.12);border:1px solid #5e6ad2;border-radius:8px;
+            padding:11px 14px;margin-bottom:16px;font-size:12px;
+            color:#b8c0d8;line-height:1.5;">
+  If the trade stalls or either party misbehaves, either side can open a
+  dispute. A Retoswap arbitrator holds the third multisig key and can
+  release funds to the honest party after reviewing evidence.
+</div><div style="display:flex;gap:10px;"><div style="display:inline-block;padding:13px 28px;background:#4ade80;border-radius:7px;font-size:14px;font-weight:700;color:#0d0f1a;cursor:pointer;letter-spacing:0.3px;">Confirm &amp; Lock Deposits</div>&nbsp;&nbsp;<div style="display:inline-block;padding:12px 27px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:14px;color:#b8c0d8;cursor:pointer;">Cancel</div></div></div><div style="width:250px;flex-shrink:0;"><div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">TRADE STEPS</div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:13px 14px;"><div style="display:flex;gap:10px;margin-bottom:12px;"><div style="width:22px;height:22px;border-radius:50%;background:#2d3068;border:1px solid #5e6ad2;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#5e6ad2;flex-shrink:0;">1</div><div style="font-size:12px;color:#b8c0d8;line-height:1.5;">Both parties lock XMR deposits and the trade amount into 2-of-3 multisig.</div></div><div style="display:flex;gap:10px;margin-bottom:12px;"><div style="width:22px;height:22px;border-radius:50%;background:#2d3068;border:1px solid #5e6ad2;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#5e6ad2;flex-shrink:0;">2</div><div style="font-size:12px;color:#b8c0d8;line-height:1.5;">You send $150 to the maker via PayPal within 60 minutes.</div></div><div style="display:flex;gap:10px;margin-bottom:12px;"><div style="width:22px;height:22px;border-radius:50%;background:#2d3068;border:1px solid #5e6ad2;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#5e6ad2;flex-shrink:0;">3</div><div style="font-size:12px;color:#b8c0d8;line-height:1.5;">You click "Payment Sent."</div></div><div style="display:flex;gap:10px;margin-bottom:12px;"><div style="width:22px;height:22px;border-radius:50%;background:#2d3068;border:1px solid #5e6ad2;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#5e6ad2;flex-shrink:0;">4</div><div style="font-size:12px;color:#b8c0d8;line-height:1.5;">Maker confirms receipt and releases XMR from multisig.</div></div><div style="display:flex;gap:10px;margin-bottom:12px;"><div style="width:22px;height:22px;border-radius:50%;background:#2d3068;border:1px solid #5e6ad2;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#5e6ad2;flex-shrink:0;">5</div><div style="font-size:12px;color:#b8c0d8;line-height:1.5;">XMR arrives in your wallet. Deposits returned to both.</div></div></div></div></div></div>`,
+`<div class="frame" style="width:960px;background:#0d0f1a;border:1px solid #2a2d3e;border-radius:10px;overflow:hidden;">
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:30px;height:30px;border-radius:50%;background:#ff660022;border:2px solid #ff6600;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#ff6600;">XMR</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Retoswap</div>
+        <div style="font-size:11px;color:#8b95b0;">Decentralized XMR exchange</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="font-size:12px;color:#8b95b0;">
+        <span style="color:#4ade80;">&#9679;</span>&nbsp; P2P network: 142 peers
+      </div>
+      <div style="font-size:12px;font-family:monospace;color:#8b95b0;">4AB...f9c2</div>
+    </div>
+  </div>
+<div style="padding:13px 24px;border-bottom:1px solid #2a2d3e;
+            display:flex;align-items:center;justify-content:space-between;">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Active Trade</div>
+    <div style="font-size:12px;font-family:monospace;color:#8b95b0;">
+      #trade-4a3f...c12e</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div style="font-size:13px;color:#fbbf24;">Payment window: 47:12 remaining</div>
+    <div style="display:inline-block;padding:6px 13px;background:transparent;border:1px solid #f87171;border-radius:7px;font-size:12px;color:#f87171;cursor:pointer;">Open Dispute</div>
+  </div>
+</div><div style="padding:18px 24px;">
+<div style="display:flex;align-items:center;gap:0;margin-bottom:24px;">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:30px;height:30px;border-radius:50%;background:#2d3068;border:2px solid #5e6ad2;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#5e6ad2;">&#10003;</div><div style="font-size:11px;color:#b8c0d8;white-space:nowrap;">Deposits locked</div></div>
+  <div style="flex:1;height:2px;background:#5e6ad2;align-self:flex-start;margin-top:14px;"></div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:30px;height:30px;border-radius:50%;background:#2d3068;border:2px solid #5e6ad2;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#e8eaf0;">2</div><div style="font-size:11px;color:#e8eaf0;white-space:nowrap;">Send payment</div></div>
+  <div style="flex:1;height:2px;background:#3a3d5c;align-self:flex-start;margin-top:14px;"></div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:30px;height:30px;border-radius:50%;background:#1a1d2e;border:2px solid #3a3d5c;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#8b95b0;">3</div><div style="font-size:11px;color:#8b95b0;white-space:nowrap;">Confirm sent</div></div>
+  <div style="flex:1;height:2px;background:#3a3d5c;align-self:flex-start;margin-top:14px;"></div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:30px;height:30px;border-radius:50%;background:#1a1d2e;border:2px solid #3a3d5c;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#8b95b0;">4</div><div style="font-size:11px;color:#8b95b0;white-space:nowrap;">Maker confirms</div></div>
+  <div style="flex:1;height:2px;background:#3a3d5c;align-self:flex-start;margin-top:14px;"></div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:30px;height:30px;border-radius:50%;background:#1a1d2e;border:2px solid #3a3d5c;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#8b95b0;">5</div><div style="font-size:11px;color:#8b95b0;white-space:nowrap;">XMR released</div></div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
+  <div style="background:rgba(74,222,128,0.10);border:1px solid #4ade80;border-radius:8px;
+              padding:13px 16px;">
+    <div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">IN MULTISIG ESCROW</div>
+    <div style="font-size:20px;font-weight:700;color:#e8eaf0;">0.5729 XMR</div>
+    <div style="font-size:12px;color:#8b95b0;margin-top:4px;">
+      0.4982 trade + 0.0747 your deposit</div>
+    <span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#4ade80;background:rgba(74,222,128,0.10);">LOCKED</span>
+  </div>
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;
+              padding:13px 16px;">
+    <div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">TRADE SUMMARY</div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><div style="font-size:12px;color:#8b95b0;">You send</div><div style="font-size:12px;color:#e8eaf0;">$150.00 USD</div></div><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><div style="font-size:12px;color:#8b95b0;">You receive</div><div style="font-size:12px;color:#e8eaf0;">0.4982 XMR</div></div><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><div style="font-size:12px;color:#8b95b0;">Rate</div><div style="font-size:12px;color:#e8eaf0;">$301.20 / XMR</div></div><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><div style="font-size:12px;color:#8b95b0;">Via</div><div style="font-size:12px;color:#e8eaf0;">PayPal</div></div><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><div style="font-size:12px;color:#8b95b0;">Peer</div><div style="font-size:12px;color:#e8eaf0;">9F1...d8</div></div>
+  </div>
+</div>
+<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">PAYMENT INSTRUCTIONS</div>
+<div style="background:#2d3068;border:1px solid #5e6ad2;border-radius:8px;
+            padding:16px 18px;margin-bottom:16px;">
+  <div style="font-size:14px;font-weight:700;color:#e8eaf0;margin-bottom:12px;">
+    Send $150.00 via PayPal</div>
+  <div style="display:flex;justify-content:space-between;margin-bottom:10px;"><div style="font-size:13px;color:#8b95b0;">PayPal account</div><div style="display:flex;align-items:center;gap:8px;"><div style="font-size:13px;color:#e8eaf0;font-family:monospace;">trader@example.com</div><div style="font-size:11px;color:#5e6ad2;cursor:pointer;">copy</div></div></div><div style="display:flex;justify-content:space-between;margin-bottom:10px;"><div style="font-size:13px;color:#8b95b0;">Amount</div><div style="display:flex;align-items:center;gap:8px;"><div style="font-size:13px;color:#e8eaf0;font-family:inherit;">$150.00</div></div></div><div style="display:flex;justify-content:space-between;margin-bottom:10px;"><div style="font-size:13px;color:#8b95b0;">Reference</div><div style="display:flex;align-items:center;gap:8px;"><div style="font-size:13px;color:#e8eaf0;font-family:monospace;">XMR-4a3f</div><div style="font-size:11px;color:#5e6ad2;cursor:pointer;">copy</div></div></div><div style="display:flex;justify-content:space-between;margin-bottom:10px;"><div style="font-size:13px;color:#8b95b0;">Note</div><div style="display:flex;align-items:center;gap:8px;"><div style="font-size:13px;color:#e8eaf0;font-family:inherit;">Goods and services only</div></div></div>
+  <div style="background:rgba(251,191,36,0.10);border:1px solid #fbbf24;border-radius:6px;
+              padding:10px 12px;margin-top:4px;font-size:12px;
+              color:#b8c0d8;line-height:1.5;">
+    Do NOT include any reference to cryptocurrency, XMR, or Retoswap
+    in the PayPal note. Send as goods and services &mdash; not friends &amp; family.
+  </div>
+</div>
+<div style="display:flex;gap:10px;align-items:center;">
+  <div style="display:inline-block;padding:13px 28px;background:#4ade80;border-radius:7px;font-size:14px;font-weight:700;color:#0d0f1a;cursor:pointer;letter-spacing:0.3px;">I Have Sent the Payment</div>
+  <div style="font-size:12px;color:#8b95b0;line-height:1.4;">
+    Only click after you have actually sent $150.00 via PayPal.
+    This starts the confirmation timer for the maker.
+  </div>
+</div></div></div>`,
+`<div class="frame" style="width:960px;background:#0d0f1a;border:1px solid #2a2d3e;border-radius:10px;overflow:hidden;">
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:30px;height:30px;border-radius:50%;background:#ff660022;border:2px solid #ff6600;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#ff6600;">XMR</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Retoswap</div>
+        <div style="font-size:11px;color:#8b95b0;">Decentralized XMR exchange</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="font-size:12px;color:#8b95b0;">
+        <span style="color:#4ade80;">&#9679;</span>&nbsp; P2P network: 142 peers
+      </div>
+      <div style="font-size:12px;font-family:monospace;color:#8b95b0;">4AB...f9c2</div>
+    </div>
+  </div>
+<div style="padding:13px 24px;border-bottom:1px solid #2a2d3e;
+            display:flex;align-items:center;gap:12px;">
+  <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Trade Complete</div>
+  <div style="margin-left:auto;"><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#4ade80;background:rgba(74,222,128,0.10);">SUCCESS</span></div>
+</div><div style="padding:18px 24px;display:flex;gap:20px;"><div style="flex:1;min-width:0;">
+<div style="background:rgba(74,222,128,0.10);border:1px solid #4ade80;border-radius:10px;
+            padding:22px 24px;margin-bottom:18px;display:flex;align-items:center;gap:20px;">
+  <div style="width:52px;height:52px;border-radius:50%;background:#4ade80;
+              display:flex;align-items:center;justify-content:center;
+              font-size:24px;color:#0d0f1a;flex-shrink:0;">&#10003;</div>
+  <div>
+    <div style="font-size:28px;font-weight:700;color:#e8eaf0;margin-bottom:4px;">
+      +0.4982 XMR received</div>
+    <div style="font-size:13px;color:#8b95b0;">
+      Maker confirmed your PayPal payment and released the XMR from escrow.</div>
+  </div>
+</div>
+<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">TRADE RECEIPT</div>
+<div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;
+            padding:14px 16px;margin-bottom:16px;">
+  <div style="display:flex;justify-content:space-between;margin-bottom:9px;"><div style="font-size:13px;color:#8b95b0;">Paid</div><div style="font-size:13px;color:#e8eaf0;font-family:inherit;">$150.00 USD via PayPal</div></div><div style="display:flex;justify-content:space-between;margin-bottom:9px;"><div style="font-size:13px;color:#8b95b0;">Received</div><div style="font-size:13px;color:#4ade80;font-family:inherit;">0.4982 XMR</div></div><div style="display:flex;justify-content:space-between;margin-bottom:9px;"><div style="font-size:13px;color:#8b95b0;">Rate</div><div style="font-size:13px;color:#b8c0d8;font-family:inherit;">$301.20 / XMR</div></div><div style="display:flex;justify-content:space-between;margin-bottom:9px;"><div style="font-size:13px;color:#8b95b0;">Your deposit back</div><div style="font-size:13px;color:#b8c0d8;font-family:inherit;">0.0747 XMR returned</div></div><div style="display:flex;justify-content:space-between;margin-bottom:9px;"><div style="font-size:13px;color:#8b95b0;">Trade ID</div><div style="font-size:13px;color:#8b95b0;font-family:monospace;">#trade-4a3f...c12e</div></div><div style="display:flex;justify-content:space-between;margin-bottom:9px;"><div style="font-size:13px;color:#8b95b0;">Peer</div><div style="font-size:13px;color:#8b95b0;font-family:monospace;">9F1...d8</div></div><div style="display:flex;justify-content:space-between;margin-bottom:9px;"><div style="font-size:13px;color:#8b95b0;">Duration</div><div style="font-size:13px;color:#b8c0d8;font-family:inherit;">18 min 34 sec</div></div>
+</div>
+<div style="background:rgba(94,106,210,0.12);border:1px solid #5e6ad2;border-radius:8px;
+            padding:12px 14px;margin-bottom:16px;display:flex;justify-content:space-between;
+            align-items:center;">
+  <div style="font-size:13px;color:#b8c0d8;">Security deposit returned</div>
+  <div style="font-size:14px;font-weight:700;color:#5e6ad2;">+0.0747 XMR</div>
+</div><div style="display:flex;gap:10px;"><div style="display:inline-block;padding:13px 28px;background:#5e6ad2;border-radius:7px;font-size:14px;font-weight:700;color:#e8eaf0;cursor:pointer;letter-spacing:0.3px;">Buy More XMR</div>&nbsp;&nbsp;<div style="display:inline-block;padding:12px 27px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:14px;color:#b8c0d8;cursor:pointer;">Back to Offers</div></div></div><div style="width:240px;flex-shrink:0;"><div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">WALLET BALANCE</div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:13px 16px;margin-bottom:14px;"><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><div style="font-size:13px;color:#8b95b0;">XMR available</div><div style="font-size:13px;color:#4ade80;font-weight:700;">13.696 XMR</div></div><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><div style="font-size:13px;color:#8b95b0;">  Previous</div><div style="font-size:13px;color:#8b95b0;font-weight:400;">13.198 XMR</div></div><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><div style="font-size:13px;color:#8b95b0;">  + received</div><div style="font-size:13px;color:#4ade80;font-weight:400;">+0.4982 XMR</div></div><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><div style="font-size:13px;color:#8b95b0;">  + deposit</div><div style="font-size:13px;color:#4ade80;font-weight:400;">+0.0747 XMR</div></div></div><div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">RATE YOUR PEER</div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:13px 14px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:10px;">How did the trade go with 9F1...d8?</div><div style="display:flex;gap:8px;"><div style="display:inline-block;padding:7px 14px;background:#4ade80;border-radius:7px;font-size:12px;font-weight:700;color:#0d0f1a;cursor:pointer;letter-spacing:0.3px;">Positive</div><div style="display:inline-block;padding:7px 14px;background:#f87171;border-radius:7px;font-size:12px;font-weight:700;color:#e8eaf0;cursor:pointer;letter-spacing:0.3px;">Negative</div></div></div></div></div></div>`,
+`<div class="frame" style="width:960px;background:#0d0f1a;border:1px solid #2a2d3e;border-radius:10px;overflow:hidden;">
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:30px;height:30px;border-radius:50%;background:#ff660022;border:2px solid #ff6600;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#ff6600;">XMR</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Retoswap</div>
+        <div style="font-size:11px;color:#8b95b0;">Decentralized XMR exchange</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="font-size:12px;color:#8b95b0;">
+        <span style="color:#4ade80;">&#9679;</span>&nbsp; P2P network: 142 peers
+      </div>
+      <div style="font-size:12px;font-family:monospace;color:#8b95b0;">4AB...f9c2</div>
+    </div>
+  </div>
+<div style="padding:13px 24px;border-bottom:1px solid #2a2d3e;
+            display:flex;align-items:center;gap:12px;">
+  <div style="font-size:12px;color:#5e6ad2;cursor:pointer;">&larr; Offers</div>
+  <div style="width:1px;height:16px;background:#2a2d3e;"></div>
+  <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Create Offer</div>
+</div><div style="padding:18px 24px;display:flex;gap:20px;"><div style="flex:1;min-width:0;">
+<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">PAYMENT METHOD</div>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
+  <div style="padding:10px 12px;border-radius:7px;cursor:pointer;text-align:center;background:#2d3068;border:2px solid #5e6ad2;"><div style="font-size:12px;font-weight:700;color:#e8eaf0;">PayPal</div></div><div style="padding:10px 12px;border-radius:7px;cursor:pointer;text-align:center;background:#1a1d2e;border:1px solid #2a2d3e;"><div style="font-size:12px;font-weight:400;color:#8b95b0;">Zelle</div></div><div style="padding:10px 12px;border-radius:7px;cursor:pointer;text-align:center;background:#1a1d2e;border:1px solid #2a2d3e;"><div style="font-size:12px;font-weight:400;color:#8b95b0;">Cash by Mail</div></div><div style="padding:10px 12px;border-radius:7px;cursor:pointer;text-align:center;background:#1a1d2e;border:1px solid #2a2d3e;"><div style="font-size:12px;font-weight:400;color:#8b95b0;">Bank Transfer</div></div><div style="padding:10px 12px;border-radius:7px;cursor:pointer;text-align:center;background:#1a1d2e;border:1px solid #2a2d3e;"><div style="font-size:12px;font-weight:400;color:#8b95b0;">Venmo</div></div><div style="padding:10px 12px;border-radius:7px;cursor:pointer;text-align:center;background:#1a1d2e;border:1px solid #2a2d3e;"><div style="font-size:12px;font-weight:400;color:#8b95b0;">Strike</div></div><div style="padding:10px 12px;border-radius:7px;cursor:pointer;text-align:center;background:#1a1d2e;border:1px solid #2a2d3e;"><div style="font-size:12px;font-weight:400;color:#8b95b0;">Revolut</div></div><div style="padding:10px 12px;border-radius:7px;cursor:pointer;text-align:center;background:#1a1d2e;border:1px solid #2a2d3e;"><div style="font-size:12px;font-weight:400;color:#8b95b0;">Cash in Person</div></div>
+</div>
+<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">PRICE TYPE</div>
+<div style="display:flex;gap:8px;margin-bottom:16px;">
+  <div style="flex:1;padding:10px 14px;border-radius:7px;cursor:pointer;background:#2d3068;border:2px solid #5e6ad2;"><div style="font-size:13px;font-weight:700;color:#e8eaf0;">Market %</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">Tracks live price + offset</div></div><div style="flex:1;padding:10px 14px;border-radius:7px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;"><div style="font-size:13px;font-weight:700;color:#8b95b0;">Fixed</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">Set a fixed USD price</div></div>
+</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Price offset (%)</div><div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#8b95b0;font-family:inherit;">+1.5%</div><div style="font-size:11px;color:#8b95b0;margin-top:4px;">You will receive $1.50 above market per $100 traded</div></div><div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Trade currency</div><div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#8b95b0;font-family:inherit;">USD</div></div></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;"><div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Min trade amount</div><div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#8b95b0;font-family:inherit;">$50</div></div><div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Max trade amount</div><div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#8b95b0;font-family:inherit;">$500</div></div><div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Payment window</div><div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#8b95b0;font-family:inherit;">60 min</div></div></div><div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">PayPal account (shown to taker after deposit)</div><div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#8b95b0;font-family:monospace;">trader@example.com</div><div style="font-size:11px;color:#8b95b0;margin-top:4px;">Only revealed to the taker once both deposits are locked</div></div>
+<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">REQUIRED DEPOSIT</div>
+<div style="background:rgba(251,191,36,0.10);border:1px solid #fbbf24;border-radius:8px;
+            padding:12px 14px;margin-bottom:16px;">
+  <div style="font-size:13px;color:#b8c0d8;margin-bottom:8px;line-height:1.5;">
+    You must lock a security deposit equal to 15% of your max trade amount
+    plus the max XMR trade amount into multisig before your offer goes live.
+  </div>
+  <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><div style="font-size:12px;color:#8b95b0;">Max trade amount</div><div style="font-size:12px;color:#fbbf24;font-weight:700;">1.662 XMR  (&asymp; $500)</div></div><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><div style="font-size:12px;color:#8b95b0;">Security deposit (15%)</div><div style="font-size:12px;color:#fbbf24;font-weight:700;">0.2493 XMR  (&asymp; $75)</div></div><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><div style="font-size:12px;color:#8b95b0;">Total XMR to lock</div><div style="font-size:12px;color:#fbbf24;font-weight:700;">1.9113 XMR</div></div>
+</div><div style="display:flex;gap:10px;"><div style="display:inline-block;padding:13px 28px;background:#4ade80;border-radius:7px;font-size:14px;font-weight:700;color:#0d0f1a;cursor:pointer;letter-spacing:0.3px;">Lock Deposit &amp; Publish Offer</div>&nbsp;&nbsp;<div style="display:inline-block;padding:12px 27px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:14px;color:#b8c0d8;cursor:pointer;">Cancel</div></div></div><div style="width:240px;flex-shrink:0;"><div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">OFFER PREVIEW</div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:13px 14px;margin-bottom:14px;"><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><div style="font-size:12px;color:#8b95b0;">Method</div><div style="font-size:12px;color:#e8eaf0;">PayPal</div></div><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><div style="font-size:12px;color:#8b95b0;">Price</div><div style="font-size:12px;color:#e8eaf0;">+1.5% market  (~$301.96)</div></div><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><div style="font-size:12px;color:#8b95b0;">Min</div><div style="font-size:12px;color:#e8eaf0;">$50  (0.166 XMR)</div></div><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><div style="font-size:12px;color:#8b95b0;">Max</div><div style="font-size:12px;color:#e8eaf0;">$500  (1.662 XMR)</div></div><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><div style="font-size:12px;color:#8b95b0;">Window</div><div style="font-size:12px;color:#e8eaf0;">60 min</div></div><div style="display:flex;justify-content:space-between;margin-bottom:8px;"><div style="font-size:12px;color:#8b95b0;">Your deposit</div><div style="font-size:12px;color:#e8eaf0;">0.2493 XMR</div></div></div><div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">TIPS FOR MAKERS</div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:12px 14px;font-size:12px;color:#8b95b0;line-height:1.7;"><div style="margin-bottom:6px;">&bull; Respond promptly when a taker takes your offer.</div><div style="margin-bottom:6px;">&bull; Check PayPal before releasing XMR.</div><div style="margin-bottom:6px;">&bull; Use goods &amp; services, not friends &amp; family.</div><div>&bull; More completed trades = higher ranking in the offer book.</div></div></div></div></div>`];
+let cur = 0;
+function render() {
+  const tb = document.getElementById('tabBar');
+  tb.innerHTML = TABS.map((t,i) =>
+    `<div class="tab${i===cur?' active':''}" onclick="jump(${i})">${t}</div>`
+  ).join('');
+  document.getElementById('viewport').innerHTML = FRAMES[cur];
+  document.getElementById('frameLabel').textContent =
+    (cur+1) + ' / ' + FRAMES.length + ' — ' + TABS[cur];
+}
+function jump(i) { cur = i; render(); }
+function go(d) { cur = (cur + d + FRAMES.length) % FRAMES.length; render(); }
+render();
+</script>
+</body>
+</html>

@@ -1,3 +1,11 @@
+> **STATUS: HISTORICAL / SUPERSEDED — 2026-04-25**
+> This document describes the original DarkFi L1 / DRK-token / ZK-note architecture
+> that was the pre-MVP NyxForge design (March 2026). It was superseded by the
+> bearer-file approach specified in `doc/00_MVP.md`: SQLite .bounty files,
+> DLEQ/PTLC adaptor signatures, XMR/ZEC/BTC/ETH collateral, no DarkFi dependency.
+> Preserved for historical reference only. Do not use as an authority source.
+
+
 # NyxForge — Roadmap to Mainnet
 
 > Written March 2026.  Living document — update as phases complete.

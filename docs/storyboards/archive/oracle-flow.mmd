@@ -1,0 +1,30 @@
+---
+title: Oracle Workflow Flow
+---
+%%{init: {"fontSize": 18, "theme": "dark", "themeVariables": {"primaryColor": "#1e2030", "primaryTextColor": "#ffffff", "primaryBorderColor": "#5e6ad2", "lineColor": "#a0a8d0", "secondaryColor": "#2a2d3e", "tertiaryColor": "#131421"}, "flowchart": {"diagramPadding": 30, "nodeSpacing": 50, "rankSpacing": 60}}}%%
+flowchart TD
+    LIST([oracle list dir]) --> FOUND{"Bond found\nfor this key?"}
+    FOUND -->|No| NONE([No bonds to judge])
+    FOUND -->|Yes| OSTATUS[oracle status]
+
+    OSTATUS --> ACCEPTED{"Already\naccepted?"}
+
+    ACCEPTED -->|No| REVIEW{"Review GoalSpec\noracle inspect"}
+    REVIEW -->|Accept| ACCEPT[oracle accept\nwrite accepted_at to .bond\npre-commit s_fail\nstore encrypted in .bond\nPhase 3 TODO]
+    REVIEW -->|Reject| REJECT[oracle reject + reason\nPhase 3 TODO]
+
+    ACCEPTED -->|Yes| ATTEST_READY{"Goal\nachieved?"}
+
+    ATTEST_READY -->|met| EVIDENCE["Gather evidence\nPDF, JSON, video\nor HTTP-JSON feed"]
+    ATTEST_READY -->|not met| ATTEST_FAIL[oracle attest not_met\nPhase 3 TODO]
+    ATTEST_READY -->|unclear| WAIT([Continue monitoring])
+
+    EVIDENCE --> ATTEST_MET[oracle attest met\nattach evidence BLOB\nsign bond_id result sha256\nPhase 3 TODO]
+
+    ATTEST_MET --> QUORUM{"Quorum\nreached?"}
+    QUORUM -->|Yes| REDEEMABLE([Bond REDEEMABLE\ns_met published])
+    QUORUM -->|No| WAIT2([Awaiting more\nattestations])
+
+    ACCEPT --> ATTEST_READY
+    REJECT --> DONE([Oracle rejected\nissuer must revise panel])
+    ATTEST_FAIL --> EXPIRY([Await expiry\nfor s_fail release])

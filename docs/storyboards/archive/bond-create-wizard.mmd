@@ -1,0 +1,61 @@
+---
+title: Bond Create Wizard Flow
+---
+%%{init: {"fontSize": 18, "theme": "dark", "themeVariables": {"primaryColor": "#1e2030", "primaryTextColor": "#ffffff", "primaryBorderColor": "#5e6ad2", "lineColor": "#a0a8d0", "secondaryColor": "#2a2d3e", "tertiaryColor": "#131421"}, "flowchart": {"diagramPadding": 30, "nodeSpacing": 50, "rankSpacing": 60}}}%%
+flowchart TD
+    START([bond create]) --> ID
+
+    ID["Bond identity\ntitle\ndescription"]
+
+    ID --> TGT
+
+    TGT["Goal type for this term?\nquantitative | qualitative | hybrid"]
+
+    TGT -->|quantitative / hybrid| QC
+    TGT -->|qualitative| CRIT
+
+    QC["Enter quantitative fields\ndata_id, operator, threshold\naggregation optional"]
+    QC --> CRIT
+
+    CRIT["Enter criterion text\nhuman-readable description\nof the condition"]
+
+    CRIT --> MORE
+
+    MORE{Add another term?}
+
+    MORE -->|Yes| TGT
+    MORE -->|No, one term| TM
+    MORE -->|No, multiple terms| AGG
+
+    AGG["Aggregation across terms\nAND: all terms must be met\nOR: any term must be met"]
+
+    AGG --> TM
+
+    TM["Set timing\ndeadline YYYY-MM-DD\nexpiry YYYY-MM-DD\nmust be: expiry > deadline\ngrace_days: days after expiry\nbefore timelock matures"]
+
+    TM --> COL
+
+    COL["Set collateral\ncurrency: XMR | ZEC | BTC | ETH\namount per file\nnumber of files in series\nredemption_value optional"]
+
+    COL --> ORC
+
+    ORC["Configure oracle panel\nfor each oracle:\n  pubkey hex 32-byte\n  role: quantitative | qualitative | both\n  fee per attestation"]
+
+    ORC --> QUO
+
+    QUO["Set quorum and challenge\nminimum signatures to settle\nchallenge period in days"]
+
+    QUO --> DIR
+
+    DIR["Output directory\ndefault: current dir"]
+
+    DIR --> PRV
+
+    PRV{"Preview and confirm?\nshows terms list with AND/OR\ntotal collateral locked\noracle panel summary"}
+
+    PRV -->|Cancel| CANCEL([Cancelled])
+    PRV -->|Confirm| WRITE
+
+    WRITE["Write .bond SQLite files\none file per unit serial\nfilename: seriesid-NNNN.bond\nPhase 1 TODO: nyxforge-bond crate"]
+
+    WRITE --> DONE([Files written\nbond state: DRAFT])

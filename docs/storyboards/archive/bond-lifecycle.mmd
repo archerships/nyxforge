@@ -1,0 +1,33 @@
+---
+title: NyxForge Bond Lifecycle
+---
+%%{init: {"fontSize": 18, "theme": "dark", "themeVariables": {"primaryColor": "#1e2030", "primaryTextColor": "#ffffff", "primaryBorderColor": "#5e6ad2", "lineColor": "#a0a8d0", "secondaryColor": "#2a2d3e", "tertiaryColor": "#131421"}, "stateDiagram": {"diagramPadding": 30}}}%%
+stateDiagram-v2
+    direction TB
+
+    [*] --> DRAFT : bond create\n(wizard writes .bond file)
+
+    DRAFT --> ACTIVE : bond issue\n(XMR locked on-chain\nDLEQ commitment set)
+
+    ACTIVE --> REDEEMABLE : oracle quorum reached\n(result = met)
+    ACTIVE --> EXPIRED : expiry date passes\ngoal not met
+
+    REDEEMABLE --> SETTLED : bond redeem\n(adaptor + s_met\nXMR swept to holder)
+
+    EXPIRED --> RECLAIMED : oracle publishes s_fail\n(normal path)
+    EXPIRED --> RECLAIMED : timelock matures\n(expiry + grace_days)\nno oracle needed
+
+    SETTLED --> [*]
+    RECLAIMED --> [*]
+
+    note right of DRAFT
+        .bond file on disk
+        collateral not yet locked
+        oracles not yet registered
+    end note
+
+    note right of ACTIVE
+        XMR locked in DLEQ output
+        oracles monitoring
+        bilateral trading open
+    end note

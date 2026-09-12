@@ -1,0 +1,44 @@
+graph TD
+    subgraph Hub ["NyxForge Hub - Unified Dashboard"]
+        subgraph Sidebar ["Navigation Rail"]
+            Logo["[NYX]"]
+            D["DASH"]
+            V["VAULT"]
+            I["ISSUE"]
+            X["DEX"]
+            W["WALLET"]
+            M["MINE"]
+            C["CHAT"]
+            N["NODE"]
+        end
+
+        subgraph Main ["Dashboard Content"]
+            Title["Dashboard"]
+            SubTitle["Unified Privacy Orchestrator"]
+
+            subgraph Stats ["Real-time Metrics"]
+                WCard["Total Assets: 4.218 XMR"]
+                MCard["Mining Yield: 12.4 KH/s"]
+                SCard["Active Swaps: 1 Pending"]
+                CCard["Community: 3 New"]
+            end
+
+            subgraph Activity ["Recent Activity"]
+                A1["Bond Issued: NyxForge Alpha Release #402 (2h ago)"]
+                A2["Incoming XMR: Received 0.5 XMR (5h ago)"]
+                A3["Node Synced: Local Monero node at 100% sync (8h ago)"]
+            end
+        end
+    end
+
+    classDef sidebar fill:#1E2030,stroke:#2A2A3D,color:#50505E;
+    classDef active fill:#5E6AD2,stroke:#7C89F8,color:#FFFFFF;
+    classDef card fill:#2A2D3E,stroke:#2A2A3D,color:#FFFFFF;
+    classDef success stroke:#4ADE80;
+    classDef warning stroke:#FBBF24;
+
+    class Sidebar sidebar;
+    class D active;
+    class WCard,MCard,SCard,CCard,A1,A2,A3 card;
+    class MCard success;
+    class SCard warning;

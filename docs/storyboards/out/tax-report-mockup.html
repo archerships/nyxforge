@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NyxForge Foundation &mdash; Tax Reports</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #080a12; font-family: 'Inter', system-ui, sans-serif;
+       display: flex; flex-direction: column; align-items: center;
+       min-height: 100vh; padding: 24px 16px; }
+.tab-bar { display: flex; gap: 4px; margin-bottom: 20px;
+           background: #131524; border: 1px solid #2a2d3e;
+           border-radius: 8px; padding: 4px; max-width: 1020px; }
+.tab { padding: 7px 18px; border-radius: 6px; cursor: pointer;
+       font-size: 12px; color: #8b95b0; transition: all 0.15s; }
+.tab.active { background: #5e6ad2; color: #e8eaf0; font-weight: 700; }
+.tab:hover:not(.active) { color: #e8eaf0; }
+.viewport { display: flex; align-items: flex-start; width: 1020px; }
+.nav { display: flex; gap: 12px; margin-top: 16px; align-items: center; }
+.nav-btn { padding: 8px 20px; border-radius: 6px; cursor: pointer;
+           font-size: 13px; background: #131524; border: 1px solid #2a2d3e;
+           color: #b8c0d8; }
+.nav-btn:hover { border-color: #5e6ad2; color: #e8eaf0; }
+.frame-label { font-size: 12px; color: #8b95b0; min-width: 160px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="tab-bar" id="tabBar"></div>
+<div class="viewport" id="viewport"></div>
+<div class="nav">
+  <div class="nav-btn" onclick="go(-1)">&larr; Prev</div>
+  <div class="frame-label" id="frameLabel"></div>
+  <div class="nav-btn" onclick="go(1)">Next &rarr;</div>
+</div>
+<script>
+const TABS   = ["Overview",
+"Donations",
+"Crypto Ledger",
+"Generate",
+"Receipts"];
+const FRAMES = [`<div class="frame" style="width:1020px;background:#0d0f1a;border:1px solid #2a2d3e;border-radius:10px;overflow:hidden;">
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:32px;height:32px;border-radius:8px;background:#2d3068;
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:11px;font-weight:700;color:#5e6ad2;">NGO</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#e8eaf0;">
+          NyxForge Foundation &mdash; Tax &amp; Compliance</div>
+        <div style="font-size:11px;color:#8b95b0;">Overview &mdash; Tax Year 2025</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="font-size:12px;color:#8b95b0;">Tax year:</div>
+      <div style="padding:4px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">2023</div><div style="padding:4px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">2024</div><div style="padding:4px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#2d3068;border:1px solid #5e6ad2;color:#e8eaf0;">2025</div>
+    </div>
+  </div><div style="display:flex;border-bottom:1px solid #2a2d3e;background:#131524;padding:0 24px;"><div style="padding:10px 20px;font-size:13px;cursor:pointer;color:#e8eaf0;border-bottom:2px solid #5e6ad2;font-weight:700;">Overview</div><div style="padding:10px 20px;font-size:13px;cursor:pointer;color:#8b95b0;border-bottom:2px solid transparent;font-weight:400;">Donations</div><div style="padding:10px 20px;font-size:13px;cursor:pointer;color:#8b95b0;border-bottom:2px solid transparent;font-weight:400;">Crypto Ledger</div><div style="padding:10px 20px;font-size:13px;cursor:pointer;color:#8b95b0;border-bottom:2px solid transparent;font-weight:400;">Generate</div><div style="padding:10px 20px;font-size:13px;cursor:pointer;color:#8b95b0;border-bottom:2px solid transparent;font-weight:400;">Receipts</div></div><div style="padding:18px 24px;">
+<div style="display:flex;gap:12px;margin-bottom:18px;">
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px 16px;flex:1;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">TOTAL DONATIONS RECEIVED</div><div style="font-size:22px;font-weight:700;color:#e8eaf0;">$148,320</div><div style="font-size:12px;color:#8b95b0;margin-top:3px;">Tax year 2025 (Jan 1 &ndash; Dec 31)</div></div>
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px 16px;flex:1;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">UNIQUE DONORS</div><div style="font-size:22px;font-weight:700;color:#e8eaf0;">312</div><div style="font-size:12px;color:#8b95b0;margin-top:3px;">261 anonymous, 51 identified</div></div>
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px 16px;flex:1;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">XMR ACQUISITIONS</div><div style="font-size:22px;font-weight:700;color:#ff6600;">497.2 XMR</div><div style="font-size:12px;color:#8b95b0;margin-top:3px;">Cost basis: $138,640 total</div></div>
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px 16px;flex:1;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">REPORTABLE DISPOSITIONS</div><div style="font-size:22px;font-weight:700;color:#fbbf24;">62.4 XMR</div><div style="font-size:12px;color:#8b95b0;margin-top:3px;">Locked as bounty collateral</div></div>
+</div>
+<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">FILING CHECKLIST &mdash; TAX YEAR 2025</div>
+<div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;
+            padding:0;margin-bottom:18px;overflow:hidden;">
+  <div style="display:flex;align-items:center;gap:14px;padding:11px 16px;border-bottom:1px solid #2a2d3e;"><div style="width:20px;height:20px;border-radius:50%;background:#1a1d2e;border:2px solid #3a3d5c;display:flex;align-items:center;justify-content:center;font-size:11px;color:#8b95b0;flex-shrink:0;">&nbsp;</div><div style="flex:1;"><div style="font-size:13px;color:#e8eaf0;">Form 990 &mdash; Return of Organization Exempt from Income Tax</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">Due May 15, 2026 (automatic 6-month extension available)</div></div><div style="display:inline-block;padding:7px 14px;background:#fbbf24;border-radius:7px;font-size:12px;font-weight:700;color:#0d0f1a;cursor:pointer;letter-spacing:0.3px;">Action Required</div></div><div style="display:flex;align-items:center;gap:14px;padding:11px 16px;border-bottom:1px solid #2a2d3e;"><div style="width:20px;height:20px;border-radius:50%;background:rgba(74,222,128,0.10);border:2px solid #4ade80;display:flex;align-items:center;justify-content:center;font-size:11px;color:#4ade80;flex-shrink:0;">&#10003;</div><div style="flex:1;"><div style="font-size:13px;color:#e8eaf0;">Schedule B &mdash; Schedule of Contributors</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">Required if any single donor gave &ge; $5,000</div></div><div style="display:inline-block;padding:6px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:12px;color:#b8c0d8;cursor:pointer;">Export</div></div><div style="display:flex;align-items:center;gap:14px;padding:11px 16px;border-bottom:1px solid #2a2d3e;"><div style="width:20px;height:20px;border-radius:50%;background:rgba(74,222,128,0.10);border:2px solid #4ade80;display:flex;align-items:center;justify-content:center;font-size:11px;color:#4ade80;flex-shrink:0;">&#10003;</div><div style="flex:1;"><div style="font-size:13px;color:#e8eaf0;">IRS Form 8949 &mdash; XMR as property (acquisitions)</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">497.2 XMR purchased; cost basis established at each trade</div></div><div style="display:inline-block;padding:6px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:12px;color:#b8c0d8;cursor:pointer;">Export</div></div><div style="display:flex;align-items:center;gap:14px;padding:11px 16px;border-bottom:1px solid #2a2d3e;"><div style="width:20px;height:20px;border-radius:50%;background:#1a1d2e;border:2px solid #3a3d5c;display:flex;align-items:center;justify-content:center;font-size:11px;color:#8b95b0;flex-shrink:0;">&nbsp;</div><div style="flex:1;"><div style="font-size:13px;color:#e8eaf0;">IRS Form 8949 &mdash; XMR dispositions (collateral locks)</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">62.4 XMR locked as bounty collateral; FMV at time of lock</div></div><div style="display:inline-block;padding:7px 14px;background:#fbbf24;border-radius:7px;font-size:12px;font-weight:700;color:#0d0f1a;cursor:pointer;letter-spacing:0.3px;">Action Required</div></div><div style="display:flex;align-items:center;gap:14px;padding:11px 16px;border-bottom:1px solid #2a2d3e;"><div style="width:20px;height:20px;border-radius:50%;background:rgba(74,222,128,0.10);border:2px solid #4ade80;display:flex;align-items:center;justify-content:center;font-size:11px;color:#4ade80;flex-shrink:0;">&#10003;</div><div style="flex:1;"><div style="font-size:13px;color:#e8eaf0;">Donor acknowledgment letters (501(c)(3) receipts)</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">All donors of $250+ require written acknowledgment</div></div><div style="display:inline-block;padding:6px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:12px;color:#b8c0d8;cursor:pointer;">Export</div></div><div style="display:flex;align-items:center;gap:14px;padding:11px 16px;border-bottom:1px solid #2a2d3e;"><div style="width:20px;height:20px;border-radius:50%;background:#1a1d2e;border:2px solid #3a3d5c;display:flex;align-items:center;justify-content:center;font-size:11px;color:#8b95b0;flex-shrink:0;">&nbsp;</div><div style="flex:1;"><div style="font-size:13px;color:#e8eaf0;">State charitable registration renewal</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">Due varies by state &mdash; check your jurisdiction</div></div><div style="display:inline-block;padding:7px 14px;background:#fbbf24;border-radius:7px;font-size:12px;font-weight:700;color:#0d0f1a;cursor:pointer;letter-spacing:0.3px;">Action Required</div></div>
+</div>
+<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">QUICK EXPORTS</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;">
+  <div style="display:inline-block;padding:7px 14px;background:#5e6ad2;border-radius:7px;font-size:12px;font-weight:700;color:#e8eaf0;cursor:pointer;letter-spacing:0.3px;">Form 990 Data Package</div>
+  <div style="display:inline-block;padding:7px 14px;background:#5e6ad2;border-radius:7px;font-size:12px;font-weight:700;color:#e8eaf0;cursor:pointer;letter-spacing:0.3px;">Schedule B CSV</div>
+  <div style="display:inline-block;padding:7px 14px;background:#5e6ad2;border-radius:7px;font-size:12px;font-weight:700;color:#e8eaf0;cursor:pointer;letter-spacing:0.3px;">Form 8949 (Acquisitions)</div>
+  <div style="display:inline-block;padding:7px 14px;background:#5e6ad2;border-radius:7px;font-size:12px;font-weight:700;color:#e8eaf0;cursor:pointer;letter-spacing:0.3px;">Form 8949 (Dispositions)</div>
+  <div style="display:inline-block;padding:6px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:12px;color:#b8c0d8;cursor:pointer;">All Donor Receipts PDF</div>
+  <div style="display:inline-block;padding:6px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:12px;color:#b8c0d8;cursor:pointer;">Full Ledger CSV</div>
+  <div style="display:inline-block;padding:6px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:12px;color:#b8c0d8;cursor:pointer;">TurboTax TXF Export</div>
+</div>
+<div style="background:rgba(251,191,36,0.10);border:1px solid #fbbf24;border-radius:8px;
+            padding:12px 14px;margin-top:18px;font-size:12px;
+            color:#b8c0d8;line-height:1.6;">
+  This tool generates data exports to assist your tax preparer. It does not
+  constitute tax advice. Consult a CPA familiar with nonprofit and cryptocurrency
+  taxation before filing. XMR acquired and held by a 501(c)(3) is treated as
+  property under IRS Notice 2014-21.
+</div></div></div>`,
+`<div class="frame" style="width:1020px;background:#0d0f1a;border:1px solid #2a2d3e;border-radius:10px;overflow:hidden;">
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:32px;height:32px;border-radius:8px;background:#2d3068;
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:11px;font-weight:700;color:#5e6ad2;">NGO</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#e8eaf0;">
+          NyxForge Foundation &mdash; Tax &amp; Compliance</div>
+        <div style="font-size:11px;color:#8b95b0;">Donation Summary</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="font-size:12px;color:#8b95b0;">Tax year:</div>
+      <div style="padding:4px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">2023</div><div style="padding:4px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">2024</div><div style="padding:4px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#2d3068;border:1px solid #5e6ad2;color:#e8eaf0;">2025</div>
+    </div>
+  </div><div style="display:flex;border-bottom:1px solid #2a2d3e;background:#131524;padding:0 24px;"><div style="padding:10px 20px;font-size:13px;cursor:pointer;color:#8b95b0;border-bottom:2px solid transparent;font-weight:400;">Overview</div><div style="padding:10px 20px;font-size:13px;cursor:pointer;color:#e8eaf0;border-bottom:2px solid #5e6ad2;font-weight:700;">Donations</div><div style="padding:10px 20px;font-size:13px;cursor:pointer;color:#8b95b0;border-bottom:2px solid transparent;font-weight:400;">Crypto Ledger</div><div style="padding:10px 20px;font-size:13px;cursor:pointer;color:#8b95b0;border-bottom:2px solid transparent;font-weight:400;">Generate</div><div style="padding:10px 20px;font-size:13px;cursor:pointer;color:#8b95b0;border-bottom:2px solid transparent;font-weight:400;">Receipts</div></div>
+<div style="padding:13px 24px;border-bottom:1px solid #2a2d3e;">
+  <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Donation Summary</div>
+  <div style="font-size:12px;color:#8b95b0;margin-top:2px;">
+    IRS Form 990 Part VIII line 1 &middot; Schedule B (contributors &ge; $5,000)
+  </div>
+</div><div style="padding:18px 24px;">
+<div style="display:flex;gap:12px;margin-bottom:18px;">
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px 16px;flex:1;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">TOTAL RECEIVED</div><div style="font-size:22px;font-weight:700;color:#e8eaf0;">$148,320</div><div style="font-size:12px;color:#8b95b0;margin-top:3px;">All processors combined</div></div>
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px 16px;flex:1;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">STRIPE</div><div style="font-size:22px;font-weight:700;color:#635bff;">$98,420</div><div style="font-size:12px;color:#8b95b0;margin-top:3px;">66.4% of total</div></div>
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px 16px;flex:1;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">SQUARE</div><div style="font-size:22px;font-weight:700;color:#b8c0d8;">$33,840</div><div style="font-size:12px;color:#8b95b0;margin-top:3px;">22.8% of total</div></div>
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px 16px;flex:1;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">AUTHORIZE.NET</div><div style="font-size:22px;font-weight:700;color:#c8102e;">$16,060</div><div style="font-size:12px;color:#8b95b0;margin-top:3px;">10.8% of total</div></div>
+</div>
+<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">BY MONTH</div>
+<div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;
+            overflow:hidden;margin-bottom:18px;">
+  <div style="display:grid;grid-template-columns:80px repeat(3,1fr) 1fr 80px;
+              gap:0;padding:8px 14px;background:#1a1d2e;border-bottom:1px solid #2a2d3e;">
+    <div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">MONTH</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">STRIPE</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">SQUARE</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">AUTH.NET</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">TOTAL</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">DONORS</div>
+  </div>
+  <div style="display:grid;grid-template-columns:80px repeat(3,1fr) 1fr 80px;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:12px;"><div style="color:#8b95b0;">Jan</div><div style="color:#b8c0d8;">$6,240</div><div style="color:#b8c0d8;">$2,100</div><div style="color:#b8c0d8;">$980</div><div style="color:#e8eaf0;font-weight:700;">$9,320</div><div style="color:#8b95b0;">18</div></div><div style="display:grid;grid-template-columns:80px repeat(3,1fr) 1fr 80px;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:12px;"><div style="color:#8b95b0;">Feb</div><div style="color:#b8c0d8;">$5,980</div><div style="color:#b8c0d8;">$1,840</div><div style="color:#b8c0d8;">$720</div><div style="color:#e8eaf0;font-weight:700;">$8,540</div><div style="color:#8b95b0;">16</div></div><div style="display:grid;grid-template-columns:80px repeat(3,1fr) 1fr 80px;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:12px;"><div style="color:#8b95b0;">Mar</div><div style="color:#b8c0d8;">$9,120</div><div style="color:#b8c0d8;">$3,200</div><div style="color:#b8c0d8;">$1,480</div><div style="color:#e8eaf0;font-weight:700;">$13,800</div><div style="color:#8b95b0;">27</div></div><div style="display:grid;grid-template-columns:80px repeat(3,1fr) 1fr 80px;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:12px;"><div style="color:#8b95b0;">Apr</div><div style="color:#b8c0d8;">$12,480</div><div style="color:#b8c0d8;">$3,940</div><div style="color:#b8c0d8;">$1,840</div><div style="color:#e8eaf0;font-weight:700;">$18,260</div><div style="color:#8b95b0;">38</div></div><div style="display:grid;grid-template-columns:80px repeat(3,1fr) 1fr 80px;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:12px;"><div style="color:#8b95b0;">May</div><div style="color:#b8c0d8;">$8,640</div><div style="color:#b8c0d8;">$2,780</div><div style="color:#b8c0d8;">$1,220</div><div style="color:#e8eaf0;font-weight:700;">$12,640</div><div style="color:#8b95b0;">24</div></div><div style="display:grid;grid-template-columns:80px repeat(3,1fr) 1fr 80px;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:12px;"><div style="color:#8b95b0;">Jun</div><div style="color:#b8c0d8;">$7,320</div><div style="color:#b8c0d8;">$2,440</div><div style="color:#b8c0d8;">$1,060</div><div style="color:#e8eaf0;font-weight:700;">$10,820</div><div style="color:#8b95b0;">21</div></div><div style="display:grid;grid-template-columns:80px repeat(3,1fr) 1fr 80px;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:12px;"><div style="color:#8b95b0;">Jul</div><div style="color:#b8c0d8;">$6,840</div><div style="color:#b8c0d8;">$2,180</div><div style="color:#b8c0d8;">$940</div><div style="color:#e8eaf0;font-weight:700;">$9,960</div><div style="color:#8b95b0;">19</div></div><div style="display:grid;grid-template-columns:80px repeat(3,1fr) 1fr 80px;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:12px;"><div style="color:#8b95b0;">Aug</div><div style="color:#b8c0d8;">$8,120</div><div style="color:#b8c0d8;">$2,640</div><div style="color:#b8c0d8;">$1,140</div><div style="color:#e8eaf0;font-weight:700;">$11,900</div><div style="color:#8b95b0;">23</div></div><div style="display:grid;grid-template-columns:80px repeat(3,1fr) 1fr 80px;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:12px;"><div style="color:#8b95b0;">Sep</div><div style="color:#b8c0d8;">$9,840</div><div style="color:#b8c0d8;">$3,180</div><div style="color:#b8c0d8;">$1,380</div><div style="color:#e8eaf0;font-weight:700;">$14,400</div><div style="color:#8b95b0;">29</div></div><div style="display:grid;grid-template-columns:80px repeat(3,1fr) 1fr 80px;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:12px;"><div style="color:#8b95b0;">Oct</div><div style="color:#b8c0d8;">$10,240</div><div style="color:#b8c0d8;">$3,420</div><div style="color:#b8c0d8;">$1,480</div><div style="color:#e8eaf0;font-weight:700;">$15,140</div><div style="color:#8b95b0;">31</div></div><div style="display:grid;grid-template-columns:80px repeat(3,1fr) 1fr 80px;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:12px;"><div style="color:#8b95b0;">Nov</div><div style="color:#b8c0d8;">$12,820</div><div style="color:#b8c0d8;">$4,120</div><div style="color:#b8c0d8;">$1,840</div><div style="color:#e8eaf0;font-weight:700;">$18,780</div><div style="color:#8b95b0;">37</div></div><div style="display:grid;grid-template-columns:80px repeat(3,1fr) 1fr 80px;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:12px;"><div style="color:#8b95b0;">Dec</div><div style="color:#b8c0d8;">$10,780</div><div style="color:#b8c0d8;">$6,000</div><div style="color:#b8c0d8;">$1,980</div><div style="color:#e8eaf0;font-weight:700;">$18,760</div><div style="color:#8b95b0;">29</div></div>
+  <div style="display:grid;grid-template-columns:80px repeat(3,1fr) 1fr 80px;
+              gap:0;padding:9px 14px;background:#1a1d2e;font-size:12px;font-weight:700;">
+    <div style="color:#8b95b0;">TOTAL</div>
+    <div style="color:#635bff;">$98,420</div>
+    <div style="color:#b8c0d8;">$33,840</div>
+    <div style="color:#c8102e;">$16,060</div>
+    <div style="color:#e8eaf0;">$148,320</div>
+    <div style="color:#8b95b0;">312</div>
+  </div>
+</div>
+<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">SCHEDULE B &mdash; LARGE CONTRIBUTORS (&ge; $5,000)</div>
+<div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;
+            overflow:hidden;margin-bottom:14px;">
+  <div style="display:grid;grid-template-columns:180px 100px 120px 1fr;
+              gap:0;padding:8px 14px;background:#1a1d2e;border-bottom:1px solid #2a2d3e;">
+    <div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">DONOR</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">TOTAL GIVEN</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">LARGEST SINGLE</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">NOTE</div>
+  </div>
+  <div style="display:grid;grid-template-columns:180px 100px 120px 1fr;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:12px;"><div style="color:#e8eaf0;">Anonymous (Stripe)</div><div style="color:#e8eaf0;font-weight:700;">$42,000</div><div style="color:#8b95b0;">$10,000</div><div style="color:#8b95b0;">6 separate transactions</div></div><div style="display:grid;grid-template-columns:180px 100px 120px 1fr;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:12px;"><div style="color:#e8eaf0;">K. Chen</div><div style="color:#e8eaf0;font-weight:700;">$12,500</div><div style="color:#8b95b0;">$5,000</div><div style="color:#8b95b0;">Verified via Stripe identity</div></div><div style="display:grid;grid-template-columns:180px 100px 120px 1fr;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:12px;"><div style="color:#e8eaf0;">Bounty Donor Trust</div><div style="color:#e8eaf0;font-weight:700;">$8,000</div><div style="color:#8b95b0;">$8,000</div><div style="color:#8b95b0;">Single wire via ACH</div></div><div style="display:grid;grid-template-columns:180px 100px 120px 1fr;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:12px;"><div style="color:#e8eaf0;">Anonymous (Square)</div><div style="color:#e8eaf0;font-weight:700;">$6,200</div><div style="color:#8b95b0;">$1,500</div><div style="color:#8b95b0;">4 transactions</div></div>
+</div>
+<div style="display:flex;gap:8px;">
+  <div style="display:inline-block;padding:7px 14px;background:#5e6ad2;border-radius:7px;font-size:12px;font-weight:700;color:#e8eaf0;cursor:pointer;letter-spacing:0.3px;">Export Schedule B CSV</div>
+  <div style="display:inline-block;padding:6px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:12px;color:#b8c0d8;cursor:pointer;">Preview as PDF</div>
+</div></div></div>`,
+`<div class="frame" style="width:1020px;background:#0d0f1a;border:1px solid #2a2d3e;border-radius:10px;overflow:hidden;">
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:32px;height:32px;border-radius:8px;background:#2d3068;
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:11px;font-weight:700;color:#5e6ad2;">NGO</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#e8eaf0;">
+          NyxForge Foundation &mdash; Tax &amp; Compliance</div>
+        <div style="font-size:11px;color:#8b95b0;">Crypto Ledger</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="font-size:12px;color:#8b95b0;">Tax year:</div>
+      <div style="padding:4px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">2023</div><div style="padding:4px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">2024</div><div style="padding:4px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#2d3068;border:1px solid #5e6ad2;color:#e8eaf0;">2025</div>
+    </div>
+  </div><div style="display:flex;border-bottom:1px solid #2a2d3e;background:#131524;padding:0 24px;"><div style="padding:10px 20px;font-size:13px;cursor:pointer;color:#8b95b0;border-bottom:2px solid transparent;font-weight:400;">Overview</div><div style="padding:10px 20px;font-size:13px;cursor:pointer;color:#8b95b0;border-bottom:2px solid transparent;font-weight:400;">Donations</div><div style="padding:10px 20px;font-size:13px;cursor:pointer;color:#e8eaf0;border-bottom:2px solid #5e6ad2;font-weight:700;">Crypto Ledger</div><div style="padding:10px 20px;font-size:13px;cursor:pointer;color:#8b95b0;border-bottom:2px solid transparent;font-weight:400;">Generate</div><div style="padding:10px 20px;font-size:13px;cursor:pointer;color:#8b95b0;border-bottom:2px solid transparent;font-weight:400;">Receipts</div></div>
+<div style="padding:13px 24px;border-bottom:1px solid #2a2d3e;">
+  <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Crypto Ledger</div>
+  <div style="font-size:12px;color:#8b95b0;margin-top:2px;">
+    IRS Notice 2014-21 &mdash; XMR treated as property &middot;
+    Form 8949 &middot; Schedule D
+  </div>
+</div><div style="padding:18px 24px;">
+<div style="display:flex;gap:12px;margin-bottom:18px;">
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px 16px;flex:1;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">TOTAL XMR ACQUIRED</div><div style="font-size:22px;font-weight:700;color:#ff6600;">497.2 XMR</div><div style="font-size:12px;color:#8b95b0;margin-top:3px;">Cost basis: $138,640</div></div>
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px 16px;flex:1;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">AVG COST BASIS</div><div style="font-size:22px;font-weight:700;color:#e8eaf0;">$278.86/XMR</div><div style="font-size:12px;color:#8b95b0;margin-top:3px;">Weighted average</div></div>
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px 16px;flex:1;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">DISPOSITIONS</div><div style="font-size:22px;font-weight:700;color:#fbbf24;">62.4 XMR</div><div style="font-size:12px;color:#8b95b0;margin-top:3px;">Locked as bounty collateral (FMV: $18,592)</div></div>
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px 16px;flex:1;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">UNREALIZED GAIN/LOSS</div><div style="font-size:22px;font-weight:700;color:#4ade80;">+$29,680</div><div style="font-size:12px;color:#8b95b0;margin-top:3px;">Current FMV vs cost basis</div></div>
+</div>
+<div style="background:rgba(94,106,210,0.12);border:1px solid #5e6ad2;border-radius:8px;
+            padding:12px 14px;margin-bottom:16px;font-size:12px;
+            color:#b8c0d8;line-height:1.6;">
+  <span style="font-weight:700;color:#e8eaf0;">Cost basis method: FIFO (First In, First Out)</span>
+  &mdash; each XMR unit's cost basis is the USD price paid at time of Kraken/Onramper purchase.
+  Locking XMR as bounty collateral is treated as a disposition at fair market value on the date
+  of locking. If the bounty expires and collateral is returned, that is a new acquisition at
+  the return date's FMV. Change method in Settings.
+</div>
+<div style="display:flex;gap:0;border-bottom:1px solid #2a2d3e;margin-bottom:0;">
+  <div style="padding:8px 18px;font-size:12px;cursor:pointer;color:#e8eaf0;border-bottom:2px solid #5e6ad2;">Acquisitions</div><div style="padding:8px 18px;font-size:12px;cursor:pointer;color:#8b95b0;border-bottom:2px solid transparent;">Dispositions</div><div style="padding:8px 18px;font-size:12px;cursor:pointer;color:#8b95b0;border-bottom:2px solid transparent;">Returns (expired bounties)</div>
+</div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:0 0 8px 8px;overflow:hidden;margin-bottom:18px;">
+<div style="display:grid;
+            grid-template-columns:90px 80px 90px 90px 90px 90px 90px 1fr;
+            gap:0;padding:8px 14px;background:#1a1d2e;border-bottom:1px solid #2a2d3e;">
+  <div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">DATE</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">ROUTE</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">USD IN</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">XMR OUT</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">COST/XMR</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">CUMUL. UNITS</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">CUMUL. BASIS</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">TX REF</div>
+</div><div style="display:grid;grid-template-columns:90px 80px 90px 90px 90px 90px 90px 1fr;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:11px;"><div style="color:#8b95b0;font-family:monospace;">Jan 04</div><div><span style="padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700;background:#5e6ad222;color:#5e6ad2;">Kraken</span></div><div style="color:#e8eaf0;">$500</div><div style="color:#ff6600;font-weight:700;">1.788 XMR</div><div style="color:#8b95b0;">$279.60</div><div style="color:#b8c0d8;">1.788</div><div style="color:#b8c0d8;">$500</div><div style="color:#8b95b0;font-family:monospace;font-size:10px;">krk-a1b2</div></div><div style="display:grid;grid-template-columns:90px 80px 90px 90px 90px 90px 90px 1fr;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:11px;"><div style="color:#8b95b0;font-family:monospace;">Jan 18</div><div><span style="padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700;background:#5e6ad222;color:#5e6ad2;">Kraken</span></div><div style="color:#e8eaf0;">$500</div><div style="color:#ff6600;font-weight:700;">1.792 XMR</div><div style="color:#8b95b0;">$279.02</div><div style="color:#b8c0d8;">3.580</div><div style="color:#b8c0d8;">$1,000</div><div style="color:#8b95b0;font-family:monospace;font-size:10px;">krk-c3d4</div></div><div style="display:grid;grid-template-columns:90px 80px 90px 90px 90px 90px 90px 1fr;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:11px;"><div style="color:#8b95b0;font-family:monospace;">Feb 07</div><div><span style="padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700;background:#5e6ad222;color:#5e6ad2;">Kraken</span></div><div style="color:#e8eaf0;">$1,000</div><div style="color:#ff6600;font-weight:700;">3.571 XMR</div><div style="color:#8b95b0;">$280.08</div><div style="color:#b8c0d8;">7.151</div><div style="color:#b8c0d8;">$2,000</div><div style="color:#8b95b0;font-family:monospace;font-size:10px;">krk-e5f6</div></div><div style="display:grid;grid-template-columns:90px 80px 90px 90px 90px 90px 90px 1fr;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:11px;"><div style="color:#8b95b0;font-family:monospace;">Feb 22</div><div><span style="padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700;background:#fbbf2422;color:#fbbf24;">Onramper</span></div><div style="color:#e8eaf0;">$250</div><div style="color:#ff6600;font-weight:700;">0.874 XMR</div><div style="color:#8b95b0;">$286.04</div><div style="color:#b8c0d8;">8.025</div><div style="color:#b8c0d8;">$2,250</div><div style="color:#8b95b0;font-family:monospace;font-size:10px;">onr-g7h8</div></div><div style="display:grid;grid-template-columns:90px 80px 90px 90px 90px 90px 90px 1fr;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:11px;"><div style="color:#8b95b0;font-family:monospace;">Mar 10</div><div><span style="padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700;background:#5e6ad222;color:#5e6ad2;">Kraken</span></div><div style="color:#e8eaf0;">$1,500</div><div style="color:#ff6600;font-weight:700;">5.328 XMR</div><div style="color:#8b95b0;">$281.60</div><div style="color:#b8c0d8;">13.353</div><div style="color:#b8c0d8;">$3,750</div><div style="color:#8b95b0;font-family:monospace;font-size:10px;">krk-i9j0</div></div><div style="display:grid;grid-template-columns:90px 80px 90px 90px 90px 90px 90px 1fr;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:11px;"><div style="color:#8b95b0;font-family:monospace;">Apr 02</div><div><span style="padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700;background:#5e6ad222;color:#5e6ad2;">Kraken</span></div><div style="color:#e8eaf0;">$2,000</div><div style="color:#ff6600;font-weight:700;">6.760 XMR</div><div style="color:#8b95b0;">$295.86</div><div style="color:#b8c0d8;">20.113</div><div style="color:#b8c0d8;">$5,750</div><div style="color:#8b95b0;font-family:monospace;font-size:10px;">krk-k1l2</div></div><div style="display:grid;grid-template-columns:90px 80px 90px 90px 90px 90px 90px 1fr;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:11px;"><div style="color:#8b95b0;font-family:monospace;">Apr 23</div><div><span style="padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700;background:#5e6ad222;color:#5e6ad2;">Kraken</span></div><div style="color:#e8eaf0;">$500</div><div style="color:#ff6600;font-weight:700;">1.674 XMR</div><div style="color:#8b95b0;">$298.70</div><div style="color:#b8c0d8;">21.787</div><div style="color:#b8c0d8;">$6,250</div><div style="color:#8b95b0;font-family:monospace;font-size:10px;">krk-m3n4</div></div></div>
+<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">DISPOSITIONS &mdash; XMR LOCKED AS BOUNTY COLLATERAL</div>
+<div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;
+            overflow:hidden;margin-bottom:14px;">
+  <div style="display:grid;
+              grid-template-columns:90px 120px 80px 90px 90px 90px 90px 1fr;
+              gap:0;padding:8px 14px;background:#1a1d2e;border-bottom:1px solid #2a2d3e;">
+    <div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">DATE LOCKED</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">BOUNTY</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">XMR</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">COST BASIS</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">FMV AT LOCK</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">GAIN/LOSS</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">STATUS</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">NOTES</div>
+  </div>
+  <div style="display:grid;grid-template-columns:90px 120px 80px 90px 90px 90px 90px 1fr;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:11px;"><div style="color:#8b95b0;font-family:monospace;">Mar 15</div><div style="color:#b8c0d8;">ALZ-2040-0047</div><div style="color:#ff6600;">0.45 XMR</div><div style="color:#8b95b0;">$126.72</div><div style="color:#e8eaf0;">$135.00</div><div style="color:#4ade80;">+$8.28</div><div><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#fbbf24;background:rgba(251,191,36,0.10);">LOCKED</span></div><div style="color:#8b95b0;font-size:10px;">Collateral; not yet resolved</div></div><div style="display:grid;grid-template-columns:90px 120px 80px 90px 90px 90px 90px 1fr;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:11px;"><div style="color:#8b95b0;font-family:monospace;">Mar 22</div><div style="color:#b8c0d8;">TB-2038-0031</div><div style="color:#ff6600;">0.90 XMR</div><div style="color:#8b95b0;">$253.44</div><div style="color:#e8eaf0;">$272.70</div><div style="color:#4ade80;">+$19.26</div><div><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#fbbf24;background:rgba(251,191,36,0.10);">LOCKED</span></div><div style="color:#8b95b0;font-size:10px;">Collateral; not yet resolved</div></div><div style="display:grid;grid-template-columns:90px 120px 80px 90px 90px 90px 90px 1fr;gap:0;padding:9px 14px;border-bottom:1px solid #2a2d3e;font-size:11px;"><div style="color:#8b95b0;font-family:monospace;">Apr 01</div><div style="color:#b8c0d8;">MAL-2035-0012</div><div style="color:#ff6600;">0.22 XMR</div><div style="color:#8b95b0;">$62.39</div><div style="color:#e8eaf0;">$65.34</div><div style="color:#4ade80;">+$2.95</div><div><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#4ade80;background:rgba(74,222,128,0.10);">RESOLVED</span></div><div style="color:#8b95b0;font-size:10px;">Terms met; returned to issuer</div></div>
+</div>
+<div style="display:flex;gap:8px;">
+  <div style="display:inline-block;padding:7px 14px;background:#5e6ad2;border-radius:7px;font-size:12px;font-weight:700;color:#e8eaf0;cursor:pointer;letter-spacing:0.3px;">Export Form 8949 CSV</div>
+  <div style="display:inline-block;padding:6px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:12px;color:#b8c0d8;cursor:pointer;">TurboTax TXF</div>
+  <div style="display:inline-block;padding:6px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:12px;color:#b8c0d8;cursor:pointer;">CoinTracker Import</div>
+</div></div></div>`,
+`<div class="frame" style="width:1020px;background:#0d0f1a;border:1px solid #2a2d3e;border-radius:10px;overflow:hidden;">
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:32px;height:32px;border-radius:8px;background:#2d3068;
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:11px;font-weight:700;color:#5e6ad2;">NGO</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#e8eaf0;">
+          NyxForge Foundation &mdash; Tax &amp; Compliance</div>
+        <div style="font-size:11px;color:#8b95b0;">Generate Report</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="font-size:12px;color:#8b95b0;">Tax year:</div>
+      <div style="padding:4px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">2023</div><div style="padding:4px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">2024</div><div style="padding:4px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#2d3068;border:1px solid #5e6ad2;color:#e8eaf0;">2025</div>
+    </div>
+  </div><div style="display:flex;border-bottom:1px solid #2a2d3e;background:#131524;padding:0 24px;"><div style="padding:10px 20px;font-size:13px;cursor:pointer;color:#8b95b0;border-bottom:2px solid transparent;font-weight:400;">Overview</div><div style="padding:10px 20px;font-size:13px;cursor:pointer;color:#8b95b0;border-bottom:2px solid transparent;font-weight:400;">Donations</div><div style="padding:10px 20px;font-size:13px;cursor:pointer;color:#8b95b0;border-bottom:2px solid transparent;font-weight:400;">Crypto Ledger</div><div style="padding:10px 20px;font-size:13px;cursor:pointer;color:#e8eaf0;border-bottom:2px solid #5e6ad2;font-weight:700;">Generate</div><div style="padding:10px 20px;font-size:13px;cursor:pointer;color:#8b95b0;border-bottom:2px solid transparent;font-weight:400;">Receipts</div></div>
+<div style="padding:13px 24px;border-bottom:1px solid #2a2d3e;">
+  <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Generate Report</div>
+  <div style="font-size:12px;color:#8b95b0;margin-top:2px;">
+    Build a custom export for your accountant, auditors, or filing software.</div>
+</div><div style="padding:18px 24px;display:flex;gap:20px;"><div style="flex:1;min-width:0;">
+<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">REPORT TYPE</div>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">
+  <div style="padding:13px 14px;border-radius:8px;cursor:pointer;background:#2d3068;border:2px solid #5e6ad2;"><div style="font-size:13px;font-weight:700;color:#e8eaf0;margin-bottom:4px;">Form 990 Package</div><div style="font-size:11px;color:#8b95b0;line-height:1.4;">Full 990 data, Schedule B, Part VIII donation summary</div></div><div style="padding:13px 14px;border-radius:8px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;"><div style="font-size:13px;font-weight:700;color:#8b95b0;margin-bottom:4px;">Form 8949 (Crypto)</div><div style="font-size:11px;color:#8b95b0;line-height:1.4;">All XMR acquisitions and dispositions for the tax year</div></div><div style="padding:13px 14px;border-radius:8px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;"><div style="font-size:13px;font-weight:700;color:#8b95b0;margin-bottom:4px;">Schedule D Summary</div><div style="font-size:11px;color:#8b95b0;line-height:1.4;">Net capital gains/losses from XMR dispositions</div></div><div style="padding:13px 14px;border-radius:8px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;"><div style="font-size:13px;font-weight:700;color:#8b95b0;margin-bottom:4px;">Donor Summary</div><div style="font-size:11px;color:#8b95b0;line-height:1.4;">All donors, amounts, contact info for acknowledgments</div></div><div style="padding:13px 14px;border-radius:8px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;"><div style="font-size:13px;font-weight:700;color:#8b95b0;margin-bottom:4px;">Processor Reconciliation</div><div style="font-size:11px;color:#8b95b0;line-height:1.4;">Stripe / Square / Authorize.net cross-check</div></div><div style="padding:13px 14px;border-radius:8px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;"><div style="font-size:13px;font-weight:700;color:#8b95b0;margin-bottom:4px;">Full Ledger</div><div style="font-size:11px;color:#8b95b0;line-height:1.4;">Every donation and XMR transaction in one CSV</div></div>
+</div>
+<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">DATE RANGE</div>
+<div style="display:flex;gap:8px;margin-bottom:6px;">
+  <div style="padding:6px 14px;border-radius:5px;font-size:12px;cursor:pointer;background:#2d3068;border:1px solid #5e6ad2;color:#e8eaf0;">Full Year 2025</div><div style="padding:6px 14px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">Q1 2025</div><div style="padding:6px 14px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">Q2 2025</div><div style="padding:6px 14px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">Q3 2025</div><div style="padding:6px 14px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">Q4 2025</div><div style="padding:6px 14px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">Custom</div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+  <div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">From</div><div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#8b95b0;font-family:inherit;">2025-01-01</div></div>
+  <div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">To</div><div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#8b95b0;font-family:inherit;">2025-12-31</div></div>
+</div>
+<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">OUTPUT FORMAT</div>
+<div style="display:flex;gap:8px;margin-bottom:16px;">
+  <div style="flex:1;padding:10px 14px;border-radius:7px;cursor:pointer;text-align:center;background:#2d3068;border:2px solid #5e6ad2;"><div style="font-size:13px;font-weight:700;color:#e8eaf0;">PDF</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">Formatted for filing or printing</div></div><div style="flex:1;padding:10px 14px;border-radius:7px;cursor:pointer;text-align:center;background:#1a1d2e;border:1px solid #2a2d3e;"><div style="font-size:13px;font-weight:700;color:#8b95b0;">CSV</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">Spreadsheet / accountant import</div></div><div style="flex:1;padding:10px 14px;border-radius:7px;cursor:pointer;text-align:center;background:#1a1d2e;border:1px solid #2a2d3e;"><div style="font-size:13px;font-weight:700;color:#8b95b0;">TXF</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">TurboTax / TaxCut</div></div><div style="flex:1;padding:10px 14px;border-radius:7px;cursor:pointer;text-align:center;background:#1a1d2e;border:1px solid #2a2d3e;"><div style="font-size:13px;font-weight:700;color:#8b95b0;">JSON</div><div style="font-size:11px;color:#8b95b0;margin-top:2px;">API / developer use</div></div>
+</div>
+<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">INCLUDE IN REPORT</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px;">
+  <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#1a1d2e;border-radius:6px;cursor:pointer;"><div style="width:16px;height:16px;border-radius:4px;background:#5e6ad2;border:1px solid #5e6ad2;display:flex;align-items:center;justify-content:center;font-size:10px;color:#e8eaf0;flex-shrink:0;">&#10003;</div><div style="font-size:12px;color:#e8eaf0;">Donation totals by month</div></div><div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#1a1d2e;border-radius:6px;cursor:pointer;"><div style="width:16px;height:16px;border-radius:4px;background:#5e6ad2;border:1px solid #5e6ad2;display:flex;align-items:center;justify-content:center;font-size:10px;color:#e8eaf0;flex-shrink:0;">&#10003;</div><div style="font-size:12px;color:#e8eaf0;">Per-donor detail</div></div><div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#1a1d2e;border-radius:6px;cursor:pointer;"><div style="width:16px;height:16px;border-radius:4px;background:#5e6ad2;border:1px solid #5e6ad2;display:flex;align-items:center;justify-content:center;font-size:10px;color:#e8eaf0;flex-shrink:0;">&#10003;</div><div style="font-size:12px;color:#e8eaf0;">Processor breakdown</div></div><div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#1a1d2e;border-radius:6px;cursor:pointer;"><div style="width:16px;height:16px;border-radius:4px;background:#3a3d5c;border:1px solid #2a2d3e;display:flex;align-items:center;justify-content:center;font-size:10px;color:#e8eaf0;flex-shrink:0;"></div><div style="font-size:12px;color:#e8eaf0;">Anonymous donor rows</div></div><div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#1a1d2e;border-radius:6px;cursor:pointer;"><div style="width:16px;height:16px;border-radius:4px;background:#5e6ad2;border:1px solid #5e6ad2;display:flex;align-items:center;justify-content:center;font-size:10px;color:#e8eaf0;flex-shrink:0;">&#10003;</div><div style="font-size:12px;color:#e8eaf0;">XMR acquisition table</div></div><div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#1a1d2e;border-radius:6px;cursor:pointer;"><div style="width:16px;height:16px;border-radius:4px;background:#5e6ad2;border:1px solid #5e6ad2;display:flex;align-items:center;justify-content:center;font-size:10px;color:#e8eaf0;flex-shrink:0;">&#10003;</div><div style="font-size:12px;color:#e8eaf0;">XMR disposition table</div></div><div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#1a1d2e;border-radius:6px;cursor:pointer;"><div style="width:16px;height:16px;border-radius:4px;background:#5e6ad2;border:1px solid #5e6ad2;display:flex;align-items:center;justify-content:center;font-size:10px;color:#e8eaf0;flex-shrink:0;">&#10003;</div><div style="font-size:12px;color:#e8eaf0;">Cost basis calculation detail</div></div><div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#1a1d2e;border-radius:6px;cursor:pointer;"><div style="width:16px;height:16px;border-radius:4px;background:#3a3d5c;border:1px solid #2a2d3e;display:flex;align-items:center;justify-content:center;font-size:10px;color:#e8eaf0;flex-shrink:0;"></div><div style="font-size:12px;color:#e8eaf0;">Unrealized gain/loss summary</div></div>
+</div></div>
+<div style="width:300px;flex-shrink:0;">
+  <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">PREVIEW</div>
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;
+              padding:14px 16px;margin-bottom:14px;font-family:monospace;
+              font-size:11px;color:#8b95b0;line-height:1.8;">
+    <div style="color:#e8eaf0;font-weight:700;margin-bottom:8px;">
+      BOUNTY FOUNDATION</div>
+    <div>Form 990 Data Package</div>
+    <div>Tax Year: 2025-01-01 to 2025-12-31</div>
+    <div>Generated: 2025-04-23</div>
+    <div style="margin:8px 0;border-top:1px solid #2a2d3e;"></div>
+    <div style="color:#b8c0d8;">Part VIII Line 1a: $148,320</div>
+    <div style="color:#b8c0d8;">Contributors (Sch B): 4</div>
+    <div style="color:#b8c0d8;">XMR acquisitions: 497.2 XMR</div>
+    <div style="color:#b8c0d8;">XMR dispositions: 62.4 XMR</div>
+    <div style="margin:8px 0;border-top:1px solid #2a2d3e;"></div>
+    <div style="color:#8b95b0;">Pages: est. 12</div>
+    <div style="color:#8b95b0;">Format: PDF</div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <div style="width:100%;display:block;text-align:center;padding:13px 28px;background:#4ade80;border-radius:7px;font-size:14px;font-weight:700;color:#0d0f1a;cursor:pointer;letter-spacing:0.3px;">Generate &amp; Download</div>
+    <div style="width:100%;display:block;text-align:center;padding:13px 28px;background:#5e6ad2;border-radius:7px;font-size:14px;font-weight:700;color:#e8eaf0;cursor:pointer;letter-spacing:0.3px;">Email to Accountant</div>
+    <div style="width:100%;display:block;text-align:center;padding:12px 27px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:14px;color:#b8c0d8;cursor:pointer;">Save as Template</div>
+  </div>
+</div></div></div>`,
+`<div class="frame" style="width:1020px;background:#0d0f1a;border:1px solid #2a2d3e;border-radius:10px;overflow:hidden;">
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:32px;height:32px;border-radius:8px;background:#2d3068;
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:11px;font-weight:700;color:#5e6ad2;">NGO</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#e8eaf0;">
+          NyxForge Foundation &mdash; Tax &amp; Compliance</div>
+        <div style="font-size:11px;color:#8b95b0;">Donor Receipts</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="font-size:12px;color:#8b95b0;">Tax year:</div>
+      <div style="padding:4px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">2023</div><div style="padding:4px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">2024</div><div style="padding:4px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#2d3068;border:1px solid #5e6ad2;color:#e8eaf0;">2025</div>
+    </div>
+  </div><div style="display:flex;border-bottom:1px solid #2a2d3e;background:#131524;padding:0 24px;"><div style="padding:10px 20px;font-size:13px;cursor:pointer;color:#8b95b0;border-bottom:2px solid transparent;font-weight:400;">Overview</div><div style="padding:10px 20px;font-size:13px;cursor:pointer;color:#8b95b0;border-bottom:2px solid transparent;font-weight:400;">Donations</div><div style="padding:10px 20px;font-size:13px;cursor:pointer;color:#8b95b0;border-bottom:2px solid transparent;font-weight:400;">Crypto Ledger</div><div style="padding:10px 20px;font-size:13px;cursor:pointer;color:#8b95b0;border-bottom:2px solid transparent;font-weight:400;">Generate</div><div style="padding:10px 20px;font-size:13px;cursor:pointer;color:#e8eaf0;border-bottom:2px solid #5e6ad2;font-weight:700;">Receipts</div></div>
+<div style="padding:13px 24px;border-bottom:1px solid #2a2d3e;">
+  <div style="font-size:15px;font-weight:700;color:#e8eaf0;">Donor Receipts</div>
+  <div style="font-size:12px;color:#8b95b0;margin-top:2px;">
+    IRS 501(c)(3) acknowledgment letters &mdash; required for all gifts of $250 or more
+  </div>
+</div><div style="padding:18px 24px 0;">
+<div style="display:flex;gap:12px;margin-bottom:16px;">
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px 16px;flex:1;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">LETTERS REQUIRED</div><div style="font-size:22px;font-weight:700;color:#e8eaf0;">51</div><div style="font-size:12px;color:#8b95b0;margin-top:3px;">Donors with identified info</div></div>
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px 16px;flex:1;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">SENT</div><div style="font-size:22px;font-weight:700;color:#4ade80;">48</div><div style="font-size:12px;color:#8b95b0;margin-top:3px;">Via email</div></div>
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px 16px;flex:1;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">PENDING</div><div style="font-size:22px;font-weight:700;color:#fbbf24;">3</div><div style="font-size:12px;color:#8b95b0;margin-top:3px;">Missing email address</div></div>
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px 16px;flex:1;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">ANONYMOUS</div><div style="font-size:22px;font-weight:700;color:#8b95b0;">261</div><div style="font-size:12px;color:#8b95b0;margin-top:3px;">No letter required</div></div>
+</div></div>
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:0;
+            padding:10px 16px;border-bottom:1px solid #2a2d3e;background:#131524;">
+  <div style="padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#2d3068;border:1px solid #5e6ad2;color:#e8eaf0;">All</div><div style="padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">Sent</div><div style="padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">Pending</div><div style="padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer;background:#1a1d2e;border:1px solid #2a2d3e;color:#8b95b0;">Over $5,000</div>
+  <div style="margin-left:auto;display:flex;gap:8px;">
+    <div style="display:inline-block;padding:7px 14px;background:#4ade80;border-radius:7px;font-size:12px;font-weight:700;color:#0d0f1a;cursor:pointer;letter-spacing:0.3px;">Send All Pending</div>
+    <div style="display:inline-block;padding:6px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:12px;color:#b8c0d8;cursor:pointer;">Export All PDF</div>
+  </div>
+</div>
+<div style="display:grid;grid-template-columns:160px 90px 100px 110px 110px 1fr 80px;
+            gap:0;padding:8px 14px;background:#1a1d2e;border-bottom:1px solid #2a2d3e;">
+  <div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">DONOR</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">TOTAL GIVEN</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">LARGEST GIFT</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">EMAIL</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">LETTER STATUS</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">ACKNOWLEDGMENT TEXT</div><div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:#8b95b0;">ACTION</div>
+</div><div style="display:grid;grid-template-columns:160px 90px 100px 110px 110px 1fr 80px;gap:0;padding:10px 14px;border-bottom:1px solid #2a2d3e;font-size:11px;"><div style="color:#e8eaf0;">K. Chen</div><div style="color:#e8eaf0;font-weight:700;">$12,500</div><div style="color:#8b95b0;">$5,000</div><div style="color:#8b95b0;font-family:monospace;font-size:10px;">k.chen@...</div><div><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#4ade80;background:rgba(74,222,128,0.10);">SENT</span></div><div style="color:#8b95b0;font-size:10px;line-height:1.4;">"No goods or services were provided in exchange..."</div><div><div style="display:inline-block;padding:6px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:12px;color:#b8c0d8;cursor:pointer;">Resend</div></div></div><div style="display:grid;grid-template-columns:160px 90px 100px 110px 110px 1fr 80px;gap:0;padding:10px 14px;border-bottom:1px solid #2a2d3e;font-size:11px;"><div style="color:#e8eaf0;">Bounty Trust</div><div style="color:#e8eaf0;font-weight:700;">$8,000</div><div style="color:#8b95b0;">$8,000</div><div style="color:#8b95b0;font-family:monospace;font-size:10px;">trust@...</div><div><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#4ade80;background:rgba(74,222,128,0.10);">SENT</span></div><div style="color:#8b95b0;font-size:10px;line-height:1.4;">"No goods or services were provided in exchange..."</div><div><div style="display:inline-block;padding:6px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:12px;color:#b8c0d8;cursor:pointer;">Resend</div></div></div><div style="display:grid;grid-template-columns:160px 90px 100px 110px 110px 1fr 80px;gap:0;padding:10px 14px;border-bottom:1px solid #2a2d3e;font-size:11px;"><div style="color:#e8eaf0;">R. Martinez</div><div style="color:#e8eaf0;font-weight:700;">$1,200</div><div style="color:#8b95b0;">$300</div><div style="color:#8b95b0;font-family:monospace;font-size:10px;">r.mar@...</div><div><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#4ade80;background:rgba(74,222,128,0.10);">SENT</span></div><div style="color:#8b95b0;font-size:10px;line-height:1.4;">"No goods or services were provided in exchange..."</div><div><div style="display:inline-block;padding:6px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:12px;color:#b8c0d8;cursor:pointer;">Resend</div></div></div><div style="display:grid;grid-template-columns:160px 90px 100px 110px 110px 1fr 80px;gap:0;padding:10px 14px;border-bottom:1px solid #2a2d3e;font-size:11px;"><div style="color:#e8eaf0;">T. Okafor</div><div style="color:#e8eaf0;font-weight:700;">$950</div><div style="color:#8b95b0;">$250</div><div style="color:#8b95b0;font-family:monospace;font-size:10px;">t.oka@...</div><div><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#4ade80;background:rgba(74,222,128,0.10);">SENT</span></div><div style="color:#8b95b0;font-size:10px;line-height:1.4;">"No goods or services were provided in exchange..."</div><div><div style="display:inline-block;padding:6px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:12px;color:#b8c0d8;cursor:pointer;">Resend</div></div></div><div style="display:grid;grid-template-columns:160px 90px 100px 110px 110px 1fr 80px;gap:0;padding:10px 14px;border-bottom:1px solid #2a2d3e;font-size:11px;"><div style="color:#e8eaf0;">M. Johansson</div><div style="color:#e8eaf0;font-weight:700;">$750</div><div style="color:#8b95b0;">$750</div><div style="color:#8b95b0;font-family:monospace;font-size:10px;">(missing)</div><div><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#fbbf24;background:rgba(251,191,36,0.10);">PENDING</span></div><div style="color:#8b95b0;font-size:10px;line-height:1.4;">Email address needed</div><div><div style="display:inline-block;padding:7px 14px;background:#5e6ad2;border-radius:7px;font-size:12px;font-weight:700;color:#e8eaf0;cursor:pointer;letter-spacing:0.3px;">Send</div></div></div><div style="display:grid;grid-template-columns:160px 90px 100px 110px 110px 1fr 80px;gap:0;padding:10px 14px;border-bottom:1px solid #2a2d3e;font-size:11px;"><div style="color:#e8eaf0;">Anonymous</div><div style="color:#e8eaf0;font-weight:700;">$500</div><div style="color:#8b95b0;">$500</div><div style="color:#8b95b0;font-family:monospace;font-size:10px;">N/A</div><div><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#8b95b0;background:#1a1d2e;">N/A</span></div><div style="color:#8b95b0;font-size:10px;line-height:1.4;">Anonymous donor &mdash; no letter required</div><div><div style="display:inline-block;padding:6px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:12px;color:#b8c0d8;cursor:pointer;">Resend</div></div></div>
+<div style="padding:14px 16px;border-top:1px solid #2a2d3e;">
+  <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">LETTER TEMPLATE</div>
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;
+              padding:14px 16px;font-size:12px;color:#b8c0d8;line-height:1.8;">
+    <div style="color:#e8eaf0;font-weight:700;margin-bottom:6px;">
+      NyxForge Foundation &mdash; Gift Acknowledgment</div>
+    Dear [DONOR NAME],<br><br>
+    Thank you for your generous contribution of <span style="color:#e8eaf0;">[AMOUNT]</span>
+    to NyxForge Foundation on <span style="color:#e8eaf0;">[DATE]</span>.
+    NyxForge Foundation is a tax-exempt organization under Section 501(c)(3) of the Internal
+    Revenue Code (EIN: XX-XXXXXXX). No goods or services were provided in exchange for your
+    contribution, and the full amount is deductible to the extent allowed by law.<br><br>
+    <span style="color:#8b95b0;">NyxForge Foundation &bull; 123 Mission St, San Francisco, CA 94105</span>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:10px;">
+    <div style="display:inline-block;padding:6px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:12px;color:#b8c0d8;cursor:pointer;">Edit Template</div>
+    <div style="display:inline-block;padding:6px 13px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:12px;color:#b8c0d8;cursor:pointer;">Preview PDF</div>
+  </div>
+</div></div>`];
+let cur = 0;
+function render() {
+  const tb = document.getElementById('tabBar');
+  tb.innerHTML = TABS.map((t,i) =>
+    `<div class="tab${i===cur?' active':''}" onclick="jump(${i})">${t}</div>`
+  ).join('');
+  document.getElementById('viewport').innerHTML = FRAMES[cur];
+  document.getElementById('frameLabel').textContent =
+    (cur+1) + ' / ' + FRAMES.length + ' — ' + TABS[cur];
+}
+function jump(i) { cur = i; render(); }
+function go(d) { cur = (cur + d + FRAMES.length) % FRAMES.length; render(); }
+render();
+</script>
+</body>
+</html>
