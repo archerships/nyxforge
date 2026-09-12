@@ -34,7 +34,7 @@ test.describe('Node status screen', () => {
         body: JSON.stringify({
           result: {
             version:    '0.1.0',
-            bonds:      42,
+            bounties:      42,
           },
         }),
       }),
@@ -62,7 +62,7 @@ test.describe('Node status screen', () => {
       route.fulfill({
         status:      200,
         contentType: 'application/json',
-        body: JSON.stringify({ result: { version: '0.1.0', bonds: 7 } }),
+        body: JSON.stringify({ result: { version: '0.1.0', bounties: 7 } }),
       }),
     );
     await clickFlutterWidget(page, 'REFRESH');

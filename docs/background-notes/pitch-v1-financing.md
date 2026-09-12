@@ -20,12 +20,12 @@ A social policy bond works as follows:
    be released by one of two outcomes: goal achieved (collateral goes to the
    bondholder) or deadline expired (collateral returns to the issuer).
 
-3. The issuer sells the bonds at whatever price the market will bear. That
+3. The issuer sells the bounties at whatever price the market will bear. That
    price is the market's probability estimate that the goal will be achieved.
-   A bond trading at 0.5 XMR against a 1 XMR redemption value implies the
+   A bounty trading at 0.5 XMR against a 1 XMR redemption value implies the
    market assigns 50% probability to success.
 
-4. Bond buyers are free to use any means to achieve the goal. They profit only
+4. Bounty buyers are free to use any means to achieve the goal. They profit only
    if the goal is actually reached, verified by an independent oracle panel.
    There is no reporting requirement, no strategy approval, no governance
    overhead.
@@ -37,7 +37,7 @@ The result is a market mechanism that:
 - Produces a real-time probability signal on whether any given goal is
   achievable and at what cost.
 - Separates the decision about what goal to fund (the issuer's choice) from
-  the decision about how to achieve it (the bond buyer's expertise).
+  the decision about how to achieve it (the bounty buyer's expertise).
 - Requires no trust between issuer and buyer. The collateral is locked and
   the oracle verification is defined at issuance. Neither party can cheat.
 
@@ -74,11 +74,11 @@ $5,000,000.
 You issue 2,500 SPBs, each of which pays the bearer 1 XMR if the price of XMR
 rises to $1,000 and remains there for 30 days.
 
-You lock 2,500 XMR as collateral (one per bond). You sell the bonds at 0.01
+You lock 2,500 XMR as collateral (one per bounty). You sell the bounties at 0.01
 XMR ($5) each for total proceeds of $12,500.
 
 A DC lobbying firm, CryptoLobby Inc., believes it can pass legislation
-eliminating the capital gains tax on cryptocurrency. It buys all 2,500 bonds
+eliminating the capital gains tax on cryptocurrency. It buys all 2,500 bounties
 for $12,500.
 
 CryptoLobby spends $500,000 on lobbying. The legislation passes. XMR rises
@@ -89,35 +89,35 @@ Table.1.Monero Lobbying
 | Party | Outcome |
 | :--- | :--- |
 | CryptoLobby receipts | 2,500 XMR @ $1,000 = $2,500,000 |
-| CryptoLobby costs | $500,000 lobbying + $12,500 bonds = $512,500 |
+| CryptoLobby costs | $500,000 lobbying + $12,500 bounties = $512,500 |
 | CryptoLobby net profit | $1,987,500 |
 | Issuer: remaining holdings | 7,500 XMR @ $1,000 = $7,500,000 |
-| Issuer: bond proceeds retained | $12,500 |
+| Issuer: bounty proceeds retained | $12,500 |
 | Issuer total | $7,512,500 |
 | Issuer gain vs. doing nothing | +$2,512,500 (original position: $5,000,000) |
 
 ### Price signal
 
-If bonds trade at 0.5 XMR ($250 at original price) in the secondary market,
+If bounties trade at 0.5 XMR ($250 at original price) in the secondary market,
 that price implies the market assigns a 50% probability that the lobbying will
 succeed. This gives the issuer real-time feedback on whether the effort is
 working -- something no traditional donation or grant mechanism provides.
 
 ### Why this investor funds NyxForge
 
-This bond cannot exist without NyxForge. Any XMR whale who would issue such a
-bond has a direct financial incentive to fund NyxForge development. The return
+This bounty cannot exist without NyxForge. Any XMR whale who would issue such a
+bounty has a direct financial incentive to fund NyxForge development. The return
 on a $10,000 grant dwarfs the expected value of holding XMR passively and
 hoping someone else improves the ecosystem.
 
-### What the bond issuer does NOT need to do
+### What the bounty issuer does NOT need to do
 
 - Trust the lobbying firm's judgment about strategy
 - Evaluate the merits of specific regulatory approaches
 - Run a grant program with reporting requirements
 - Know anything about lobbying at all
 
-The market takes care of all of that. Bond buyers self-select based on their
+The market takes care of all of that. Bounty buyers self-select based on their
 confidence in their own ability to move the outcome.
 
 ---
@@ -131,9 +131,9 @@ wait a decade for regulatory approval. Investors in nuclear companies face
 regulatory risk that is largely outside their control and impossible to hedge
 with conventional instruments.
 
-### Proposed bond structure
+### Proposed bounty structure
 
-A nuclear energy investor (or a consortium) issues bonds that pay the bearer
+A nuclear energy investor (or a consortium) issues bounties that pay the bearer
 if a specific, verifiable regulatory outcome is achieved by a fixed deadline.
 
 Example goal specification:
@@ -143,16 +143,16 @@ Example goal specification:
     deadline:  2030-01-01
 
 
-Interpretation: the bond pays 1 XMR per bond if Valar Atomics wins their case against the NRC by January 2030.
+Interpretation: the bounty pays 1 XMR per bounty if Valar Atomics wins their case against the NRC by January 2030.
 
-### Who buys these bonds
+### Who buys these bounties
 
 - Nuclear advocacy organizations (e.g., Nuclear Energy Institute)
 - Consulting firms that specialize in regulatory strategy
 - Law firms that litigate against the NRC
 - Energy VCs with nuclear portfolio exposure
 
-Each buyer is a potential actor who can influence the outcome. The bond price
+Each buyer is a potential actor who can influence the outcome. The bounty price
 reflects the market's probability estimate of success. A high price signals
 that the market believes the goal is achievable; a low price signals doubt.
 
@@ -178,24 +178,24 @@ model gives the donor a direct stake in the outcome.
 
 Suppose the parent of a child with a rare cancer wants to incentivize
 development of a cure. They raise $100,000 from their family network and use
-it to issue 100 bonds, each backed by 1 XMR (at $500 per XMR, 0.2 XMR per
-bond = $100,000 total collateral at issuance).
+it to issue 100 bounties, each backed by 1 XMR (at $500 per XMR, 0.2 XMR per
+bounty = $100,000 total collateral at issuance).
 
-The bonds pay the bearer 1 XMR if the child's cancer is in complete remission
+The bounties pay the bearer 1 XMR if the child's cancer is in complete remission
 as determined by a panel of oncologists (qualitative oracle panel) by 2030.
 
-A biotech VC firm that specializes in rare pediatric cancers buys all 100 bonds
-for 0.05 XMR each ($25 per bond = $2,500 total). The VC firm then:
+A biotech VC firm that specializes in rare pediatric cancers buys all 100 bounties
+for 0.05 XMR each ($25 per bounty = $2,500 total). The VC firm then:
 
 1. Funds one of its portfolio companies to develop a targeted therapy.
-2. Monitors progress; if the therapy works, redeems the bonds for 100 XMR.
+2. Monitors progress; if the therapy works, redeems the bounties for 100 XMR.
 
 Table.2.CancerCase
 
 | Scenario | VC firm outcome |
 | :--- | :--- |
-| Cure found, bonds redeemed | 100 XMR received - 5 XMR paid - therapy cost |
-| No cure, bonds expire | Loses $2,500 bond purchase; recoups from other portfolio returns |
+| Cure found, bounties redeemed | 100 XMR received - 5 XMR paid - therapy cost |
+| No cure, bounties expire | Loses $2,500 bounty purchase; recoups from other portfolio returns |
 
 The family's 100 XMR collateral is either redeemed by the VC (goal met) or
 returned to the family (goal not met). The family's downside is losing the
@@ -217,7 +217,7 @@ that outcome.
 Any family or foundation with a specific medical mission would benefit from this
 model. The key obstacle is that NyxForge does not yet exist. A grant to build
 NyxForge is instrumentally identical to a grant to fund the research itself --
-except that NyxForge, once built, enables an unlimited number of such bonds for
+except that NyxForge, once built, enables an unlimited number of such bounties for
 any goal.
 
 ---
@@ -340,13 +340,13 @@ with no known author has no one to arrest.
 
 ### Funding Anonymous Development
 
-If wealthy investors and VC firms could issue outcome-linked bonds today, they
+If wealthy investors and VC firms could issue outcome-linked bounties today, they
 would likely use capital to hire scientists, programmers, and lobbyists, paying
 only on verified results. That is precisely what NyxForge enables. The
 difficulty is that NyxForge does not exist yet, and the investors who need it
 most cannot use it to fund its own construction.
 
-The solution is to replicate the bond mechanism manually, using milestones in
+The solution is to replicate the bounty mechanism manually, using milestones in
 place of oracle attestations.
 
 A donor commits funds in escrow that are released upon verified delivery of a
@@ -395,12 +395,12 @@ Table.3.Milestones
 | Milestone | Deliverable | Payment |
 | :--- | :--- | :--- |
 | 1 | Development plan and v1 spec reviewed and accepted | $5,000 |
-| 2 | nyxforge-bond crate: all schema tables, passing test suite | $15,000 |
-| 3 | CLI: bond create, inspect, status working on stagenet | $10,000 |
+| 2 | nyxforge-bounty crate: all schema tables, passing test suite | $15,000 |
+| 3 | CLI: bounty create, inspect, status working on stagenet | $10,000 |
 | 4 | Oracle workflow: accept, attest, evidence BLOBs, quorum | $10,000 |
 | 5 | XMR DLEQ lock and sweep end-to-end on stagenet | $25,000 |
 | 6 | Flutter UI functional on desktop (macOS/Linux) | $20,000 |
-| 7 | First bond issued on Monero mainnet | $10,000 |
+| 7 | First bounty issued on Monero mainnet | $10,000 |
 | Total | | $95,000 |
 
 At each step, the funder and arbitrator review the deliverable -- typically a
@@ -431,13 +431,13 @@ Table.4.DevCost
 
 | Phase | Work | Estimate |
 | :--- | :--- | :--- |
-| 1 | nyxforge-bond crate, DLEQ primitives | 6-10 weeks |
-| 2 | Bond file operations (create, inspect, transfer, verify) | 3-4 weeks |
+| 1 | nyxforge-bounty crate, DLEQ primitives | 6-10 weeks |
+| 2 | Bounty file operations (create, inspect, transfer, verify) | 3-4 weeks |
 | 3 | Oracle tooling, attestation, HTTP-JSON adapter | 3-4 weeks |
 | 4 | XMR lock/sweep transactions, stagenet E2E | 6-8 weeks |
 | 5 | Flutter UI (8-10 screens, local RPC client) | 5-8 weeks |
 | 6 | Integration, error handling, UX testing | 2-3 weeks |
-| 7 | Mainnet bond, documentation, grant applications | 2-3 weeks |
+| 7 | Mainnet bounty, documentation, grant applications | 2-3 weeks |
 | Total | | 27-40 weeks |
 
 Table.5.CostRange
@@ -449,7 +449,7 @@ Table.5.CostRange
 
 The milestone sequence in Table.3.Milestones totals $95,000. A complete funding
 commitment of $100,000-$160,000 covers the low end of the range at mid-level
-rates and funds a working v1 with Flutter UI and one live mainnet bond.
+rates and funds a working v1 with Flutter UI and one live mainnet bounty.
 
 Two factors most likely to extend the timeline beyond the high estimate:
 

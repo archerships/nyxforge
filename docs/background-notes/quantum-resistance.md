@@ -35,7 +35,7 @@ Shor's algorithm solves the elliptic curve discrete logarithm problem
 | :--- | :--- | :--- |
 | DLEQ adaptor signatures | ECDLP (Curve25519) | Core collateral locking mechanism |
 | `holder_pubkey` / `scalar_encrypted` | Ed25519 keypairs | Holder ownership model |
-| `bond prove` listing signatures | Schnorr (Ed25519) | Exchange ownership proof |
+| `bounty prove` listing signatures | Schnorr (Ed25519) | Exchange ownership proof |
 | XMR collateral | Ed25519 + RingCT + Bulletproofs | Entire Monero cryptographic stack |
 | ZEC Sapling proofs | Groth16 over BLS12-381 | Pairing-based; relies on ECDLP |
 | ZEC Sapling keypairs | Jubjub curve | ECDLP |
@@ -51,7 +51,7 @@ floor.
 
 | Component | Algorithm | Post-quantum security |
 | :--- | :--- | :--- |
-| `bond_id` derivation | Blake3-256 | ~128-bit |
+| `bounty_id` derivation | Blake3-256 | ~128-bit |
 | Evidence hashes | SHA-256 | ~128-bit |
 | File encryption | AES-256 (SQLCipher) | ~128-bit |
 | ZEC note encryption | ChaCha20-Poly1305 | ~128-bit |
@@ -70,7 +70,7 @@ Pedersen commitments -- ECDLP-based). An attacker harvesting shielded ZEC
 transactions today cannot learn amounts even with a future CRQC, because
 the encryption is symmetric.
 
-However, the ability to SPEND -- which is what matters for bond collateral
+However, the ability to SPEND -- which is what matters for bounty collateral
 -- still requires ECDLP-based keys in both systems. A CRQC breaks spending
 authority in XMR and ZEC equally.
 
@@ -79,20 +79,20 @@ The collateral currency choice for quantum resistance is a wash.
 
 ---
 
-## 4. The Long-Dated Bond Problem
+## 4. The Long-Dated Bounty Problem
 
 The harvest-now-decrypt-later (HNDL) attack is the primary practical concern:
 
 An adversary records all on-chain transactions and `scalar_encrypted` BLOBs
 today, then decrypts them once a CRQC becomes available.
 
-Timeline risk by bond duration:
+Timeline risk by bounty duration:
 
-| Bond horizon | HNDL risk |
+| Bounty horizon | HNDL risk |
 | :--- | :--- |
 | 1-5 years | Negligible. No CRQC expected before 2030s at earliest. |
 | 10-20 years | Low to moderate. CRQC timeline uncertain; most expert estimates place it 2035-2045+. |
-| 50+ years | High. A 50-year bond issued today will almost certainly exist in a post-CRQC world. |
+| 50+ years | High. A 50-year bounty issued today will almost certainly exist in a post-CRQC world. |
 | 200 years (lifebonds) | Near-certain. The entire ECDLP-based collateral stack will be broken within this window. |
 
 This is a fundamental design tension: the lifebond use case (the founding
@@ -114,7 +114,7 @@ FN-DSA) do not map cleanly onto the two-party adaptor pattern:
 - ML-KEM (Kyber): key encapsulation, not signatures -- could replace
   `scalar_encrypted` for the holder ownership model
 - ML-DSA (Dilithium): lattice-based signatures -- could replace Schnorr for
-  `bond prove` listing records and holder keypairs
+  `bounty prove` listing records and holder keypairs
 - SLH-DSA (SPHINCS+): hash-based signatures -- large signatures (~8-50KB),
   stateless, conservative security; could replace holder keypairs
 - FN-DSA (FALCON): compact lattice-based signatures -- could replace Schnorr
@@ -132,18 +132,18 @@ b) A fundamentally different collateral locking design that does not rely
 
 ## 6. Recommended Mitigations by Phase
 
-### MVP and v2 (near-term bonds, <10 year horizons)
+### MVP and v2 (near-term bounties, <10 year horizons)
 - No action required. Quantum threat is negligible on this horizon.
-- Document the limitation clearly so issuers of long-dated bonds understand
+- Document the limitation clearly so issuers of long-dated bounties understand
   the risk.
 
 ### v2 (holder keypair hardening, low effort)
 - Replace Ed25519 holder keypairs with ML-DSA (Dilithium) or ML-KEM + ML-DSA.
-- Replace Schnorr `bond prove` signatures with ML-DSA.
+- Replace Schnorr `bounty prove` signatures with ML-DSA.
 - This hardens the ownership and trading layer without touching DLEQ.
 
 ### v3 (post-quantum verifier slots, already planned)
-- Implement the post-quantum verifier slot in the `.bond` schema (already
+- Implement the post-quantum verifier slot in the `.bounty` schema (already
   noted as deferred in `doc/00_MVP.md Section 3`).
 - Track NIST PQC standardisation and Monero/ZEC PQ roadmaps.
 
@@ -151,7 +151,7 @@ b) A fundamentally different collateral locking design that does not rely
 - The honest answer: the collateral locking mechanism requires a post-quantum
   privacy coin or a novel PQ adaptor construction that does not exist today.
 - Monitor academic literature on post-quantum adaptor signatures.
-- Consider a hybrid escrow model for very long-dated bonds as a stopgap:
+- Consider a hybrid escrow model for very long-dated bounties as a stopgap:
   DLEQ for the primary path + a PQ-signed multi-sig fallback redeemable
   after a specified date, accepted by the issuer as a trust tradeoff.
 
@@ -161,26 +161,26 @@ b) A fundamentally different collateral locking design that does not rely
 
 ### 8.1 10-year maximum deadline
 
-Bonds are limited to a maximum deadline of `inception + 10 years`, enforced
-by the CLI wizard. Rationale: bonds with longer horizons enter the CRQC
+Bounties are limited to a maximum deadline of `inception + 10 years`, enforced
+by the CLI wizard. Rationale: bounties with longer horizons enter the CRQC
 threat window where harvest-now-decrypt-later attacks become plausible.
-The 10-year limit keeps all MVP bonds comfortably within the pre-CRQC
+The 10-year limit keeps all MVP bounties comfortably within the pre-CRQC
 window even under accelerated quantum development scenarios.
 
-Bonds with deadlines beyond 10 years are explicitly deferred in
+Bounties with deadlines beyond 10 years are explicitly deferred in
 `doc/00_MVP.md Section 3` as "blocked on CRQC timeline". They will become
 possible once the collateral locking mechanism migrates to a PQ scheme.
 
-### 8.2 Forward-compatibility changes to the .bond schema
+### 8.2 Forward-compatibility changes to the .bounty schema
 
 The following changes were made to `doc/00_MVP.md Section 4.1` to make
-future PQ migration easier without breaking existing bonds:
+future PQ migration easier without breaking existing bounties:
 
-1. `bond_spec.alg_epoch` (INTEGER DEFAULT 0) -- algorithm generation
-   identifier included in `bond_id` derivation. Epoch 0 = classical
+1. `bounty_spec.alg_epoch` (INTEGER DEFAULT 0) -- algorithm generation
+   identifier included in `bounty_id` derivation. Epoch 0 = classical
    (Ed25519). Epoch 1 = PQ transition (hybrid). Epoch 2 = full PQ.
 
-2. `bond_id` derivation updated to:
+2. `bounty_id` derivation updated to:
    `Blake3(alg_epoch || goal_hash || collateral_hash || oracle_hash || inception)`
 
 3. `collateral.key_algorithm` (TEXT DEFAULT 'ed25519') -- records the
@@ -190,10 +190,10 @@ future PQ migration easier without breaking existing bonds:
    records the algorithm used to encrypt `scalar_encrypted`.
 
 5. `collateral.pq_holder_pubkey` (TEXT, nullable) -- reserved for a future
-   ML-DSA or SLH-DSA public key. Null for all MVP bonds.
+   ML-DSA or SLH-DSA public key. Null for all MVP bounties.
 
 6. `collateral.pq_scalar_enc` (BLOB, nullable) -- reserved for scalar
-   re-encrypted under ML-KEM. Null for all MVP bonds.
+   re-encrypted under ML-KEM. Null for all MVP bounties.
 
 7. `attestations.sig_algorithm` (TEXT DEFAULT 'ed25519') -- records which
    algorithm each oracle used to sign its attestation.
@@ -204,15 +204,15 @@ future PQ migration easier without breaking existing bonds:
 9. `verifier` table made one-to-many on `(circuit_id, sig_algorithm)` --
    allows classical and PQ verifier WASM blobs to coexist in the same file.
 
-These changes add no runtime cost for MVP bonds. All PQ fields are null.
+These changes add no runtime cost for MVP bounties. All PQ fields are null.
 They eliminate schema version bumps for the ownership and attestation
 layers when PQ algorithms deploy.
 
 ### 8.3 What these changes do NOT solve
 
 The DLEQ collateral locking mechanism is not made forward-compatible by
-schema changes. When XMR migrates to a PQ scheme, bonds must be re-issued
-with a new DLEQ setup. Issuers of bonds with deadlines approaching 2035+
+schema changes. When XMR migrates to a PQ scheme, bounties must be re-issued
+with a new DLEQ setup. Issuers of bounties with deadlines approaching 2035+
 should be aware that re-issuance cooperation between issuer and holder may
 be required if XMR migrates before the deadline.
 

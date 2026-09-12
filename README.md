@@ -11,7 +11,7 @@
 [Social policy bonds](https://en.wikipedia.org/wiki/Social_policy_bond) pay out only when a
 measurable real-world goal is achieved -- reduced homelessness, clean air targets,
 literacy rates. Traditional SPB schemes require trusted institutions to issue and
-settle the bond. NyxForge removes the trusted party.
+settle the bounty. NyxForge removes the trusted party.
 
 A bounty is a **self-contained bearer instrument**: a `.bounty` file backed by crypto
 collateral locked with DLEQ/PTLC adaptor signatures or smart-contract escrow. Anyone
@@ -65,7 +65,7 @@ Deferred to **v2**: ZK MINT/TRANSFER/BURN ownership circuits, libp2p P2P network
 order book / DEX, Flutter browser UI, nullifier set, Merkle membership proofs, judge
 slashing, goal-text encryption.
 Deferred to **v3**: DarkFi L1 integration, full post-quantum verifiers, ZEC Orchard
-locking. Bonds with deadlines beyond 10 years are blocked on the cryptographically
+locking. Bounties with deadlines beyond 10 years are blocked on the cryptographically
 relevant quantum computer (CRQC) timeline.
 
 ## Repository layout

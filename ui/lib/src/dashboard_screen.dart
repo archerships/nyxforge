@@ -153,9 +153,9 @@ class _ActivityList extends StatelessWidget {
       children: [
         _ActivityItem(
           icon: Icons.add_circle_outline,
-          title: 'Bond Issued',
+          title: 'Bounty Issued',
           time: '2h ago',
-          desc: 'NyxForge Alpha Release Bond #402',
+          desc: 'NyxForge Alpha Release Bounty #402',
         ),
         _ActivityItem(
           icon: Icons.call_received,

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Seed the nyxforge-node with three demo bonds for local development.
+"""Seed the nyxforge-node with three demo bounties for local development.
 
-Safe to run multiple times: existing bonds are detected and skipped.
+Safe to run multiple times: existing bounties are detected and skipped.
 The node must already be running on http://127.0.0.1:8888/rpc.
 """
 
@@ -32,7 +32,7 @@ VERIFICATION = {
 
 LIFEBOND_ALIVE_GOAL = {
     "title":       "Subject Is Alive",
-    "description": "The bond subject must be certified alive by vital records authorities.",
+    "description": "The bounty subject must be certified alive by vital records authorities.",
     "metric": {
         "data_id":     "subject.lifebond_001.vital_status",
         "operator":    "GreaterThanOrEqual",
@@ -45,7 +45,7 @@ LIFEBOND_ALIVE_GOAL = {
 
 LIFEBOND_HEALTH_GOAL = {
     "title":       "Subject Is in Good Health (Score >= 80)",
-    "description": "Bond subject must be certified in good health by a geriatric panel (score >= 80/100).",
+    "description": "Bounty subject must be certified in good health by a geriatric panel (score >= 80/100).",
     "metric": {
         "data_id":     "subject.lifebond_001.health_score",
         "operator":    "GreaterThanOrEqual",
@@ -56,7 +56,7 @@ LIFEBOND_HEALTH_GOAL = {
     "evidence_format": None,
 }
 
-DEMO_BONDS = [
+DEMO_BOUNTIES = [
     {
         "id":           ZERO_ID,
         "issuer":       ISSUER,
@@ -70,7 +70,7 @@ DEMO_BONDS = [
         },
         "redemption_value":  100_000_000,  # 100 DRK
         "total_supply":       10_000,
-        "bonds_remaining":    10_000,
+        "bounties_remaining":    10_000,
         "return_address":    RETURN_ADDR,
         "created_at_block":  1,
         "activated_at_secs": None,
@@ -100,7 +100,7 @@ DEMO_BONDS = [
         },
         "redemption_value":   50_000_000,  # 50 DRK
         "total_supply":       10_000,
-        "bonds_remaining":    10_000,
+        "bounties_remaining":    10_000,
         "return_address":    RETURN_ADDR,
         "created_at_block":  100,
         "activated_at_secs": None,
@@ -130,7 +130,7 @@ DEMO_BONDS = [
         },
         "redemption_value":   20_000_000,  # 20 DRK
         "total_supply":        5_000,
-        "bonds_remaining":     5_000,
+        "bounties_remaining":     5_000,
         "return_address":    RETURN_ADDR,
         "created_at_block":  200,
         "activated_at_secs": None,
@@ -159,35 +159,35 @@ def bytes_to_hex(byte_list):
 
 def main():
     # Check what's already seeded
-    existing = rpc("bonds.list")
+    existing = rpc("bounties.list")
     existing_ids = set()
-    for b in existing.get("bonds", []):
+    for b in existing.get("bounties", []):
         existing_ids.add(bytes_to_hex(b["id"]))
-    print(f"Node has {len(existing_ids)} bond(s) already.")
+    print(f"Node has {len(existing_ids)} bounty(s) already.")
 
     seeded = 0
-    for bond in DEMO_BONDS:
-        title = bond["goals"][0]["title"]
+    for bounty in DEMO_BOUNTIES:
+        title = bounty["goals"][0]["title"]
 
         # Propose → get canonical ID back
-        result = rpc("bonds.propose", {"bond": bond})
-        bond_id = result["bond_id"]
+        result = rpc("bounties.propose", {"bounty": bounty})
+        bounty_id = result["bounty_id"]
 
-        if bond_id in existing_ids:
+        if bounty_id in existing_ids:
             print(f"  SKIP  {title[:50]}")
             continue
 
         print(f"  SEED  {title[:50]}")
 
         # Advance through the state machine to Active
-        rpc("bonds.submit_for_approval", {"bond_id": bond_id})
-        rpc("bonds.oracle_accept", {"bond_id": bond_id, "oracle_key": "2" * 64})
-        rpc("bonds.issue",         {"bond_id": bond_id})
+        rpc("bounties.submit_for_approval", {"bounty_id": bounty_id})
+        rpc("bounties.oracle_accept", {"bounty_id": bounty_id, "oracle_key": "2" * 64})
+        rpc("bounties.issue",         {"bounty_id": bounty_id})
 
         seeded += 1
-        print(f"        → active  id={bond_id[:16]}…")
+        print(f"        → active  id={bounty_id[:16]}…")
 
-    print(f"\nDone. {seeded} bond(s) seeded, {len(existing_ids)} already present.")
+    print(f"\nDone. {seeded} bounty(s) seeded, {len(existing_ids)} already present.")
 
 
 if __name__ == "__main__":

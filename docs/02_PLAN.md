@@ -10,7 +10,7 @@
 
 > Written: March 2026.  Living document.
 > Definition of v1: **NyxForge Network Launch** (roadmap Phase 5) — a live,
-> real-money-capable bond market running on NyxForge's own P2P network,
+> real-money-capable bounty market running on NyxForge's own P2P network,
 > explicitly pre-DarkFi-mainnet, with ZK privacy enforced and full browser UI.
 
 ---
@@ -78,10 +78,10 @@ in the pre-DarkFi phase.  Document it clearly.  Move on.
 | MINT circuit (real Halo2) | **Done** | Poseidon2 commitment scheme |
 | TRANSFER circuit (real Halo2) | **Done** | No Merkle proof (see Decision 2) |
 | BURN circuit (real Halo2) | **Done** | oracle_attest_pk constraint (Option A) |
-| ZK oracle attestation (Option A) | **Done** | oracle generates per-bond key |
-| Oracle push model | **Done** | monitor_bonds() |
-| Bond lifecycle state machine | **Done** | Proposed → Settled |
-| CLI bond wizard | **Done** | full lifecycle |
+| ZK oracle attestation (Option A) | **Done** | oracle generates per-bounty key |
+| Oracle push model | **Done** | monitor_bounties() |
+| Bounty lifecycle state machine | **Done** | Proposed → Settled |
+| CLI bounty wizard | **Done** | full lifecycle |
 | Oracle approval workflow | **Done** | accept/reject with attest_key stub |
 | XMR wallet (stagenet) | **Done** | key derivation, recovery |
 | RandomX miner / P2Pool | **Done** | |
@@ -91,7 +91,7 @@ in the pre-DarkFi phase.  Document it clearly.  Move on.
 | WASM proof generation | **Not done** | wasm-pack target untested |
 | Wallet passphrase encryption | **Not done** | wallet.json unencrypted at rest |
 | Goal text encryption | **Not done** | spec written, not built |
-| Oracle key registration on bond | **Not done** | oracle_attest_pks always [] |
+| Oracle key registration on bounty | **Not done** | oracle_attest_pks always [] |
 | HTTP data adapter (real) | **Partial** | DataSource trait + scaffold |
 | Oracle slashing | **Not done** | |
 | Order book / trading | **Not done** | |
@@ -108,16 +108,16 @@ let them consume design energy until after Phase 5 launches.
 
 | Item | Why Cut | When to Revisit |
 |---|---|---|
-| Noise bonds (Phase 4.5.3) | Superseded by Option A — oracle attestations never appear on AO at all; there is nothing to add noise to.  The timing signal is now BURN nullifiers, not attestations.  Re-evaluate if noise-BURN is needed post-launch. | After Phase 5 |
+| Noise bounties (Phase 4.5.3) | Superseded by Option A — oracle attestations never appear on AO at all; there is nothing to add noise to.  The timing signal is now BURN nullifiers, not attestations.  Re-evaluate if noise-BURN is needed post-launch. | After Phase 5 |
 | Kleros / UMA arbitration (oracle-spec.md Tier 3) | No integration path exists yet; the roadmap's slashing model is sufficient for v1 | Phase 6+ |
 | zkTLS / DECO / TLS-Notary | Interesting but requires substantial external dependency; HTTP-JSON adapter is sufficient for v1 data sources | Phase 6+ |
 | zkVM (RISC Zero / Succinct SP1) | Same as zkTLS | Phase 6+ |
-| Long Now endowment / yield vault | Century-scale bonds can be issued once the basic lifecycle works; the endowment mechanics are not needed for v1 | Phase 6+ |
+| Long Now endowment / yield vault | Century-scale bounties can be issued once the basic lifecycle works; the endowment mechanics are not needed for v1 | Phase 6+ |
 | Post-quantum verifier slots | No practical threat until at least 2035; add when standards stabilise | Phase 7+ |
 | Cake Wallet URI / RetoSwap atomic swap / Vexl | These improve UX for collateral funding but are not required for v1 | Phase 5 stretch |
 | Coin-agnostic collateral (BTC/ETH/AR/AO plugins) | XMR only for v1; plugin architecture deferred | Phase 6+ |
 | Multi-language docs | English first | Post-launch |
-| NYX token / fair launch | Important for sustainability but decoupled from the bond market mechanics | Phase 5 launch or shortly after |
+| NYX token / fair launch | Important for sustainability but decoupled from the bounty market mechanics | Phase 5 launch or shortly after |
 
 ---
 
@@ -143,7 +143,7 @@ have a clear target.
   Decision 2 note (Merkle proof deferred, reason documented).  Remove the
   `C_old == PedersenCommit(note_old)` constraint from the TRANSFER spec.
 
-- **`docs/bond-lifecycle.md`** — Redemption section: replace the old
+- **`docs/bounty-lifecycle.md`** — Redemption section: replace the old
   quorum / FinaliseVerification → REDEEMABLE flow with the Option A flow
   (oracle shares attest_key privately → bondholder constructs BURN proof →
   submits to contract from Active state).  Update the state machine diagram.
@@ -152,9 +152,9 @@ have a clear target.
   oracle gossip / quorum / REDEEMABLE flow with Option A flow.
 
 - **`docs/privacy-design.md`** — §3.3 BURN: replace "oracle quorum hash"
-  with oracle_attest_pk.  §6 Noise Bonds: add a note that with Option A,
+  with oracle_attest_pk.  §6 Noise Bounties: add a note that with Option A,
   attestations never appear on AO, so the timing linkability problem the
-  noise bonds were solving no longer exists in the same form.  Mark §6 as
+  noise bounties were solving no longer exists in the same form.  Mark §6 as
   "under re-evaluation."
 
 - **`docs/oracle-spec.md`** — Fix duplicate §3/§4 headers.  Add a clear
@@ -167,7 +167,7 @@ have a clear target.
   "XMR collateral, DRK payout" or whatever Decision 1 resolves to).
 
 - **`docs/roadmap.md`** — Mark Phase 1 as ~65% done.  Update Phase 4.5.3
-  (noise bonds) status.  Add oracle key registration as Phase 1.5.
+  (noise bounties) status.  Add oracle key registration as Phase 1.5.
 
 **New docs to write:**
 
@@ -186,34 +186,34 @@ have a clear target.
 *Blocks: W5, end-to-end BURN proof.*
 *Depends on: nothing (design decision in W1 suffices).*
 
-Currently `oracle_attest_pks` is always `[]` on every bond.  The circuit
+Currently `oracle_attest_pks` is always `[]` on every bounty.  The circuit
 exists; the registration flow does not.
 
 **What to build:**
 
-1. **`OracleNode::generate_attest_key(bond_id)`** — already implemented
+1. **`OracleNode::generate_attest_key(bounty_id)`** — already implemented
    in oracle.rs.  Now surface it.
 
-2. **Oracle accept RPC** (`oracle.accept_bond`): when an oracle accepts a
-   bond, it calls `generate_attest_key(bond_id)`, stores the
+2. **Oracle accept RPC** (`oracle.accept_bounty`): when an oracle accepts a
+   bounty, it calls `generate_attest_key(bounty_id)`, stores the
    `OracleAttestKey` locally (encrypted at rest with the oracle's secret),
    and returns `oracle_attest_pk` in the accept response.
 
-3. **Bond approval handler** in `nyxforge-node/src/rpc.rs`: when all oracles
+3. **Bounty approval handler** in `nyxforge-node/src/rpc.rs`: when all oracles
    have accepted, collect their `oracle_attest_pk` values and set
-   `bond.oracle.oracle_attest_pks`.  Gossip the updated bond.
+   `bounty.oracle.oracle_attest_pks`.  Gossip the updated bounty.
 
-4. **Bondholder BURN flow**: the CLI `bond redeem` command must retrieve the
+4. **Bondholder BURN flow**: the CLI `bounty redeem` command must retrieve the
    `oracle_attest_key` from the oracle (via encrypted P2P message or manual
    out-of-band delivery), supply it as the `BurnWitness.oracle_attest_key`,
    and construct the proof.
 
 5. **Key delivery protocol** (minimal for v1): a simple request-response RPC
    between bondholder and oracle node.  The oracle verifies the requester
-   owns notes for the bond (via a signed challenge) before releasing the
+   owns notes for the bounty (via a signed challenge) before releasing the
    attest_key.  Full DarkFi encrypted-DM delivery is a Phase 6 upgrade.
 
-6. **Tests**: integration test covering the full flow — bond approved with
+6. **Tests**: integration test covering the full flow — bounty approved with
    registered PKs, attest_key delivered to bondholder, BURN proof generated
    and verified by settlement contract.
 
@@ -247,7 +247,7 @@ exists; the registration flow does not.
 ---
 
 ### W4 — Goal Text Encryption  *(4 days)*
-*Blocks: W7 (browser bond creation with private goals).*
+*Blocks: W7 (browser bounty creation with private goals).*
 *Depends on: W1.*
 
 Implements Phase 4.5.1 from the roadmap.
@@ -257,13 +257,13 @@ Implements Phase 4.5.1 from the roadmap.
 - `visibility` and `encrypted_goal: Option<Vec<u8>>` fields on `GoalSpec`
 - `GoalSpec::encrypt(view_key: &[u8; 32])` / `::decrypt(view_key)` using
   ChaCha20-Poly1305 (use the `chacha20poly1305` crate)
-- View key derivation: `blake3(issuer_spend_key ‖ bond_id)` — already
+- View key derivation: `blake3(issuer_spend_key ‖ bounty_id)` — already
   described in privacy-design.md
 
 **4b — CLI** *(1 day)*
-- `bond view-key <bond_id>` — derives and prints view key
-- `bond show <bond_id> --view-key <hex>` — decrypts and displays goals
-- Bond creation wizard: ask "Make goal text private? [Y/n]"
+- `bounty view-key <bounty_id>` — derives and prints view key
+- `bounty show <bounty_id> --view-key <hex>` — decrypts and displays goals
+- Bounty creation wizard: ask "Make goal text private? [Y/n]"
 - Default: private
 
 **4c — Oracle key exchange** *(1 day)*
@@ -275,7 +275,7 @@ Implements Phase 4.5.1 from the roadmap.
 **4d — Tests** *(1 day)*
 - Round-trip: encrypt → store → decrypt with correct key → decrypt fails
   with wrong key
-- Issuer bond with private goals: AO record shows only ciphertext
+- Issuer bounty with private goals: AO record shows only ciphertext
 - Oracle without view key cannot read goal text
 
 ---
@@ -296,7 +296,7 @@ This is a subset of Phase 4 — only what v1 requires.
 - Integration test: mock HTTP server returns JSON, oracle evaluates correctly
 
 **5b — Slashing implementation** *(3 days)*
-- `slash_oracle { bond_id, oracle_key, evidence }` in `nyxforge-contract`
+- `slash_oracle { bounty_id, oracle_key, evidence }` in `nyxforge-contract`
 - Evidence is an Ed25519 signature from the oracle over a false attestation,
   plus the contradicting BURN proof showing the oracle_attest_pk was valid
 - Burns `slash_fraction × staked_DRK` (or XMR equivalent pre-mainnet)
@@ -308,9 +308,9 @@ This is a subset of Phase 4 — only what v1 requires.
 
 **5c — Stake management** *(2 days)*
 - `oracle stake deposit <amount>` — lock XMR in multi-sig (or stub for pre-mainnet)
-- `oracle stake withdraw` — unlock after all active bonds in challenge window
-- `oracle stake status` — show staked amount, at-risk bonds
-- `oracle dashboard` — live terminal view (bond list, attestation count, fees)
+- `oracle stake withdraw` — unlock after all active bounties in challenge window
+- `oracle stake status` — show staked amount, at-risk bounties
+- `oracle dashboard` — live terminal view (bounty list, attestation count, fees)
 
 **5d — Challenge window and dispute** *(1 day)*
 - Enforce `challenge_period_secs` before `FinaliseVerification` commits
@@ -327,16 +327,16 @@ This is Phase 3.  It is the largest single unbuilt component.
 
 **6a — Order book contract** *(3 days)*
 - `order_book.rs` in `nyxforge-contract`:
-  - `PlaceOrder { bond_id, side, price, quantity, commitment, expiry }`
+  - `PlaceOrder { bounty_id, side, price, quantity, commitment, expiry }`
   - `CancelOrder { order_id, nullifier }`
-  - `MatchOrders { bid_id, ask_id, transfer_proof_bond, transfer_proof_drk }`
+  - `MatchOrders { bid_id, ask_id, transfer_proof_bounty, transfer_proof_drk }`
 - Orders stored in `orders.db` (sled or rocksdb); gossiped to all peers
 - On-chain order book: orders are public (price/qty visible); identity hidden
   via ZK commitment to ownership
 
 **6b — Atomic swap settlement** *(4 days)*
 - A matched trade requires two simultaneous TRANSFER proofs:
-  - Seller → buyer: bond note transfer
+  - Seller → buyer: bounty note transfer
   - Buyer → seller: DRK/XMR payment transfer
 - Both nullifiers must be unspent; accept both or reject both
 - Settlement contract records new commitments, marks nullifiers spent
@@ -345,8 +345,8 @@ This is Phase 3.  It is the largest single unbuilt component.
 - Price-time priority: best bid meets best ask
 - Local matching: each node tries to match; first valid broadcast wins
 - Conflict resolution: canonical ordering by block height + message hash
-- `market.orders { bond_id }` RPC — list current order book
-- `market.history { bond_id, from, to }` RPC — trade price history
+- `market.orders { bounty_id }` RPC — list current order book
+- `market.history { bounty_id, from, to }` RPC — trade price history
 
 **6d — Primary market (note distribution)** *(2 days)*
 The roadmap has issuance (MINT) and secondary trading (TRANSFER) but no
@@ -361,7 +361,7 @@ spec for how the issuer gets notes to initial buyers.  Minimal v1 approach:
 - GTC (good-till-cancelled): persistent until cancelled or expired
 
 **6f — Integration tests** *(1 day)*
-- Two local nodes trade a bond note anonymously
+- Two local nodes trade a bounty note anonymously
 - TRANSFER proof verifier rejects tampered quantity
 - Atomic swap: both legs succeed or neither does
 
@@ -373,36 +373,36 @@ spec for how the issuer gets notes to initial buyers.  Minimal v1 approach:
 
 This is Phase 2.  The scaffold exists; everything else is unbuilt.
 
-**7a — Bond browser** *(3 days)*
-- List all bonds with filters: state, deadline, data_id, keyword search
-- Bond detail page:
+**7a — Bounty browser** *(3 days)*
+- List all bounties with filters: state, deadline, data_id, keyword search
+- Bounty detail page:
   - Goal spec (decrypted if view key provided)
   - Oracle list and acceptance status
   - Current state and deadline
   - Price history chart (line, last 30 days of trades)
 - View key entry field on detail page (decrypts private goals inline)
 
-**7b — Bond creation wizard** *(2 days)*
+**7b — Bounty creation wizard** *(2 days)*
 - Port CLI wizard to Flutter multi-step form
-- AI-assisted `bond explore` flow integrated (calls MCP server)
+- AI-assisted `bounty explore` flow integrated (calls MCP server)
 - Shows required collateral in XMR
 - Goal visibility toggle (private / world)
 - Multi-criterion support (the Vec<GoalSpec> we already have)
 
 **7c — Wallet UI** *(2 days)*
 - XMR address, spend key (blurred, toggle to reveal)
-- Bond note balances by bond series
+- Bounty note balances by bounty series
 - XMR balance (from monerod)
 - Key import / recovery from spend key
 
 **7d — Portfolio and positions** *(2 days)*
-- Table: bond title, quantity, current market price, unrealised P&L
-- Redeemable bonds flagged with "Redeem" action button
+- Table: bounty title, quantity, current market price, unrealised P&L
+- Redeemable bounties flagged with "Redeem" action button
 - Redemption flow: fetch attest_key from oracle → generate BURN proof
   in-browser (WASM) → submit to node
 
 **7e — Order entry and order book** *(2 days)*
-- Bid / ask entry form for any active bond
+- Bid / ask entry form for any active bounty
 - Live order book display (best 10 bids and asks)
 - Last trade price, 24h volume
 - "Trade" button: generates TRANSFER proof in-browser
@@ -415,7 +415,7 @@ This is Phase 2.  The scaffold exists; everything else is unbuilt.
 **7g — De-googled production build** *(1 day)*
 - `scripts/build-web.sh`: no CDN URLs, CanvasKit self-hosted
 - WASM bundle < 5 MB, < 2 MB after `wasm-opt -Oz`
-- Playwright E2E suite: bond create → oracle approve → issue → redeem
+- Playwright E2E suite: bounty create → oracle approve → issue → redeem
 
 **7h — Accessibility and mobile** *(1 day)*
 - Readable on mobile (Flutter responsive layout)
@@ -442,8 +442,8 @@ Write `docs/collateral-mechanism.md`:
 
 **8b — XMR multi-sig integration** *(4 days)*
 - Monero 2-of-3 multi-sig key setup in `nyxforge-wallet`
-- Bond issuance: generate multi-sig address, wait for XMR deposit confirmation
-- Bond activation: advance to Active state once XMR confirmed at required depth
+- Bounty issuance: generate multi-sig address, wait for XMR deposit confirmation
+- Bounty activation: advance to Active state once XMR confirmed at required depth
 - Redemption: oracle co-signs XMR release to payout address from BURN proof
 - Expiry: oracle co-signs XMR return to issuer
 
@@ -456,7 +456,7 @@ Write `docs/collateral-mechanism.md`:
 
 **8d — Network monitoring dashboard** *(1 day)*
 - Public-facing static HTML/JS (no Flutter required)
-- Active bonds, total collateral, oracle count, recent trades
+- Active bounties, total collateral, oracle count, recent trades
 - Served from a bootstrap node's public RPC (read-only)
 
 **8e — Launch checklist** *(1 day)*
@@ -552,9 +552,9 @@ splitting W6 and W7, the critical path compresses to ~4–5 months.
 | DarkFi testnet API changes break Phase 6 integration | High | Phase 6 slips | Phase 6 is parallel and not on v1 critical path |
 | Security audit finds critical ZK circuit soundness bug | Medium | Delays launch, expensive rework | Invest in W9 audit prep; consider interim code review from ZK specialist |
 | TRANSFER Merkle gap disclosed by external researcher before audit | Low-Medium | Reputational; need emergency patch | Publish `docs/security-limitations.md` proactively; this controls the narrative |
-| Oracle collusion steals collateral (v1 XMR multi-sig) | Low | Fund loss | Disclose the trust model explicitly; limit bond sizes until DLC integration |
+| Oracle collusion steals collateral (v1 XMR multi-sig) | Low | Fund loss | Disclose the trust model explicitly; limit bounty sizes until DLC integration |
 | Performance: Halo2 BURN proof generation in browser is too slow | Medium | Breaks W7 redemption UX | Profile early (W3c); if > 30s in browser, move proof generation to background worker or offer CLI-only redemption for v1 |
-| P2P consensus divergence (two nodes disagree on bond state) | Medium | Double-spend or stuck bond | Define canonical conflict resolution rules before W8 |
+| P2P consensus divergence (two nodes disagree on bounty state) | Medium | Double-spend or stuck bounty | Define canonical conflict resolution rules before W8 |
 
 ---
 

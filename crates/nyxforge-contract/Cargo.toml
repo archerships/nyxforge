@@ -1,6 +1,6 @@
 [package]
 name        = "nyxforge-contract"
-description = "DarkFi WASM smart contracts: bond market, order book, settlement"
+description = "DarkFi WASM smart contracts: bounty market, order book, settlement"
 version.workspace    = true
 edition.workspace    = true
 authors.workspace    = true

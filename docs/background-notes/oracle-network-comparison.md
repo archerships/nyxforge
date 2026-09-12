@@ -17,8 +17,8 @@ The following constraints are derived from the NyxForge architecture mandate
 | :-- | :----------------- | :------------ |
 | C1  | Anon operators     | Oracle nodes can participate without a public identity or KYC. Sybil resistance comes from stake, not reputation. |
 | C2  | Commodity hardware | Runs on a standard CPU/server. No Intel SGX, TDX, or other trusted execution environments required. |
-| C3  | Non-EVM compatible | Can deliver results to a non-EVM target (XMR PTLC/DLEQ, AO process, or off-chain .bond file). Not locked to Ethereum. |
-| C4  | Century-scale      | Has a plausible survival path for 20-200 year bonds. Incentive model does not assume any single operator or token persists. |
+| C3  | Non-EVM compatible | Can deliver results to a non-EVM target (XMR PTLC/DLEQ, AO process, or off-chain .bounty file). Not locked to Ethereum. |
+| C4  | Century-scale      | Has a plausible survival path for 20-200 year bounties. Incentive model does not assume any single operator or token persists. |
 | C5  | Web2 data fetching | Can retrieve and attest to data from standard HTTPS APIs (FDA, WHO, government databases). |
 | C6  | Qualitative support| Can handle outcomes that cannot be reduced to a single API call -- expert review, panel vote, documentary evidence. |
 | C7  | Dispute mechanism  | Includes or integrates with a challenge/escalation layer. False attestations can be contested. |
@@ -63,7 +63,7 @@ node operation (C4 = partial: the protocol survives, but who runs provers in
 (C6) -- it can only attest to what a page says, not whether an expert agrees
 with it.
 
-NyxForge role: primary Tier 1 oracle for all bonds with API-verifiable
+NyxForge role: primary Tier 1 oracle for all bounties with API-verifiable
 outcomes. The prover can be the judge themselves, an NGO employee, or a
 volunteer oracle node.
 
@@ -96,12 +96,12 @@ Track DarkFi mainnet timeline.
 ### 0rbit (AO-native)
 A decentralized oracle network built as an AO process. Operators are publicly
 identified (Arweave wallet addresses) but requests can be routed through
-Shielded AO logic to decouple the bond identity from the data request. Strong
+Shielded AO logic to decouple the bounty identity from the data request. Strong
 century-scale fit (C4 = Y) because AO processes are permanent and 0rbit
 incentives are tied to AR token which has a 200-year emission schedule.
 
 NyxForge role: natural choice for the AO resolution layer if NyxForge adopts
-AO for Long Now bond archival. Can handle price feeds, Web2 data, and
+AO for Long Now bounty archival. Can handle price feeds, Web2 data, and
 cross-process calls. Does not replace the anonymity layer -- that must be
 added on top via Shielded AO.
 
@@ -115,7 +115,7 @@ NyxForge role: monitor as an alternative to TLS-Notary for richer Web2
 attestations. Not ready for MVP.
 
 ### UMA Optimistic Oracle
-A pull-based optimistic oracle: anyone can assert an answer by posting a bond;
+A pull-based optimistic oracle: anyone can assert an answer by posting a bounty;
 a dispute window opens; if unchallenged it settles. If challenged, the
 assertion escalates to UMA's token-holder dispute court. No permissioned
 operator set -- any address can propose or dispute.
@@ -126,9 +126,9 @@ proposers respond. EVM-native but the resolution result can be bridged off-
 chain. Century-scale is partial -- UMA token incentives may not persist for
 200 years, but the optimistic pattern itself could be re-implemented.
 
-NyxForge role: strong candidate for Tier 2 escalation (the "bond-doubling
+NyxForge role: strong candidate for Tier 2 escalation (the "bounty-doubling
 game" already described in oracle-spec.md is essentially this pattern). Also
-useful as Tier 1 for qualitative bonds where no API is authoritative.
+useful as Tier 1 for qualitative bounties where no API is authoritative.
 
 ### Reality.eth
 A minimalist optimistic oracle: ask a question in plain English, stake ETH on
@@ -148,7 +148,7 @@ designed in oracle-spec.md.
 A decentralized dispute court. Jurors are drawn randomly from a staked pool,
 evidence is submitted as IPFS documents, and the majority verdict is binding
 on-chain. Not an oracle per se -- it is a dispute resolution layer. Best used
-as the final arbitration step (Tier 3) for contested bond outcomes.
+as the final arbitration step (Tier 3) for contested bounty outcomes.
 
 Operators are pseudonymous (Ethereum addresses) but staking is public (C1 =
 partial). No Web2 data fetching. Excellent for qualitative outcomes that
@@ -170,7 +170,7 @@ qualitative support and a smaller ecosystem. Not recommended over UMA/Reality.
 ### Chainlink Functions
 Included for reference and contrast. The dominant EVM oracle network but
 structurally incompatible with NyxForge's anonymity and non-EVM requirements.
-Best-in-class for EVM bonds with API-verifiable outcomes and no privacy
+Best-in-class for EVM bounties with API-verifiable outcomes and no privacy
 requirement. See `doc/03_RESEARCH/chainlink-oracle-brief.md` for full analysis.
 
 ---
@@ -185,7 +185,7 @@ This maps the comparison results to the three-tier architecture in
 | Tier 1 -- data fetch | Retrieve and prove Web2 outcomes | TLS-Notary (primary); Reclaim (fallback) | Best anonymity + Web2 attestation; no EVM dependency |
 | Tier 1 -- qualitative | Outcomes requiring expert judgment | UMA Optimistic Oracle | Free-form questions, permissionless proposers, low cost when uncontested |
 | Tier 1 -- price feeds | Collateral valuation | 0rbit (if AO stack); RedStone (EVM sidechain) | Already in oracle-spec.md; low cost, commodity hardware |
-| Tier 2 -- escalation | Dispute doubling game | Reality.eth or UMA | Matches the bond-doubling pattern; cheap and battle-tested |
+| Tier 2 -- escalation | Dispute doubling game | Reality.eth or UMA | Matches the bounty-doubling pattern; cheap and battle-tested |
 | Tier 3 -- arbitration | Final contested verdicts | Kleros | Already specified; human jury on documentary evidence |
 | Future -- anon nodes | Anonymous stake-based oracles | DarkFi Witness | Best long-run fit; blocked on DarkFi mainnet |
 

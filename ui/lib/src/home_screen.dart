@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'theme.dart';
 import 'node_client.dart';
 import 'dashboard_screen.dart';
-import 'bond_market_screen.dart';
-import 'issue_bond_screen.dart';
+import 'bounty_market_screen.dart';
+import 'issue_bounty_screen.dart';
 import 'exchange_screen.dart';
 import 'wallet_screen.dart';
 import 'mine_screen.dart';
@@ -60,7 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   static const _screens = [
     DashboardScreen(),
-    BondMarketScreen(),
+    BountyMarketScreen(),
     IssueBondScreen(),
     ExchangeScreen(),
     WalletScreen(),
@@ -194,7 +194,7 @@ class _NodeStatusScreenState extends State<_NodeStatusScreen> {
             _StatusRow(label: 'Status',    value: 'Connected',
                        valueColor: NyxColors.success),
             _StatusRow(label: 'Version',   value: _status!.version),
-            _StatusRow(label: 'Known bonds', value: '${_status!.bondCount}'),
+            _StatusRow(label: 'Known bounties', value: '${_status!.bountyCount}'),
             _StatusRow(label: 'RPC endpoint',
                        value: 'http://127.0.0.1:8888/rpc'),
           ],

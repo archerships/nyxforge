@@ -47,8 +47,8 @@ impl SuggestedBountyParams {
 
 #[derive(Debug, Deserialize)]
 pub struct BountyAssistance {
-    pub similar_bonds:  Vec<SimilarBounty>,
-    pub suggested_bond: SuggestedBountyParams,
+    pub similar_bounties:  Vec<SimilarBounty>,
+    pub suggested_bounty: SuggestedBountyParams,
     pub analysis:       String,
 }
 

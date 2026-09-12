@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'theme.dart';
 import 'node_client.dart';
-import 'widgets/bond_card.dart';
+import 'widgets/bounty_card.dart';
 
-class BondMarketScreen extends StatefulWidget {
-  const BondMarketScreen({super.key});
+class BountyMarketScreen extends StatefulWidget {
+  const BountyMarketScreen({super.key});
 
   @override
-  State<BondMarketScreen> createState() => _BondMarketScreenState();
+  State<BountyMarketScreen> createState() => _BountyMarketScreenState();
 }
 
-class _BondMarketScreenState extends State<BondMarketScreen> {
+class _BountyMarketScreenState extends State<BountyMarketScreen> {
   final _client = NodeClient();
-  List<Bond> _bonds = [];
+  List<Bounty> _bounties = [];
   bool _loading = true;
   String? _error;
   String _filter = 'ALL';
@@ -34,16 +34,16 @@ class _BondMarketScreenState extends State<BondMarketScreen> {
     if (!mounted) return;
     setState(() { _loading = true; _error = null; });
     try {
-      final bonds = await _client.bondList();
-      if (mounted) setState(() { _bonds = bonds; _loading = false; });
+      final bounties = await _client.bountyList();
+      if (mounted) setState(() { _bounties = bounties; _loading = false; });
     } on NodeException catch (e) {
       if (mounted) setState(() { _error = e.message; _loading = false; });
     }
   }
 
-  List<Bond> get _filtered {
-    if (_filter == 'ALL') return _bonds;
-    return _bonds.where((b) => b.state.toUpperCase() == _filter).toList();
+  List<Bounty> get _filtered {
+    if (_filter == 'ALL') return _bounties;
+    return _bounties.where((b) => b.state.toUpperCase() == _filter).toList();
   }
 
   @override
@@ -69,7 +69,7 @@ class _BondMarketScreenState extends State<BondMarketScreen> {
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
           child: Text(
-            'Your anonymous bearer bond instruments',
+            'Your anonymous bearer bounty instruments',
             style: TextStyle(color: NyxColors.textSecondary),
           ),
         ),
@@ -107,7 +107,7 @@ class _BondMarketScreenState extends State<BondMarketScreen> {
                       itemCount: _filtered.length,
                       itemBuilder: (ctx, i) {
                         final b = _filtered[i];
-                        return BondCard(
+                        return BountyCard(
                           title: b.title,
                           state: b.state,
                           amount: b.amount,

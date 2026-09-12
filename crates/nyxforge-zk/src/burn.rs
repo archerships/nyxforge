@@ -84,14 +84,14 @@ impl BurnProof {
         let payout_commitment = Digest::from_bytes(fp_to_bytes(payout_cm_fp));
 
         let nullifier_fp         = fp_from_bytes(nullifier.as_bytes());
-        let bond_id_fp           = fp_from_bytes(w.bounty_note.bounty_id.as_bytes());
+        let bounty_id_fp           = fp_from_bytes(w.bounty_note.bounty_id.as_bytes());
         let oracle_attest_key_fp = fp_from_bytes(&w.judge_attest_key);
         let domain_fp            = judge_attest_domain();
         let oracle_attest_pk_fp  = poseidon2(oracle_attest_key_fp, domain_fp);
         let judge_attest_pk     = fp_to_bytes(oracle_attest_pk_fp);
 
         let circuit = BurnCircuit {
-            bounty_id:              Value::known(bond_id_fp),
+            bounty_id:              Value::known(bounty_id_fp),
             serial:               Value::known(fp_from_bytes(&w.bounty_note.serial)),
             owner_secret:         Value::known(fp_from_bytes(&w.owner_secret)),
             judge_attest_key:    Value::known(oracle_attest_key_fp),
@@ -104,7 +104,7 @@ impl BurnProof {
         // Instance: [nullifier, bounty_id, judge_attest_pk, payout_commitment, payout_amount]
         let instances: &[&[Fp]] = &[&[
             nullifier_fp,
-            bond_id_fp,
+            bounty_id_fp,
             oracle_attest_pk_fp,
             payout_cm_fp,
             payout_amount_fp,
@@ -133,14 +133,14 @@ impl BurnProof {
 
     pub fn verify(&self) -> Result<(), ZkError> {
         let nullifier_fp        = fp_from_bytes(self.nullifier.as_bytes());
-        let bond_id_fp          = fp_from_bytes(self.bounty_id.as_bytes());
+        let bounty_id_fp          = fp_from_bytes(self.bounty_id.as_bytes());
         let oracle_attest_pk_fp = fp_from_bytes(&self.judge_attest_pk);
         let payout_cm_fp        = fp_from_bytes(self.payout_commitment.as_bytes());
         let payout_amt_fp       = Fp::from(self.payout_amount.0);
 
         let instances: &[&[Fp]] = &[&[
             nullifier_fp,
-            bond_id_fp,
+            bounty_id_fp,
             oracle_attest_pk_fp,
             payout_cm_fp,
             payout_amt_fp,

@@ -1,18 +1,18 @@
 ---
-title: NyxForge Bond Lifecycle
+title: NyxForge Bounty Lifecycle
 ---
 %%{init: {"fontSize": 18, "theme": "dark", "themeVariables": {"primaryColor": "#1e2030", "primaryTextColor": "#ffffff", "primaryBorderColor": "#5e6ad2", "lineColor": "#a0a8d0", "secondaryColor": "#2a2d3e", "tertiaryColor": "#131421"}, "stateDiagram": {"diagramPadding": 30}}}%%
 stateDiagram-v2
     direction TB
 
-    [*] --> DRAFT : bond create\n(wizard writes .bond file)
+    [*] --> DRAFT : bounty create\n(wizard writes .bounty file)
 
-    DRAFT --> ACTIVE : bond issue\n(XMR locked on-chain\nDLEQ commitment set)
+    DRAFT --> ACTIVE : bounty issue\n(XMR locked on-chain\nDLEQ commitment set)
 
     ACTIVE --> REDEEMABLE : oracle quorum reached\n(result = met)
     ACTIVE --> EXPIRED : expiry date passes\ngoal not met
 
-    REDEEMABLE --> SETTLED : bond redeem\n(adaptor + s_met\nXMR swept to holder)
+    REDEEMABLE --> SETTLED : bounty redeem\n(adaptor + s_met\nXMR swept to holder)
 
     EXPIRED --> RECLAIMED : oracle publishes s_fail\n(normal path)
     EXPIRED --> RECLAIMED : timelock matures\n(expiry + grace_days)\nno oracle needed
@@ -21,7 +21,7 @@ stateDiagram-v2
     RECLAIMED --> [*]
 
     note right of DRAFT
-        .bond file on disk
+        .bounty file on disk
         collateral not yet locked
         oracles not yet registered
     end note

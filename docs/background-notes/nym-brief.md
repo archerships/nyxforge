@@ -92,7 +92,7 @@ NymVPN (the consumer product) exposes two modes that clarify the tradeoff:
   a 5-hop Network Gateway Mix topology. Best for messaging, financial
   transactions, and any use case that can tolerate seconds of delay.
 
-For NyxForge use cases (oracle attestation, bond evidence submission) the
+For NyxForge use cases (oracle attestation, bounty evidence submission) the
 anonymous mode is appropriate -- these are one-shot submissions, not
 interactive sessions.
 
@@ -187,7 +187,7 @@ This makes Nym unsuitable for:
 
 It is suitable for:
 - One-shot attestation submissions (oracle proof delivery)
-- Bond evidence package uploads
+- Bounty evidence package uploads
 - Dispute notifications (latency of seconds is acceptable)
 - Any background operation where the user is not waiting for immediate
   interactive feedback
@@ -209,8 +209,8 @@ and latency is acceptable.
 
 Recommended use cases:
 - Oracle node attestation delivery (judges submit TLS-Notary proofs via Nym)
-- Bond evidence package upload to Arweave (routed through Nym to decouple
-  the uploader's IP from the bond)
+- Bounty evidence package upload to Arweave (routed through Nym to decouple
+  the uploader's IP from the bounty)
 - Dispute filing (disputer's identity must not be linkable to their IP)
 - NGO admin actions that must not reveal the NGO's server location
 
@@ -221,7 +221,7 @@ Not recommended for:
 
 ### 7.2 Example 1 -- Anonymous Oracle Attestation Delivery
 
-After Dr. Sarah Chen generates a TLS-Notary proof for the Alzheimer's bond:
+After Dr. Sarah Chen generates a TLS-Notary proof for the Alzheimer's bounty:
 
 1. Her oracle client initializes a Nym client connection:
    ```typescript
@@ -230,7 +230,7 @@ After Dr. Sarah Chen generates a TLS-Notary proof for the Alzheimer's bond:
    await client.start({ clientId: "nyxforge-oracle-chen" });
    ```
 
-2. She constructs the attestation payload (bond ID, TLS-Notary proof JSON,
+2. She constructs the attestation payload (bounty ID, TLS-Notary proof JSON,
    judge signature) and serializes it.
 
 3. She sends it to the NyxForge resolution service Nym address via anonymous
@@ -250,9 +250,9 @@ After Dr. Sarah Chen generates a TLS-Notary proof for the Alzheimer's bond:
    authenticate the attestation -- identity is proven cryptographically, not
    by IP or connection metadata.
 
-### 7.3 Example 2 -- Anonymous Bond Evidence Upload
+### 7.3 Example 2 -- Anonymous Bounty Evidence Upload
 
-For a long-dated bond (100-year term), an archivist must submit an annual
+For a long-dated bounty (100-year term), an archivist must submit an annual
 evidence package (WHO data proof, signed report) to Arweave without revealing
 their identity or location.
 
@@ -282,7 +282,7 @@ revealing their wallet address or IP to the opposing party:
 1. The bondholder uses the Nym WASM client in the NyxForge web UI (loaded
    as a WebAssembly module in the browser tab)
 
-2. They construct a dispute message: bond ID, disputed verdict hash, their
+2. They construct a dispute message: bounty ID, disputed verdict hash, their
    counter-evidence IPFS CID, and their dispute stake commitment
 
 3. The message is sent via Nym anonymous mode to the NyxForge dispute
@@ -299,10 +299,10 @@ The two libraries are complementary:
 | Operation | Recommended layer | Rationale |
 | :-------- | :---------------- | :-------- |
 | Oracle attestation delivery | Nym (anonymous mode) | One-shot; metadata privacy critical |
-| Bond evidence archival | Nym (anonymous mode) | One-shot; archivist location sensitive |
+| Bounty evidence archival | Nym (anonymous mode) | One-shot; archivist location sensitive |
 | Dispute filing | Nym (anonymous mode) | One-shot; bondholder identity sensitive |
 | Live backer count updates | Waku | Real-time; metadata not sensitive |
-| Bond campaign announcements | Waku | Broadcast; no sender privacy needed |
+| Bounty campaign announcements | Waku | Broadcast; no sender privacy needed |
 | Judge coordination (multi-step) | Waku | Interactive; Nym latency too high |
 
 ---
@@ -313,7 +313,7 @@ The two libraries are complementary:
 | :--------- | :------ |
 | Latency | Anonymous mode introduces multi-second delays. Not suitable for interactive UI operations. |
 | Bundle size | The WASM client is a compiled Rust binary (~several MB). Adds significant load time to a web app if used in the browser critical path. |
-| NYM token dependency | Mix node operators are incentivized by NYM tokens. Long-term token availability (20-100 year bonds) is uncertain, similar to the UMA/LINK dependency concern. |
+| NYM token dependency | Mix node operators are incentivized by NYM tokens. Long-term token availability (20-100 year bounties) is uncertain, similar to the UMA/LINK dependency concern. |
 | Centralized exit point risk | The service provider (the NyxForge resolution endpoint) still sees message content after Nym delivery. Nym hides metadata; end-to-end encryption of the payload is still required. |
 | Cover traffic costs | Nym's continuous cover traffic consumes bandwidth even when no real messages are being sent. This is a design requirement for anonymity but matters for resource-constrained oracle nodes. |
 | Not P2P between clients | Nym routes messages through the mix node network to a recipient address. It is not a direct P2P channel. Two browser clients cannot directly connect via Nym -- they communicate via a service provider endpoint. |

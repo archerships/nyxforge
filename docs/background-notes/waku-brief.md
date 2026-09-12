@@ -154,13 +154,13 @@ const node = await createLightNode({ defaultBootstrap: true });
 await waitForRemotePeer(node);
 
 // Subscribe to a content topic
-const decoder = createDecoder("/nyxforge/bond-attestation/1/proto");
+const decoder = createDecoder("/nyxforge/bounty-attestation/1/proto");
 await node.filter.subscribe([decoder], (msg) => {
   console.log("Received attestation:", msg.payload);
 });
 
 // Publish a message
-const encoder = createEncoder({ contentTopic: "/nyxforge/bond-attestation/1/proto" });
+const encoder = createEncoder({ contentTopic: "/nyxforge/bounty-attestation/1/proto" });
 await node.lightPush.send(encoder, { payload: attestationBytes });
 ```
 
@@ -196,40 +196,40 @@ Waku is the best current-state option for the NyxForge P2P messaging layer
 for non-critical-path messages where some latency is acceptable and strong
 sender anonymity is desired. Primary candidates:
 
-- Bond attestation delivery: judges submit TLS-Notary proofs and signed
+- Bounty attestation delivery: judges submit TLS-Notary proofs and signed
   verdicts via a Waku content topic watched by the resolution engine
 - Oracle coordination: oracle nodes coordinate on which data sources to
   fetch and share proof results
 - Dispute notifications: backers are notified when a dispute is opened
-  against a bond they hold
-- NGO campaign announcements: new bond campaigns broadcast to subscribers
+  against a bounty they hold
+- NGO campaign announcements: new bounty campaigns broadcast to subscribers
 
 ### 6.2 Content Topic Design
 
 Waku uses named content topics as channels. Proposed NyxForge topic structure:
 
 ```
-/nyxforge/bond-attestation/1/proto    -- judge attestation submissions
-/nyxforge/bond-dispute/1/proto        -- dispute openings and responses
+/nyxforge/bounty-attestation/1/proto    -- judge attestation submissions
+/nyxforge/bounty-dispute/1/proto        -- dispute openings and responses
 /nyxforge/campaign-announce/1/proto   -- new NGO campaign broadcasts
 /nyxforge/oracle-coord/1/proto        -- oracle node coordination
 ```
 
 Topics are public -- anyone can subscribe. Message payloads should be
-encrypted with the bond's public key so only authorized parties can read them.
+encrypted with the bounty's public key so only authorized parties can read them.
 
 ### 6.3 Example: Oracle Attestation Submission
 
-After a judge generates a TLS-Notary proof for the Alzheimer's bond:
+After a judge generates a TLS-Notary proof for the Alzheimer's bounty:
 
 1. Judge's oracle client constructs an attestation message:
-   - Bond ID: alzheimer-cure-2045
+   - Bounty ID: alzheimer-cure-2045
    - TLS-Notary proof: (compressed JSON, ~15 KB)
    - Judge signature (Ed25519)
    - Timestamp
 
-2. Message is encrypted with the bond's resolution public key and published
-   via Light Push to `/nyxforge/bond-attestation/1/proto`
+2. Message is encrypted with the bounty's resolution public key and published
+   via Light Push to `/nyxforge/bounty-attestation/1/proto`
 
 3. The NyxForge resolution engine (subscribing via Filter) receives the
    message and queues it for verification
@@ -242,12 +242,12 @@ After a judge generates a TLS-Notary proof for the Alzheimer's bond:
 
 ### 6.4 Example: Dispute Notification to Backers
 
-When a disputer challenges a bond verdict:
+When a disputer challenges a bounty verdict:
 
 1. The dispute contract (or resolution relayer) publishes a dispute message
-   to `/nyxforge/bond-dispute/1/proto`
+   to `/nyxforge/bounty-dispute/1/proto`
 
-2. The message includes the bond ID, disputer's bond stake amount, and the
+2. The message includes the bounty ID, disputer's bounty stake amount, and the
    dispute claim (plain text)
 
 3. All backers subscribed to that content topic receive the notification

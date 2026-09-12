@@ -379,12 +379,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn draft_bond_id_is_deterministic() {
+    fn draft_bounty_id_is_deterministic() {
         assert_eq!(draft_bounty().id, draft_bounty().id);
     }
 
     #[test]
-    fn homelessness_bond_id_differs_from_draft_bond() {
+    fn homelessness_bounty_id_differs_from_draft_bounty() {
         assert_ne!(draft_bounty().id, homelessness_bounty().id);
     }
 
@@ -410,7 +410,7 @@ mod tests {
     }
 
     #[test]
-    fn lifebond_id_differs_from_other_bonds() {
+    fn lifebond_id_differs_from_other_bounties() {
         assert_ne!(lifebond().id, draft_bounty().id);
         assert_ne!(lifebond().id, homelessness_bounty().id);
     }

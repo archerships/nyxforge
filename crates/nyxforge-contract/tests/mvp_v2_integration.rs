@@ -35,7 +35,7 @@ mod tests {
     }
 
     #[test]
-    fn test_anonymous_bond_creation() {
+    fn test_anonymous_bounty_creation() {
         let issuer = PublicKey([0xAAu8; 32]);
         let spec = create_test_spec("Save the Whales 2200", AdjudicationMode::Automated, 2200);
         let bounty_id = BountyV2::compute_id(&spec, &issuer);

@@ -1,7 +1,7 @@
 # NyxForge Hub: Unified Privacy Super-App Architecture
 
 **Status:** [ACTIVE RESEARCH: 2026-04-20]
-**Objective:** Design a single, cohesive user interface (UI) that orchestrates multiple underlying sovereign privacy tools (CakeWallet, Cwtch, BasicSwap, XMRig) alongside the native NyxForge `.bond` exchange.
+**Objective:** Design a single, cohesive user interface (UI) that orchestrates multiple underlying sovereign privacy tools (CakeWallet, Cwtch, BasicSwap, XMRig) alongside the native NyxForge `.bounty` exchange.
 
 ---
 
@@ -26,8 +26,8 @@ The application is split into two distinct layers:
 | **Cwtch** | Encrypted P2P forums & customer support. | **FFI (Foreign Function Interface)** | `libcwtch-go` -> Dart |
 | **XMRig / Gupaxx** | Background mining (XMR/Tari) for protocol security/yield. | **Process Management (Subprocess)** | C++ / JSON-RPC |
 | **BasicSwap** | Decentralized DEX for atomic swaps (Fiat <-> XMR). | **Headless Daemon** | Python / JSON-RPC |
-| **NyxForge Core** | Management and storage of bearer `.bond` assets. | **Native SDK (Rust/WASM)** | AO/Tari SDK -> Dart |
-| **NyxForge Exchange**| Auction and orderbook UI for `.bond` assets. | **Native Logic + RPC** | Custom UI over AO/BasicSwap |
+| **NyxForge Core** | Management and storage of bearer `.bounty` assets. | **Native SDK (Rust/WASM)** | AO/Tari SDK -> Dart |
+| **NyxForge Exchange**| Auction and orderbook UI for `.bounty` assets. | **Native Logic + RPC** | Custom UI over AO/BasicSwap |
 
 ---
 
@@ -60,7 +60,7 @@ The Hub will utilize a strict design system (e.g., "Nyx UI") to ensure visual co
 *   **Theming:** Dark-mode native, utilizing typography and spacing suited for high-density financial data.
 *   **Navigation:** A permanent sidebar (Desktop) or bottom nav (Mobile) grouping tools by function:
     *   `[Wallet]` -> CakeWallet + NyxForge Asset Viewer.
-    *   `[Exchange]` -> BasicSwap UI + NyxForge `.bond` Orderbook.
+    *   `[Exchange]` -> BasicSwap UI + NyxForge `.bounty` Orderbook.
     *   `[Mine]` -> XMRig control panel and profitability metrics.
     *   `[Community]` -> Cwtch-powered forums and direct support lines.
 
@@ -74,14 +74,14 @@ The Hub will utilize a strict design system (e.g., "Nyx UI") to ensure visual co
 *   *Milestone:* A secure chat app that can natively send Monero between contacts.
 
 ### Phase 2: The NyxForge Asset Layer
-*   Integrate the native AO/Tari SDK to parse and manage `.bond` files.
-*   Build the custom UI for viewing bond metadata (maturity, policy target, yield).
-*   *Milestone:* The Hub can securely hold and display anonymous policy bonds alongside XMR.
+*   Integrate the native AO/Tari SDK to parse and manage `.bounty` files.
+*   Build the custom UI for viewing bounty metadata (maturity, policy target, yield).
+*   *Milestone:* The Hub can securely hold and display anonymous policy bounties alongside XMR.
 
 ### Phase 3: The Exchange & Mining (The Sovereign Economy)
 *   Bundle the BasicSwap python daemon and build the JSON-RPC connector for atomic swaps.
 *   Bundle XMRig and build the process manager to toggle background mining.
-*   *Milestone:* Users can acquire XMR natively via DEX, mine it, and trade it for `.bond` assets, all without leaving the application.
+*   *Milestone:* Users can acquire XMR natively via DEX, mine it, and trade it for `.bounty` assets, all without leaving the application.
 
 ---
 

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
 
-/// A high-fidelity Bond Card component for the Bearer Bond MVP.
-class BondCard extends StatelessWidget {
-  const BondCard({
+/// A high-fidelity Bounty Card component for the Bearer Bounty MVP.
+class BountyCard extends StatelessWidget {
+  const BountyCard({
     super.key,
     required this.title,
     required this.state,

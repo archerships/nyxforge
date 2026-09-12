@@ -181,7 +181,7 @@ mod tests {
     }
 
     #[test]
-    fn redeem_active_bond_with_matching_pk_succeeds() {
+    fn redeem_active_bounty_with_matching_pk_succeeds() {
         let bounty = active_bounty_with_attest_pk();
         let proof = burn_proof(bounty.id);
         let params = RedeemBountyParams { bounty_id: bounty.id, burn_proof: proof };
@@ -200,7 +200,7 @@ mod tests {
     }
 
     #[test]
-    fn redeem_legacy_bond_rejects_active_state() {
+    fn redeem_legacy_bounty_rejects_active_state() {
         // Legacy bounty: no judge_attest_pks → must be Redeemable, not Active.
         let bounty = active_bounty(); // has judge_attest_pks: [] via quorum_3_judge_spec
         let proof = burn_proof(bounty.id);

@@ -23,7 +23,7 @@ Reply with ONLY a valid JSON object — no markdown, no prose outside the JSON.
 Use this exact schema:
 
 {
-  "similar_bonds": [
+  "similar_bounties": [
     {
       "bounty_id":     "<id field from the existing bounties list>",
       "title":       "<bounty title>",
@@ -31,7 +31,7 @@ Use this exact schema:
       "explanation": "<1–2 sentences: why similar and what differs>"
     }
   ],
-  "suggested_bond": {
+  "suggested_bounty": {
     "title":           "<concise title, max 60 chars>",
     "description":     "<detailed description of goal and how it will be measured>",
     "data_id":         "<canonical data source id>",

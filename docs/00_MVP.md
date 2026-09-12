@@ -52,7 +52,7 @@ These are valid v2+ goals. Do not let them consume design energy until MVP is li
 | Goal text encryption | v2 |
 | Multi-language docs | post-launch |
 | Post-quantum verifier slots (full PQ) | v3 |
-| Bonds with deadline > 10 years | post-PQ (blocked on CRQC timeline) |
+| Bounties with deadline > 10 years | post-PQ (blocked on CRQC timeline) |
 | ZEC Orchard (Pallas/Vesta) locking mechanism | v3 (Sapling is MVP target) |
 
 The existing nyxforge-zk, nyxforge-contract, nyxforge-node crates are preserved
@@ -482,21 +482,21 @@ The `--type` flag for `nyx claim file` accepts the following values:
 | `maturity` | All terms met; collateral payout due |
 | `partial` | Terms partially met; reduced payout requested |
 | `default` | Issuer failed to lock collateral or breached terms |
-| `expired` | Bond expired without settlement; collateral release requested |
+| `expired` | Bounty expired without settlement; collateral release requested |
 
 ### 7c Terminology alignment
 
 NyxForge uses "bounty" and "judge" everywhere in prose, UI, CLI output, and
 all new documentation. User-facing CLI flags also use bounty terminology
-(`--bounty`, never `--bond`). Internal SQL schema names are current:
+(`--bounty`, never `--bounty`). Internal SQL schema names are current:
 `bounty_spec`, `bounty_id`, `judges`, and `judge_config`. Legacy Rust types and
 RPC names may remain until a dedicated code-rename PR:
 
 | Context | Legacy (internal only) | Current (use everywhere) |
 |---------|------------------------|--------------------------|
-| Rust types | Bond, BondState, OracleAccept | -- (code rename deferred) |
-| RPC methods | bonds.get, oracle.attest | bounties.get, judge.attest (code rename deferred) |
-| All prose | bond, .bond file | bounty, .bounty file |
+| Rust types | Bounty, BountyState, OracleAccept | -- (code rename deferred) |
+| RPC methods | bounties.get, oracle.attest | bounties.get, judge.attest (code rename deferred) |
+| All prose | bounty, .bounty file | bounty, .bounty file |
 | All prose | oracle, oracle panel | judge, judge panel |
 | CLI display | DRAFT state | displayed as "UNISSUED" in output |
 
@@ -584,7 +584,7 @@ transferring the scalar or the private key.
   "ask":           1.5,
   "list_expiry":   "2026-06-01",
   "nonce":         "<exchange-provided hex nonce>",
-  "bond_summary": {
+  "bounty_summary": {
     "title":       "...",
     "state":       "active",
     "amount":      1.0,

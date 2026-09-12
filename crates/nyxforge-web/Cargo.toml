@@ -1,6 +1,6 @@
 [package]
 name        = "nyxforge-web"
-description = "Browser WASM frontend for the NyxForge bond market"
+description = "Browser WASM frontend for the NyxForge bounty market"
 version.workspace    = true
 edition.workspace    = true
 authors.workspace    = true

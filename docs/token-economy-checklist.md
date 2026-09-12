@@ -21,7 +21,7 @@ Good examples:
 
 - "Review `doc/05_TECH/file-format-spec.md` against `doc/00_MVP.md`; no edits."
 - "Update `bin/bounty-market` and regenerate only its active mockup."
-- "Search active mockup generators for stale oracle/bond terminology; report findings first."
+- "Search active mockup generators for stale oracle/bounty terminology; report findings first."
 
 Avoid broad prompts unless a phase-gate audit is intended:
 

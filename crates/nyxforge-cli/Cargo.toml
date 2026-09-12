@@ -1,6 +1,6 @@
 [package]
 name        = "nyxforge-cli"
-description = "Command-line interface for the NyxForge bond market node"
+description = "Command-line interface for the NyxForge bounty market node"
 version.workspace    = true
 edition.workspace    = true
 authors.workspace    = true

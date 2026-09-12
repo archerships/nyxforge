@@ -194,17 +194,17 @@ class _IssueBondScreenState extends State<IssueBondScreen> {
   Future<void> _submit() async {
     setState(() { _submitting = true; _error = null; });
     try {
-      final result = await _client.call('bonds.create', _buildPayload());
+      final result = await _client.call('bounties.create', _buildPayload());
       final file = (result as Map<String, dynamic>?)?['file'] as String?
-          ?? '${_titleCtrl.text.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-')}-0001.bond';
+          ?? '${_titleCtrl.text.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-')}-0001.bounty';
       if (mounted) setState(() { _submitting = false; _createdFile = file; });
     } on NodeException catch (e) {
-      // Phase 3: mock may not have bonds.create -- treat as success
+      // Phase 3: mock may not have bounties.create -- treat as success
       if (e.message.contains('method not found') ||
           e.message.contains('Connection error') ||
           e.message.contains('404')) {
         final slug = _titleCtrl.text.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-');
-        if (mounted) setState(() { _submitting = false; _createdFile = '$slug-0001.bond'; });
+        if (mounted) setState(() { _submitting = false; _createdFile = '$slug-0001.bounty'; });
       } else {
         if (mounted) setState(() { _submitting = false; _error = e.message; });
       }
@@ -252,7 +252,7 @@ class _IssueBondScreenState extends State<IssueBondScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 20, 24, 4),
-          child: Text('Create Bond', style: tt.titleLarge),
+          child: Text('Create Bounty', style: tt.titleLarge),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
@@ -291,7 +291,7 @@ class _IssueBondScreenState extends State<IssueBondScreen> {
                 child: _submitting
                     ? const SizedBox(width: 18, height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2))
-                    : Text(_step == _labels.length - 1 ? 'CREATE BOND' : 'NEXT'),
+                    : Text(_step == _labels.length - 1 ? 'CREATE BOUNTY' : 'NEXT'),
               ),
             ],
           ),
@@ -345,12 +345,12 @@ class _IdentityStep extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const _WizardSection('Bond Title'),
+      const _WizardSection('Bounty Title'),
       _WizardField('Title', titleCtrl,
           hint: 'e.g. Valar Atomics NRC License 2027', onChanged: onChanged),
       const _WizardSection('Description'),
       _WizardField('Description (optional)', descCtrl,
-          hint: 'What outcome does this bond fund? Who issues it?',
+          hint: 'What outcome does this bounty fund? Who issues it?',
           maxLines: 4, onChanged: onChanged),
     ],
   );
@@ -681,7 +681,7 @@ class _CollateralStep extends StatelessWidget {
             hint: '1.0', keyboardType: TextInputType.number,
             suffix: currency.toUpperCase(), onChanged: onChanged),
         const _WizardSection('Series'),
-        _WizardField('Number of .bond files to issue', unitCountCtrl,
+        _WizardField('Number of .bounty files to issue', unitCountCtrl,
             hint: '1', keyboardType: TextInputType.number,
             suffix: 'units', onChanged: onChanged),
         if (units > 0 && amount > 0) ...[
@@ -950,7 +950,7 @@ class _ReviewStep extends StatelessWidget {
               SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Phase 3 demo: the .bond file is not written to disk until the nyxforge-bond crate is implemented (Phase 4).',
+                  'Phase 3 demo: the .bounty file is not written to disk until the nyxforge-bounty crate is implemented (Phase 4).',
                   style: TextStyle(color: NyxColors.textSecondary, fontSize: 12),
                 ),
               ),
@@ -991,9 +991,9 @@ class _SuccessView extends StatelessWidget {
                   color: NyxColors.success, size: 36),
             ),
             const SizedBox(height: 20),
-            Text('Bond Created', style: tt.titleLarge?.copyWith(color: NyxColors.success)),
+            Text('Bounty Created', style: tt.titleLarge?.copyWith(color: NyxColors.success)),
             const SizedBox(height: 8),
-            Text('DRAFT file ready. Use bond issue to lock collateral.',
+            Text('DRAFT file ready. Use bounty issue to lock collateral.',
                 style: tt.bodyMedium, textAlign: TextAlign.center),
             const SizedBox(height: 16),
             SelectableText(

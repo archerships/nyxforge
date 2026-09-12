@@ -33,9 +33,9 @@ to SVG by mmdc and committed alongside the source.
 
 | File | Contents |
 | :--- | :--- |
-| `bond-lifecycle.mmd` | State machine: DRAFT -> ACTIVE -> REDEEMABLE/EXPIRED -> SETTLED/RECLAIMED |
-| `bond-create-wizard.mmd` | Flowchart: bond create wizard, goal type through file write |
-| `holder-flow.mmd` | Flowchart: holder actions branched by bond state |
+| `bounty-lifecycle.mmd` | State machine: DRAFT -> ACTIVE -> REDEEMABLE/EXPIRED -> SETTLED/RECLAIMED |
+| `bounty-create-wizard.mmd` | Flowchart: bounty create wizard, goal type through file write |
+| `holder-flow.mmd` | Flowchart: holder actions branched by bounty state |
 | `oracle-flow.mmd` | Flowchart: oracle accept/reject/attest/quorum workflow |
 
 ### Viewing diagrams
@@ -80,19 +80,19 @@ Re-run mmdc or `<leader>p` after saving to see updated output.
 
 deadline vs expiry:
 
-- deadline: the date by which the goal must be achieved for the bond to pay out.
+- deadline: the date by which the goal must be achieved for the bounty to pay out.
 - expiry: the date after which, if the goal was not met, the oracle publishes
   `s_fail` and the issuer may reclaim collateral.  Must be after the deadline.
 
 The gap between them is the settlement window -- time for oracles to gather
 evidence, attest, reach quorum, and allow the challenge period to pass.  A
-bond past its deadline but before expiry is still ACTIVE.  Once expiry passes
-without quorum, the bond moves to EXPIRED and collateral is returnable.
+bounty past its deadline but before expiry is still ACTIVE.  Once expiry passes
+without quorum, the bounty moves to EXPIRED and collateral is returnable.
 
 Example: deadline 2027-06-30, expiry 2027-07-31.  If the goal is met by
 June 30, oracles have July to attest and reach quorum (-> REDEEMABLE).  If
-not, the bond expires July 31 (-> EXPIRED) and collateral returns to the
-issuer via `bond reclaim`.
+not, the bounty expires July 31 (-> EXPIRED) and collateral returns to the
+issuer via `bounty reclaim`.
 
 Rule: expiry > deadline.  The CLI wizard enforces this at input time.
 
@@ -127,23 +127,23 @@ All requests are POST to `http://127.0.0.1:8888/rpc` with body:
 
 | Method | Returns |
 | :--- | :--- |
-| `bonds.list` | Array of all bonds (4 sample bonds: DRAFT, ACTIVE, REDEEMABLE, EXPIRED) |
-| `bonds.get` | Full bond detail; pass `params.state` to select the sample |
-| `bonds.status` | Compact status summary for a bond |
-| `oracle.status` | Oracle's view of a bond (accepted, attested, fee) |
-| `oracle.accept` | Mark bond accepted by this oracle |
-| `oracle.reject` | Reject bond with a reason string |
+| `bounties.list` | Array of all bounties (4 sample bounties: DRAFT, ACTIVE, REDEEMABLE, EXPIRED) |
+| `bounties.get` | Full bounty detail; pass `params.state` to select the sample |
+| `bounties.status` | Compact status summary for a bounty |
+| `oracle.status` | Oracle's view of a bounty (accepted, attested, fee) |
+| `oracle.accept` | Mark bounty accepted by this oracle |
+| `oracle.reject` | Reject bounty with a reason string |
 | `oracle.attest` | Submit attestation (result: met or not_met) |
 | `dev.mock_attest` | Dev shortcut: write a fake attestation directly |
-| `dev.force_state` | Dev shortcut: jump a bond to any state |
+| `dev.force_state` | Dev shortcut: jump a bounty to any state |
 
 ### Generating randomized test data
 
 ```
-node mock/gen_bonds.js 20 > /tmp/bonds.json
+node mock/gen_bounties.js 20 > /tmp/bounties.json
 ```
 
-Produces 20 randomized bonds cycling through DRAFT/ACTIVE/REDEEMABLE/EXPIRED
+Produces 20 randomized bounties cycling through DRAFT/ACTIVE/REDEEMABLE/EXPIRED
 with realistic oracle panels, attestations, and collateral amounts.
 
 ### All-in-one: dev-hologram

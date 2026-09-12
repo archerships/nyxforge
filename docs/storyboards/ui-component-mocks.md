@@ -21,9 +21,9 @@
 
 ---
 
-## 2. Component: Bond Card
+## 2. Component: Bounty Card
 
-The Bond Card is the primary unit of the "Vault" (Bond List).
+The Bounty Card is the primary unit of the "Vault" (Bounty List).
 
 ### 2.1 Visual Mock (ASCII)
 
@@ -45,17 +45,17 @@ The Bond Card is the primary unit of the "Vault" (Bond List).
 
 ### 2.2 Behavior Specs
 - **Hover:** Border glows `Primary` (#5e6ad2).
-- **Click:** Opens Bond Inspector (Detail View).
+- **Click:** Opens Bounty Inspector (Detail View).
 - **State Changes:**
     - **REDEEMABLE:** Card flashes `Success` (#4ade80) and a large "REDEEM" button appears over the progress bar.
     - **DRAFT:** "ISSUE" button visible in header.
-- **Progress Bar:** Only shown for `quantitative` or `hybrid` bonds.
+- **Progress Bar:** Only shown for `quantitative` or `hybrid` bounties.
 
 ---
 
 ## 3. Component: Wizard Stepper
 
-Used during the `bond create` flow.
+Used during the `bounty create` flow.
 
 ### 3.1 Visual Mock (ASCII)
 
@@ -69,7 +69,7 @@ Used during the `bond create` flow.
 
 ## 4. Component: Oracle Status Row
 
-Detailed view inside the Bond Inspector.
+Detailed view inside the Bounty Inspector.
 
 ### 4.1 Visual Mock (ASCII)
 

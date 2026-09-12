@@ -122,9 +122,9 @@ pub struct JudgeSpec {
 
     /// Poseidon-derived attestation public keys — one per judge, same order as `judge_keys`.
     ///
-    /// Each entry is `judge_attest_pk_from_key(bond_attest_key)` (Pallas Fp bytes).
+    /// Each entry is `judge_attest_pk_from_key(bounty_attest_key)` (Pallas Fp bytes).
     /// Used as BURN circuit instance[2] in Option A (ZK judge attestation):
-    /// the circuit proves the prover knows the `bond_attest_key` that hashes to this pk.
+    /// the circuit proves the prover knows the `bounty_attest_key` that hashes to this pk.
     /// Judges provide their `judge_attest_pk` when accepting a bounty via `bounties.judge_accept`.
     pub judge_attest_pks: Vec<[u8; 32]>,
 
@@ -171,7 +171,7 @@ impl BountyComment {
     pub fn new(bounty_id: BountyId, author: PublicKey, body: String) -> Self {
         let created_at = Utc::now();
         let mut h = blake3::Hasher::new();
-        h.update(b"nyxforge::bond_comment");
+        h.update(b"nyxforge::bounty_comment");
         h.update(bounty_id.as_bytes());
         h.update(&author.0);
         h.update(body.as_bytes());
@@ -303,7 +303,7 @@ mod tests {
     // --- Bounty ID ---
 
     #[test]
-    fn bond_id_is_deterministic() {
+    fn bounty_id_is_deterministic() {
         let goal = homelessness_goal();
         let id1 = Bounty::compute_id(&[goal.clone()], &ISSUER_KEY, 1000, &RETURN_ADDR);
         let id2 = Bounty::compute_id(&[goal], &ISSUER_KEY, 1000, &RETURN_ADDR);
@@ -311,7 +311,7 @@ mod tests {
     }
 
     #[test]
-    fn bond_id_differs_by_issuer() {
+    fn bounty_id_differs_by_issuer() {
         let goal = homelessness_goal();
         let id1 = Bounty::compute_id(&[goal.clone()], &PublicKey([0x11u8; 32]), 1000, &RETURN_ADDR);
         let id2 = Bounty::compute_id(&[goal], &PublicKey([0x22u8; 32]), 1000, &RETURN_ADDR);
@@ -319,7 +319,7 @@ mod tests {
     }
 
     #[test]
-    fn bond_id_differs_by_block() {
+    fn bounty_id_differs_by_block() {
         let goal = homelessness_goal();
         let id1 = Bounty::compute_id(&[goal.clone()], &ISSUER_KEY, 100, &RETURN_ADDR);
         let id2 = Bounty::compute_id(&[goal], &ISSUER_KEY, 101, &RETURN_ADDR);
@@ -327,7 +327,7 @@ mod tests {
     }
 
     #[test]
-    fn bond_id_differs_by_return_address() {
+    fn bounty_id_differs_by_return_address() {
         let goal = homelessness_goal();
         let id1 = Bounty::compute_id(&[goal.clone()], &ISSUER_KEY, 0, &RETURN_ADDR);
         let id2 = Bounty::compute_id(&[goal], &ISSUER_KEY, 0, &PublicKey([0xFFu8; 32]));
@@ -335,7 +335,7 @@ mod tests {
     }
 
     #[test]
-    fn bond_id_differs_by_title() {
+    fn bounty_id_differs_by_title() {
         let mut g1 = homelessness_goal();
         let mut g2 = homelessness_goal();
         g2.title = "Different Title".into();
@@ -348,7 +348,7 @@ mod tests {
     }
 
     #[test]
-    fn bond_id_differs_by_goals_order() {
+    fn bounty_id_differs_by_goals_order() {
         let g1 = homelessness_goal();
         let mut g2 = homelessness_goal();
         g2.title = "Second Goal".into();

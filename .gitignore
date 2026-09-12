@@ -13,10 +13,10 @@ ui/.flutter-plugins-dependencies
 *.log
 *.pid
 node_data/
-nyxforge
-nyxforge-node
-nyxforge-oracle
-nyxforge-cli
+/nyxforge
+/nyxforge-node
+/nyxforge-oracle
+/nyxforge-cli
 
 # Playwright
 ui/node_modules/

@@ -48,7 +48,7 @@ pub struct TransferConfig {
 #[derive(Debug, Default)]
 pub struct TransferCircuit {
     // Old note witnesses
-    pub old_bond_id:    Value<Fp>,
+    pub old_bounty_id:    Value<Fp>,
     pub old_quantity:   Value<Fp>,
     pub old_owner_pk:   Value<Fp>,
     pub old_randomness: Value<Fp>,
@@ -118,15 +118,15 @@ impl Circuit<Fp> for TransferCircuit {
         // ----- new_commitment = Poseidon2(h1_new, h2_new) -----
         // h1_new = Poseidon2(bounty_id, quantity)
 
-        let (bond_id_cell, qty_cell) = layouter.assign_region(
+        let (bounty_id_cell, qty_cell) = layouter.assign_region(
             || "load new h1 witnesses",
             |mut region| {
-                let a = region.assign_advice(|| "bounty_id",  config.state[0], 0, || self.old_bond_id)?;
+                let a = region.assign_advice(|| "bounty_id",  config.state[0], 0, || self.old_bounty_id)?;
                 let b = region.assign_advice(|| "quantity", config.state[1], 0, || self.old_quantity)?;
                 Ok((a, b))
             },
         )?;
-        let bond_id_cell_ref = bond_id_cell.cell();
+        let bounty_id_cell_ref = bounty_id_cell.cell();
         let qty_cell_ref     = qty_cell.cell();
 
         let h1_new = {
@@ -134,7 +134,7 @@ impl Circuit<Fp> for TransferCircuit {
                 Pow5Chip::construct(config.poseidon.clone()),
                 layouter.namespace(|| "h1_new init"),
             )?;
-            hasher.hash(layouter.namespace(|| "h1_new hash"), [bond_id_cell, qty_cell])?
+            hasher.hash(layouter.namespace(|| "h1_new hash"), [bounty_id_cell, qty_cell])?
         };
 
         // h2_new = Poseidon2(new_owner_pk, new_randomness)
@@ -165,12 +165,12 @@ impl Circuit<Fp> for TransferCircuit {
         };
 
         // ----- Conservation: verify old note has same bounty_id and quantity -----
-        // We load old_bond_id and old_quantity again (same values) and constrain
+        // We load old_bounty_id and old_quantity again (same values) and constrain
         // them equal to the cells already used for the new commitment computation.
-        let (old_bond_id_cell, old_qty_cell) = layouter.assign_region(
+        let (old_bounty_id_cell, old_qty_cell) = layouter.assign_region(
             || "load old note fields for conservation check",
             |mut region| {
-                let a = region.assign_advice(|| "old_bond_id",  config.state[0], 0, || self.old_bond_id)?;
+                let a = region.assign_advice(|| "old_bounty_id",  config.state[0], 0, || self.old_bounty_id)?;
                 let b = region.assign_advice(|| "old_quantity", config.state[1], 0, || self.old_quantity)?;
                 Ok((a, b))
             },
@@ -180,7 +180,7 @@ impl Circuit<Fp> for TransferCircuit {
         layouter.assign_region(
             || "conservation equality",
             |mut region| {
-                region.constrain_equal(old_bond_id_cell.cell(), bond_id_cell_ref)?;
+                region.constrain_equal(old_bounty_id_cell.cell(), bounty_id_cell_ref)?;
                 region.constrain_equal(old_qty_cell.cell(), qty_cell_ref)?;
                 Ok(())
             },
@@ -189,7 +189,7 @@ impl Circuit<Fp> for TransferCircuit {
         // ----- Constrain public instances -----
         layouter.constrain_instance(nullifier.cell(),          config.instance, 0)?;
         layouter.constrain_instance(new_commitment.cell(),     config.instance, 1)?;
-        layouter.constrain_instance(old_bond_id_cell.cell(),   config.instance, 2)?;
+        layouter.constrain_instance(old_bounty_id_cell.cell(),   config.instance, 2)?;
 
         Ok(())
     }
@@ -201,7 +201,7 @@ mod tests {
     use crate::primitives::{fp_from_bytes, note_commitment, note_nullifier};
     use halo2_proofs::dev::MockProver;
 
-    const BOND_ID:      [u8; 32] = [0x01u8; 32];
+    const BOUNTY_ID:      [u8; 32] = [0x01u8; 32];
     const QTY:          u64      = 10;
     const OWNER_PK:     [u8; 32] = [0xBBu8; 32];
     const RANDOMNESS:   [u8; 32] = [0x42u8; 32];
@@ -212,11 +212,11 @@ mod tests {
 
     fn test_circuit() -> (TransferCircuit, Vec<Vec<Fp>>) {
         let nullifier      = note_nullifier(&OWNER_SECRET, &SERIAL);
-        let new_commitment = note_commitment(&BOND_ID, QTY, &NEW_OWNER_PK, &NEW_RAND);
-        let bond_id_fp     = fp_from_bytes(&BOND_ID);
+        let new_commitment = note_commitment(&BOUNTY_ID, QTY, &NEW_OWNER_PK, &NEW_RAND);
+        let bounty_id_fp     = fp_from_bytes(&BOUNTY_ID);
 
         let circuit = TransferCircuit {
-            old_bond_id:    Value::known(bond_id_fp),
+            old_bounty_id:    Value::known(bounty_id_fp),
             old_quantity:   Value::known(Fp::from(QTY)),
             old_owner_pk:   Value::known(fp_from_bytes(&OWNER_PK)),
             old_randomness: Value::known(fp_from_bytes(&RANDOMNESS)),
@@ -227,7 +227,7 @@ mod tests {
         };
 
         // Instance: [nullifier, new_commitment, bounty_id]
-        let instances = vec![nullifier, new_commitment, bond_id_fp];
+        let instances = vec![nullifier, new_commitment, bounty_id_fp];
         (circuit, vec![instances])
     }
 

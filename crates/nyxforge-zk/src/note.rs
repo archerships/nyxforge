@@ -112,7 +112,7 @@ mod tests {
     }
 
     #[test]
-    fn different_bond_ids_produce_different_commitments() {
+    fn different_bounty_ids_produce_different_commitments() {
         let id_a = Digest::from_bytes([0xAAu8; 32]);
         let id_b = Digest::from_bytes([0xBBu8; 32]);
         assert_ne!(note_for_bounty(id_a, 5).commitment(), note_for_bounty(id_b, 5).commitment());

@@ -1,7 +1,7 @@
 # Tari Network Research Brief (NyxForge)
 
 **Status:** [ACTIVE RESEARCH: 2026-04-20]
-**Objective:** Evaluate Tari as a potential Layer 1/2 substrate for NyxForge bond issuance and settlement.
+**Objective:** Evaluate Tari as a potential Layer 1/2 substrate for NyxForge bounty issuance and settlement.
 
 ---
 
@@ -38,9 +38,9 @@ Tari is a high-performance, privacy-focused digital assets protocol designed to 
 ### Alignment
 *   **Privacy First:** Tari's Mimblewimble heritage aligns with NyxForge's anonymous social policy bond ethos.
 *   **Censorship Resistance:** Permissionless Ootle templates allow for sovereign bond markets without gatekeepers.
-*   **Settlement:** Minotari (L1) provides "hard money" security, while Ootle (L2) handles complex bond logic (matchmaking, listing).
+*   **Settlement:** Minotari (L1) provides "hard money" security, while Ootle (L2) handles complex bounty logic (matchmaking, listing).
 
 ### Next Research Steps
-*   [ ] Analyze Ootle "Template" structure for `.bond` file compatibility.
-*   [ ] Evaluate cross-chain oracle integration (Tellor/Chainlink) on the Ootle layer for bond settlement triggers.
-*   [ ] Research "Agentic Payments" on Tari for automated bond payouts.
+*   [ ] Analyze Ootle "Template" structure for `.bounty` file compatibility.
+*   [ ] Evaluate cross-chain oracle integration (Tellor/Chainlink) on the Ootle layer for bounty settlement triggers.
+*   [ ] Research "Agentic Payments" on Tari for automated bounty payouts.

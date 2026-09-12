@@ -13,10 +13,10 @@ use crate::types::{Digest, PublicKey};
 ///
 /// Instead of posting attestations to the public AO ledger, the judge:
 /// 1. Verifies that the bounty's goal conditions are met.
-/// 2. Computes `bond_attest_key = blake3(master_sk ‖ bounty_id ‖ ATTEST_DOMAIN)`.
+/// 2. Computes `bounty_attest_key = blake3(master_sk ‖ bounty_id ‖ ATTEST_DOMAIN)`.
 /// 3. Sends this token to the bounty holder over an encrypted channel (DarkFi P2P).
 ///
-/// The bounty holder uses `bond_attest_key` as a **private witness** in the BURN
+/// The bounty holder uses `bounty_attest_key` as a **private witness** in the BURN
 /// ZK circuit, which proves knowledge of the attest key without revealing it.
 /// The `judge_attest_pk` (the Poseidon-derived public key) is the public
 /// instance[2] of the BURN proof — never the raw attest key.
@@ -26,9 +26,9 @@ use crate::types::{Digest, PublicKey};
 pub struct JudgeAttestKey {
     /// The private per-bounty attest key (NEVER publish this).
     /// Derived as `blake3(oracle_master_sk ‖ bounty_id ‖ "nyxforge::oracle::attest::v1")`.
-    pub bond_attest_key: [u8; 32],
+    pub bounty_attest_key: [u8; 32],
 
-    /// `Poseidon2(fp(bond_attest_key), judge_attest_domain())` — little-endian Pallas bytes.
+    /// `Poseidon2(fp(bounty_attest_key), judge_attest_domain())` — little-endian Pallas bytes.
     /// Registered on the bounty in `JudgeSpec.judge_attest_pks`.
     /// Used as BURN circuit instance[2]; reveals which judge endorsed this bounty without
     /// revealing when or what evidence they observed.

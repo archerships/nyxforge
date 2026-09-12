@@ -1,31 +1,31 @@
-# Research Note: Bearer Bond Simplification and Funding Models
+# Research Note: Bearer Bounty Simplification and Funding Models
 > Started: 2026-04-18
 > Status: ongoing -- append as conversation continues
 
 ---
 
-## 1. Could bonds be self-contained, self-verifying bearer bonds?
+## 1. Could bounties be self-contained, self-verifying bearer bounties?
 
 ### The core tension in the current architecture
 
 The current NyxForge system bundles two separate concerns:
 
 1. Ownership tracking -- ZK notes, nullifiers, P2P network, order book (complex)
-2. Goal verification and payout -- oracle attestation, collateral release, .bond file (can be simple)
+2. Goal verification and payout -- oracle attestation, collateral release, .bounty file (can be simple)
 
-Almost all the complexity lives in #1. The question is whether bonds could be bearer
+Almost all the complexity lives in #1. The question is whether bounties could be bearer
 instruments (possession = ownership), eliminating most of that complexity.
 
 ### What a bearer model looks like
 
-A .bond SQLite file contains:
+A .bounty SQLite file contains:
 - GoalSpec (what needs to happen)
 - Oracle pubkeys
 - XMR DLEQ adaptor signature (partial sig blob)
 - Evidence BLOBs
 - WASM verifier
 
-Ownership = knowledge of a secret scalar (one per bond file).
+Ownership = knowledge of a secret scalar (one per bounty file).
 Transfer = hand over the file + scalar (off-chain, over Tor/Signal/etc).
 Redemption = oracle publishes s_met → adaptor + s_met completes XMR tx → holder sweeps.
 Double-spend prevention = XMR UTXO model (collateral output can only be swept once).
@@ -36,19 +36,19 @@ Double-spend prevention = XMR UTXO model (collateral output can only be swept on
 - No DarkFi dependency
 - No MINT/TRANSFER ZK circuits
 - No nullifier set (shared state)
-- Fully air-gapped redemption with only the .bond file + XMR wallet
-- Stateless: the file IS the bond, forever
+- Fully air-gapped redemption with only the .bounty file + XMR wallet
+- Stateless: the file IS the bounty, forever
 
 ### What you lose
 
-- Fractional units (bond is indivisible; no liquid order book)
+- Fractional units (bounty is indivisible; no liquid order book)
 - Market price signal (Horesh's core information mechanism)
 - Anonymous transfer (file handoff is only as private as the channel)
 - Order book / DEX
 - Divisibility for large-collateral goals requiring broad participation
 
 The loss of fractional units is the most serious. Horesh's incentive mechanism depends
-on bonds aggregating toward the most capable actors via open-market competition.
+on bounties aggregating toward the most capable actors via open-market competition.
 
 ### Proposed progression
 
@@ -87,10 +87,10 @@ Well-tested, not experimental.
 
 ## 3. Standardized collateral units
 
-If all bonds use a fixed collateral unit (e.g. 1 XMR per file):
+If all bounties use a fixed collateral unit (e.g. 1 XMR per file):
 
-- Price comparison across bonds is trivial (all trade on 0-1 XMR scale)
-- Bond price = market's probability estimate of goal being met by deadline
+- Price comparison across bounties is trivial (all trade on 0-1 XMR scale)
+- Bounty price = market's probability estimate of goal being met by deadline
 - Fractional ownership via issuing N separate 1-XMR files for the same GoalSpec
 - Horesh price signal preserved: price of one file = P(goal met)
 
@@ -107,7 +107,7 @@ same price, same condition, same collateral. True fungibility requires ZK notes 
 
 ## 4. Multi-currency collateral
 
-The .bond format is currency-agnostic. The collateral field specifies the currency
+The .bounty format is currency-agnostic. The collateral field specifies the currency
 and the appropriate locking primitive:
 
 | Currency | Primitive | Privacy | Maturity |
@@ -121,7 +121,7 @@ and the appropriate locking primitive:
 
 Privacy tradeoff: XMR/ZEC hide redemption amount and recipient on-chain. BTC/ETH
 do not -- payout transaction is fully public. For anonymous Lifebonds, XMR or ZEC.
-For public philanthropic bonds where transparency is a feature, ETH is simpler.
+For public philanthropic bounties where transparency is a feature, ETH is simpler.
 
 ---
 
@@ -138,18 +138,18 @@ Most funding mechanisms require a central entity, conflicting with permissionles
 - Moat: reputation and longevity (200-year oracle worth more than cheap one)
 
 ### Issuance fee in reference client
-- Reference client charges small fee (e.g. 0.5% of collateral) at bond creation
+- Reference client charges small fee (e.g. 0.5% of collateral) at bounty creation
 - Fee goes to published multisig address
 - Opt-out possible (fork the client); opt-out unlikely for most users
 - Precedent: Uniswap, most open protocols use this model
 
-### NyxForge development bond (most philosophically consistent)
-- Issue a bond paying out when NyxForge reaches a measurable milestone
+### NyxForge development bounty (most philosophically consistent)
+- Issue a bounty paying out when NyxForge reaches a measurable milestone
   (e.g. "1000 XMR total collateral locked by 2028")
-- Investors buy the bond; bondholders are financially incentivized to fund
+- Investors buy the bounty; bondholders are financially incentivized to fund
   development, marketing, and lobbying
 - This is the Wall Street Performer Protocol applied to NyxForge itself
-- Also serves as public demonstration the system works before third-party bonds
+- Also serves as public demonstration the system works before third-party bounties
 - Most compelling narrative: "we fund our platform with our own instrument"
 
 ### Founding endowment + yield (for long-term sustainability)
@@ -161,7 +161,7 @@ Most funding mechanisms require a central entity, conflicting with permissionles
 
 | Need | Mechanism |
 | :--- | :--- |
-| Near-term development | NyxForge development bond (milestone crowdfund) |
+| Near-term development | NyxForge development bounty (milestone crowdfund) |
 | Ongoing oracle operations | Oracle service fees |
 | Long-term sustainability | Founding endowment yield (stETH, not XMR) |
 | Marketing / legal / lobbying | % of issuance fee in reference client |
@@ -189,7 +189,7 @@ Most funding mechanisms require a central entity, conflicting with permissionles
 ### Lessons for NyxForge
 1. VC funding = named, hittable target; corporate structure = defendants
 2. Governance token from identified founding team = potential security (SEC)
-3. Development bond is more defensible than a token: outcome-linked, not speculative equity
+3. Development bounty is more defensible than a token: outcome-linked, not speculative equity
 4. Anonymous founding team + permissionless protocol + no token = smallest legal surface area
 5. Tornado Cash convicted partly because founders were known and had incorporated
 6. Framing matters: exchange (Uniswap) vs mixer (Tornado Cash) vs outcome finance (NyxForge)
@@ -216,11 +216,11 @@ Most funding mechanisms require a central entity, conflicting with permissionles
 Both fund activity (teams, development). NyxForge funds outcomes. Horesh would say
 both are still input-based, not output-based.
 
-A NyxForge development bond issued via Gitcoin's Allo Protocol = quadratic-funded,
+A NyxForge development bounty issued via Gitcoin's Allo Protocol = quadratic-funded,
 outcome-linked, anonymous instrument. Worth exploring as launch strategy.
 
 Gitcoin's failure mode: funded others' outcomes, had no mechanism for its own.
-NyxForge oracle fees + dev bond avoids this trap.
+NyxForge oracle fees + dev bounty avoids this trap.
 
 ---
 
@@ -242,14 +242,14 @@ NyxForge oracle fees + dev bond avoids this trap.
 
 ### Critical correction: XMR does NOT produce yield
 
-XMR locked as bond collateral earns NOTHING. Monero is proof-of-work; there is no
+XMR locked as bounty collateral earns NOTHING. Monero is proof-of-work; there is no
 staking, no native yield. Locked XMR just sits in a DLEQ output waiting for release.
 
 The v2.0 spec's "XMR Yield Endowment" requires the issuer to run P2Pool mining
 hardware separately -- yield comes from mining work, not from locked collateral.
 This is operationally complex and unpredictable, not passive yield.
 
-| | stETH in AO | XMR in NyxForge bond |
+| | stETH in AO | XMR in NyxForge bounty |
 | :--- | :--- | :--- |
 | Yield source | Ethereum validator rewards | Nothing (no native yield) |
 | Requires work | No | Yes (mining hardware) |
@@ -259,15 +259,15 @@ This is operationally complex and unpredictable, not passive yield.
 ### Practical options for NyxForge yield treasury
 1. Use stETH/ETH as collateral -- AO model applies directly, yield is real and passive
 2. Accept XMR is non-yielding; fund treasury through oracle fees and issuance fees only
-3. Multi-currency collateral: ETH/stETH bonds contribute yield; XMR bonds do not
+3. Multi-currency collateral: ETH/stETH bounties contribute yield; XMR bounties do not
 
-For the bearer bond MVP, option 2 is the honest path.
+For the bearer bounty MVP, option 2 is the honest path.
 
 ---
 
 ## 9. Decision: Go with the simplest structure
 
-Agreed 2026-04-18. The bearer bond MVP is the current build target.
+Agreed 2026-04-18. The bearer bounty MVP is the current build target.
 
 Formalized in `doc/00_MVP.md`. Key decisions locked:
 
@@ -277,10 +277,10 @@ Formalized in `doc/00_MVP.md`. Key decisions locked:
 - Human oracle panel for qualitative; HTTP-JSON for quantitative
 - Oracle operators are domain experts, separate from developers
 - Developer revenue: oracle fees + issuance fee in reference client
-- Bootstrap funding: grants + NyxForge development bond
+- Bootstrap funding: grants + NyxForge development bounty
 - No token, no DAO, no corporate entity for MVP
 
 Deferred to v2: ZK notes, P2P network, order book, DarkFi, browser UI.
 
 Implementation: 5 phases, ~12 weeks total.
-First milestone: NyxForge Development Bond on Monero mainnet.
+First milestone: NyxForge Development Bounty on Monero mainnet.

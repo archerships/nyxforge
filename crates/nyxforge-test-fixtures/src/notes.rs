@@ -187,7 +187,7 @@ mod tests {
     }
 
     #[test]
-    fn note_for_bond_uses_supplied_bond_id() {
+    fn note_for_bounty_uses_supplied_bounty_id() {
         let id = Digest::from_bytes([0x55u8; 32]);
         let note = note_for_bounty(id, 3);
         assert_eq!(note.bounty_id, id);

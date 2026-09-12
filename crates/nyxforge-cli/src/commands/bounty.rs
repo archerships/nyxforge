@@ -93,7 +93,7 @@ pub enum BountyCommand {
     Inspect {
         /// Path to the .bounty file
         file: PathBuf,
-        /// BondViewKey hex (required for SQLCipher-encrypted files)
+        /// BountyViewKey hex (required for SQLCipher-encrypted files)
         #[arg(long)]
         key: Option<String>,
     },
@@ -228,7 +228,7 @@ async fn cmd_create() -> Result<()> {
         return Ok(());
     }
 
-    // TODO(phase-1): nyxforge_bond::create_series(&spec, &spec.output_dir)
+    // TODO(phase-1): nyxforge_bounty::create_series(&spec, &spec.output_dir)
     //   Writes <series_id>-<serial_4digits>.bounty files via rusqlite.
     //   Each file gets a fresh secret scalar and adaptor commitment.
     println!("  {} .bounty file creation requires the nyxforge-bounty crate (Phase 1).", "!".yellow());
@@ -241,8 +241,8 @@ async fn cmd_create() -> Result<()> {
 
 async fn cmd_inspect(file: &PathBuf, _key: Option<&str>) -> Result<()> {
     require_file(file)?;
-    // TODO(phase-1): nyxforge_bond::inspect(file, key)
-    //   Prints all tables: bond_spec, collateral, judges, oracle_config,
+    // TODO(phase-1): nyxforge_bounty::inspect(file, key)
+    //   Prints all tables: bounty_spec, collateral, judges, oracle_config,
     //   evidence (summary), attestations, history, verifier metadata.
     println!("  {} bounty inspect requires the nyxforge-bounty crate (Phase 1).", "!".yellow());
     println!("  File: {}", file.display().to_string().cyan());
@@ -255,7 +255,7 @@ async fn cmd_inspect(file: &PathBuf, _key: Option<&str>) -> Result<()> {
 
 async fn cmd_status(file: &PathBuf) -> Result<()> {
     require_file(file)?;
-    // TODO(phase-1): read history, attestations, bond_spec deadline, judge quorum.
+    // TODO(phase-1): read history, attestations, bounty_spec deadline, judge quorum.
     //   Print: current state, attestations received/required, days to deadline.
     println!("  {} bounty status requires the nyxforge-bounty crate (Phase 1).", "!".yellow());
     println!("  File: {}", file.display().to_string().cyan());
@@ -296,7 +296,7 @@ async fn cmd_list(dir: &PathBuf) -> Result<()> {
 async fn cmd_transfer(file: &PathBuf, recipient: &str) -> Result<()> {
     require_file(file)?;
     validate_hex_key(recipient)?;
-    // TODO(phase-2): nyxforge_bond::transfer(file, recipient_pubkey)
+    // TODO(phase-2): nyxforge_bounty::transfer(file, recipient_pubkey)
     //   Decrypts secret scalar with current holder key, re-encrypts to recipient,
     //   writes updated .bounty file. Prints new file path.
     println!("  {} bounty transfer requires the nyxforge-bounty crate (Phase 2).", "!".yellow());

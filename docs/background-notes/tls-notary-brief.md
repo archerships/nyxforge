@@ -64,7 +64,7 @@ content, and without the session keys being fully held by any single party.
 
 ### 2.2 The Three Parties
 
-- Prover: the party fetching data (the bond judge, an oracle node, or the
+- Prover: the party fetching data (the bounty judge, an oracle node, or the
   NGO staff member running the check)
 - Notary: a third party that co-participates in the TLS handshake using
   two-party computation (2PC); signs a commitment to its key share; never
@@ -100,7 +100,7 @@ proof. If the FDA API returns a 4 KB JSON object, the Prover can prove that
 the field `submission_status = "AP"` exists without revealing the rest.
 This is implemented via a commitment scheme over the TLS record layer.
 
-Selective disclosure is critical for NyxForge bonds involving personal or
+Selective disclosure is critical for NyxForge bounties involving personal or
 commercially sensitive data sources. A judge can prove a data point was true
 without leaking unrelated private information.
 
@@ -167,18 +167,18 @@ prove its ARR exceeds $1M for an investor without revealing its full P&L.
 ### 4.1 Role in the Architecture
 
 In the NyxForge oracle stack, TLS-Notary is the Tier 1 data-fetching layer
-for bonds whose judgment condition can be verified against a public or semi-
+for bounties whose judgment condition can be verified against a public or semi-
 public HTTPS data source. The judge (or an automated oracle node) runs a TLS-
-Notary session, produces a proof, and submits it as the bond's attestation
+Notary session, produces a proof, and submits it as the bounty's attestation
 record.
 
-The proof file is archived permanently on Arweave as part of the bond's
+The proof file is archived permanently on Arweave as part of the bounty's
 evidence package, making it auditable by anyone with the proof file and the
 verifier library -- including auditors operating decades in the future.
 
 ### 4.2 Example 1 -- Alzheimer's Cure Bounty (FDA Approval API)
 
-Bond condition: "FDA approves a treatment reducing new Alzheimer's diagnoses
+Bounty condition: "FDA approves a treatment reducing new Alzheimer's diagnoses
 by 50% before 2045-12-31."
 
 Data source: FDA Drugs@FDA API
@@ -216,11 +216,11 @@ Judgment flow:
 
 What is redacted in each proof: drug manufacturer identity, NDA internal case
 numbers, clinical trial IDs, any personally identifiable data of trial
-participants, and all other response fields not relevant to the bond condition.
+participants, and all other response fields not relevant to the bounty condition.
 
-### 4.3 Example 2 -- Longevity Index Bond (WHO Statistics API)
+### 4.3 Example 2 -- Longevity Index Bounty (WHO Statistics API)
 
-Bond condition: "Global average healthy life expectancy (HALE) exceeds 80
+Bounty condition: "Global average healthy life expectancy (HALE) exceeds 80
 years according to WHO GHO data before 2040-12-31."
 
 Data source: WHO Global Health Observatory OData API
@@ -229,7 +229,7 @@ Data source: WHO Global Health Observatory OData API
 Judgment flow:
 
 1. An automated NyxForge oracle node runs a TLS-Notary session against the
-   WHO API once per year beginning 2039-01-01 (scheduled via the bond's
+   WHO API once per year beginning 2039-01-01 (scheduled via the bounty's
    oracle_schedule field).
 
 2. It fetches:
@@ -239,22 +239,22 @@ Judgment flow:
 
 4. The proof selectively discloses only NumericValue and TimeDim.
 
-5. Because the bond specifies an automated judge (type: algorithmic_feed),
+5. Because the bounty specifies an automated judge (type: algorithmic_feed),
    no human review step is required. Three independent oracle nodes run the
    same session against different Notaries and submit matching proofs.
 
-6. 2-of-3 matching proofs trigger resolution. The .bond file is updated to
+6. 2-of-3 matching proofs trigger resolution. The .bounty file is updated to
    REDEEMABLE state and the collateral PTLC is unlocked.
 
-Note on automation: automated oracle sessions are scheduled by the bond's
-oracle_schedule field (a cron expression stored in the .bond SQLite file).
+Note on automation: automated oracle sessions are scheduled by the bounty's
+oracle_schedule field (a cron expression stored in the .bounty SQLite file).
 The NyxForge oracle daemon reads this field and dispatches TLS-Notary sessions
 on the specified schedule. The session output is deterministic -- any node
 fetching the same URL at the same time will get the same data.
 
 ### 4.4 Example 3 -- Qualitative Fallback with TLS-Notary as Evidence
 
-Bond condition: "The Cochrane Collaboration publishes a systematic review
+Bounty condition: "The Cochrane Collaboration publishes a systematic review
 concluding that treatment X reduces Alzheimer's incidence by >=50% with
 high certainty (GRADE A)."
 
@@ -277,7 +277,7 @@ Judgment flow:
 4. Marchetti submits the proof as her attestation, signed with her judge key.
 
 5. The qualitative determination ("does -52% with GRADE A certainty satisfy
-   the bond condition?") was made by Marchetti as the designated expert. The
+   the bounty condition?") was made by Marchetti as the designated expert. The
    TLS-Notary proof prevents her from attesting to a review that does not
    exist or was retracted.
 
@@ -324,13 +324,13 @@ NyxForge's archival strategy:
 
 | Limitation | Detail |
 | :--------- | :------ |
-| API availability | If the target API changes its URL, schema, or authentication model, oracle scripts must be updated. Long-dated bonds (2040+) require maintenance planning. |
+| API availability | If the target API changes its URL, schema, or authentication model, oracle scripts must be updated. Long-dated bounties (2040+) require maintenance planning. |
 | No dispute layer | TLS-Notary proves data integrity but has no escalation mechanism. Disputes between judges go to Tier 2 (Reality.eth) or Tier 3 (Kleros / UMA). |
 | Notary availability | The Prover needs a live Notary to co-sign the session. If all registered Notaries are offline, proof generation fails. Mitigated by operating multiple geographically distributed Notary nodes. |
 | TLS version dependency | Designed for TLS 1.3. Sites still running TLS 1.2 require a compatibility adapter. Most major government APIs (FDA, WHO, NIH) are already TLS 1.3. |
 | Proof size | Proofs are typically 10-100 KB depending on response size and number of redacted fields. Fine for Arweave; too large for direct on-chain storage. |
-| Computational cost | The 2PC MPC step takes 1-10 seconds on commodity hardware. Not a bottleneck for once-per-deadline bond resolution, but relevant for high-frequency oracle use cases. |
-| Human judgment gap | TLS-Notary proves what a data source says; it cannot prove the data source is authoritative, correct, or the right one. Expert judgment remains necessary for qualitative bonds. |
+| Computational cost | The 2PC MPC step takes 1-10 seconds on commodity hardware. Not a bottleneck for once-per-deadline bounty resolution, but relevant for high-frequency oracle use cases. |
+| Human judgment gap | TLS-Notary proves what a data source says; it cannot prove the data source is authoritative, correct, or the right one. Expert judgment remains necessary for qualitative bounties. |
 
 ---
 

@@ -23,12 +23,12 @@ Ethereum, Polygon, Avalanche, Arbitrum, and a dozen other chains.
 
 ---
 
-## 2. Core Products Relevant to Bond Judgment
+## 2. Core Products Relevant to Bounty Judgment
 
 ### 2.1 Chainlink Data Feeds
 Pre-built, continuously updated price feeds (ETH/USD, BTC/USD, etc.) aggregated
 from multiple premium data providers. Useful for collateral valuation in
-USD-denominated bonds, but not relevant for verifying real-world outcomes like
+USD-denominated bounties, but not relevant for verifying real-world outcomes like
 "FDA approved a drug."
 
 ### 2.2 Chainlink Any API (Direct Request)
@@ -41,7 +41,7 @@ only for low-stakes or trusted-operator setups.
 The modern replacement for Any API. A smart contract sends a JavaScript snippet
 and its arguments to a DON. Each of N nodes executes the JS independently
 (calling any HTTPS API), and the DON aggregates their responses before
-delivering the result on-chain. This is the right product for bond judgment.
+delivering the result on-chain. This is the right product for bounty judgment.
 
 Key properties:
 - Arbitrary JS: can call any REST API, parse JSON, apply threshold logic
@@ -54,24 +54,24 @@ Key properties:
 ### 2.4 Chainlink Automation (formerly Keepers)
 A decentralized cron network. Smart contracts register a condition
 (`checkUpkeep`) and an action (`performUpkeep`). Automation nodes poll the
-condition and trigger the action when it returns true. For bond judgment this
+condition and trigger the action when it returns true. For bounty judgment this
 is the mechanism that watches the deadline and fires the resolution call.
 
 ### 2.5 Chainlink Proof of Reserve
 Verifies that off-chain or cross-chain assets back an on-chain claim. Not
-directly relevant to policy bond judgment but could be used to verify that
-collateral held by a custodian matches the bond's stated amount.
+directly relevant to policy bounty judgment but could be used to verify that
+collateral held by a custodian matches the bounty's stated amount.
 
 ---
 
-## 3. How Chainlink Would Judge a NyxForge Bond
+## 3. How Chainlink Would Judge a NyxForge Bounty
 
-The steps below assume a bond is expressed as an EVM smart contract. This is
-not the current NyxForge MVP architecture (which uses a .bond SQLite file and
+The steps below assume a bounty is expressed as an EVM smart contract. This is
+not the current NyxForge MVP architecture (which uses a .bounty SQLite file and
 DLEQ/PTLC adaptor signatures), but it represents the integration path if a
-bond were issued on an EVM chain or bridged to one.
+bounty were issued on an EVM chain or bridged to one.
 
-### Step 1 -- Bond deployment
+### Step 1 -- Bounty deployment
 
 The issuer deploys a `PolicyBond` contract with:
 - `terms`: a plain-text hash of the outcome conditions
@@ -109,16 +109,16 @@ return Functions.encodeUint256(approvedBeforeDeadline ? 1 : 0);
 ### Step 3 -- Automation trigger
 
 A Chainlink Automation registration watches for `block.timestamp >= deadline`.
-When the deadline passes it calls `requestJudgment()` on the bond contract,
+When the deadline passes it calls `requestJudgment()` on the bounty contract,
 which emits the Chainlink Functions request.
 
 ### Step 4 -- DON execution and consensus
 
 The Chainlink DON (e.g. 7 nodes) each independently execute the JS, call the
 FDA API, and submit their result. The DON aggregates using median consensus and
-posts the final answer (0 or 1) back to the bond contract via callback.
+posts the final answer (0 or 1) back to the bounty contract via callback.
 
-### Step 5 -- Bond resolution
+### Step 5 -- Bounty resolution
 
 The contract's `fulfillRequest(bytes32 requestId, bytes response, bytes err)`
 callback reads the result:
@@ -136,9 +136,9 @@ NyxForge's three-judge quorum (2-of-3) maps to Chainlink as follows:
 | NyxForge concept | Chainlink equivalent |
 | :--- | :--- |
 | 3 independent judges | 3 separate Functions subscriptions, each calling a different data source |
-| 2-of-3 majority verdict | Bond contract counts responses; resolves when 2 matching results arrive |
+| 2-of-3 majority verdict | Bounty contract counts responses; resolves when 2 matching results arrive |
 | Judge identity / accountability | Node operator public key on-chain; reputation tracked by Chainlink reputation system |
-| Judgment window (90 days) | Automation re-triggers every 7 days during window; bond resolves on first 2-of-3 match |
+| Judgment window (90 days) | Automation re-triggers every 7 days during window; bounty resolves on first 2-of-3 match |
 
 For qualitative outcomes that cannot be expressed as an API call (e.g.
 "expert panel review"), Chainlink Functions can fetch the result of an on-chain
@@ -162,25 +162,25 @@ the result on-chain.
 
 | Constraint | Detail |
 | :--- | :--- |
-| EVM-only | Requires an EVM chain. NyxForge MVP uses .bond files, not smart contracts. Bridging required. |
+| EVM-only | Requires an EVM chain. NyxForge MVP uses .bounty files, not smart contracts. Bridging required. |
 | Public identity | All node operators are publicly known and staked. Incompatible with NyxForge's anonymous oracle model. |
-| LINK token dependency | Every oracle call costs LINK. Long-dated bonds (2045+) face token availability and pricing risk. |
+| LINK token dependency | Every oracle call costs LINK. Long-dated bounties (2045+) face token availability and pricing risk. |
 | No century-scale design | Chainlink has no equivalent of NyxForge's Long Now archiving model. Node operators rotate on economic incentives that may not survive 20+ years. |
 | 256-byte response limit | Functions responses are capped. Complex qualitative outcomes requiring rich evidence cannot be returned directly; only a verdict hash or flag can be. |
-| Centralization risk | Chainlink Labs controls the node operator whitelist. A sufficiently motivated regulator could pressure operators to refuse certain bond types. |
+| Centralization risk | Chainlink Labs controls the node operator whitelist. A sufficiently motivated regulator could pressure operators to refuse certain bounty types. |
 | No privacy | All requests, responses, and collateral flows are fully public on-chain. Incompatible with XMR/DLEQ collateral model. |
 
 ### Verdict
 
-Chainlink Functions is the right tool for short-to-medium-duration bonds
+Chainlink Functions is the right tool for short-to-medium-duration bounties
 (< 10 years) on EVM chains where the judgment condition can be expressed as
 an API call and privacy is not a requirement. It is not suitable as a primary
 oracle for NyxForge's anonymity-first, multi-decade, non-EVM architecture.
 
 Viable use cases within NyxForge:
-- As a Tier 1 oracle for bonds issued on an EVM sidechain or L2
+- As a Tier 1 oracle for bounties issued on an EVM sidechain or L2
 - As a data bridge for USD collateral valuation (price feeds)
-- As a fallback resolution layer for bonds that have been bridged to Ethereum
+- As a fallback resolution layer for bounties that have been bridged to Ethereum
   for liquidity reasons
 
 ---
@@ -193,7 +193,7 @@ Viable use cases within NyxForge:
    (`FunctionsClient`)
 3. Write and audit the JS oracle script; store on IPFS
 4. Register a Chainlink Automation upkeep for deadline monitoring
-5. Fund the subscription with LINK (estimate: 5--20 LINK per bond resolution
+5. Fund the subscription with LINK (estimate: 5--20 LINK per bounty resolution
    depending on gas)
 6. Test on Sepolia testnet using Chainlink's mock Functions router before
    mainnet deployment

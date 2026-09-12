@@ -72,16 +72,16 @@ Mockup generator checks use the changed generator directly, for example:
 
 ```sh
 bin/bounty-market > doc/04_STORYBOARDS/out/bounty-market-mockup.html
-rg -n "oracle|bond|--bond|\\.bond|bounty-wallet|oracle-registry" doc/04_STORYBOARDS/out bin
+rg -n "oracle|bounty|--bounty|\\.bounty|bounty-wallet|oracle-registry" doc/04_STORYBOARDS/out bin
 ```
 
 ## 4. Mechanical Consistency Check
 
 `bin/consistency-check` validates structural invariants between:
 
-- `mock/gen_bonds.js`
+- `mock/gen_bounties.js`
 - `mock/nyxforge.mockoon.json`
-- `src/crates/nyxforge-cli/src/commands/bond.rs`
+- `src/crates/nyxforge-cli/src/commands/bounty.rs`
 - `doc/00_MVP.md`
 
 Current checks include:
@@ -98,7 +98,7 @@ Current checks include:
   do not reappear
 
 Known naming caveat: the checker still references some legacy internal paths and
-method names such as `bond.rs` and `bonds.*`. That reflects deferred code/RPC
+method names such as `bounty.rs` and `bounties.*`. That reflects deferred code/RPC
 renaming noted in `doc/00_MVP.md`; user-facing CLI flags should still use
 `--bounty`.
 
@@ -120,7 +120,7 @@ Must verify:
 - subject, collateral, maturity/deadline, and 10-year hard cap validations fire
 - JSON output includes the bounty identifier
 - inspect output shows subject, collateral, and valid DLEQ status
-- inspect JSON includes canonical keys such as `bond_id`/current internal ID,
+- inspect JSON includes canonical keys such as `bounty_id`/current internal ID,
   `subject`, `maturity`, `collateral`, `currency`, and `state`
 - verify passes on a fresh file and fails on tampering
 - list shows created bounty files and handles empty directories
@@ -256,7 +256,7 @@ Core mocked methods should converge on current names:
 - `dev.mock_attest`
 - `dev.force_state`
 
-Deferred compatibility methods such as `bonds.*` and `oracle.*` may remain while
+Deferred compatibility methods such as `bounties.*` and `oracle.*` may remain while
 the code rename is incomplete, but tests should make the intended canonical name
 explicit whenever new behavior is added.
 
@@ -284,10 +284,10 @@ For a mockup change:
 
 Required stale-term checks for active mockups and generators:
 
-- no old user-facing `--bond` flag where `--bounty` is intended
+- no old user-facing `--bounty` flag where `--bounty` is intended
 - no active `bounty-wallet` or `oracle-registry` filenames/links
 - no user-facing `oracle` where `judge` is intended
-- no old `.bond` wording where `.bounty` is intended
+- no old `.bounty` wording where `.bounty` is intended
 - no stale bonus-multiplier or DRK/DarkFi wording
 
 Plugin architecture checks:
@@ -446,7 +446,7 @@ required even if line coverage appears high.
 | :--- | :--- | :--- |
 | Formal Rust MVP bounty crate tests are not yet implemented | High | Add tests as crate is created or renamed |
 | `test/test_oracle.py` still uses legacy oracle naming | Medium | Rename or replace during judge/RPC cleanup |
-| `bin/consistency-check` still references `bond.rs` and `bonds.*` | Medium | Update when code/RPC rename lands |
+| `bin/consistency-check` still references `bounty.rs` and `bounties.*` | Medium | Update when code/RPC rename lands |
 | Mock API path in MVP says `src/mock/...` while repo has `mock/...` | Low | Normalize doc path during mock cleanup |
 | UI mockup tests are mostly `rg`/manual browser checks | Medium | Add Playwright smoke tests for generated mockups |
 | Flutter/Rust-WASM app smoke-test scripts are not yet defined | High | Add static bundle build, Dart-WASM interop tests, and browser smoke test |

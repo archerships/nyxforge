@@ -54,7 +54,7 @@ async fn main() -> Result<()> {
 
     let config = JudgeConfig {
         public_key,
-        bond_filter:       vec![],
+        bounty_filter:       vec![],
         poll_lead_secs:    86_400,
         poll_interval_secs: args.poll_interval,
     };

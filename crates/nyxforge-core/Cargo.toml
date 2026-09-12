@@ -1,6 +1,6 @@
 [package]
 name        = "nyxforge-core"
-description = "Bond primitives, market types, and shared protocol definitions"
+description = "Bounty primitives, market types, and shared protocol definitions"
 version.workspace    = true
 edition.workspace    = true
 authors.workspace    = true

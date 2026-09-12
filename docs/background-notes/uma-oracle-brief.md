@@ -42,26 +42,26 @@ flight was delayed, that fact is obvious and undisputed; the only time you
 need a decentralized jury is when someone is trying to defraud the system.
 Rather than paying for heavyweight consensus on every query, UMA:
 
-1. Lets anyone assert an answer by posting a bond
+1. Lets anyone assert an answer by posting a bounty
 2. Waits a configurable liveness period (minutes to days)
 3. If no one disputes, settles the assertion as true
 4. If disputed, escalates to UMA token-holder vote (the Data Verification
    Mechanism, or DVM)
 
 The proposer who posts a correct answer earns a small reward. A disputer who
-successfully challenges a false answer wins the proposer's bond. A proposer
-who is successfully challenged loses their bond. This creates strong economic
+successfully challenges a false answer wins the proposer's bounty. A proposer
+who is successfully challenged loses their bounty. This creates strong economic
 incentives toward honesty without requiring any permissioned operator.
 
 ### 2.2 The Four Actors
 
 - Requester: the smart contract or off-chain party that needs an answer
-  (e.g., the NyxForge bond contract)
-- Proposer: any party that posts a bond and asserts an answer
+  (e.g., the NyxForge bounty contract)
+- Proposer: any party that posts a bounty and asserts an answer
 - Disputer: any party that challenges the proposed answer by posting an equal
-  bond
+  bounty
 - DVM voters: UMA token holders who arbitrate disputed assertions; they earn
-  a share of the losing party's bond
+  a share of the losing party's bounty
 
 ### 2.3 Optimistic Oracle v3 (OOv3) -- Current Version
 
@@ -76,23 +76,23 @@ over v1/v2:
   arbitrator (e.g., Kleros, a DAO, a designated expert panel).
 - Callback hooks: the Requester contract receives a callback on settlement
   or dispute, allowing immediate on-chain action.
-- Bond currency: can be any ERC-20 token, not just UMA.
+- Bounty currency: can be any ERC-20 token, not just UMA.
 
 ### 2.4 The Assertion Lifecycle
 
 ```
-Requester calls assertTruth(claim, bond, liveness, currency, escalationManager)
+Requester calls assertTruth(claim, bounty, liveness, currency, escalationManager)
     |
     v
-Proposer (or Requester itself) posts bond and confirms the assertion
+Proposer (or Requester itself) posts bounty and confirms the assertion
     |
     v
 Liveness window opens (configurable: 30 min -- 7 days)
     |
     +-- No dispute --> assertionResolved(true) callback fires
-    |                  Proposer recovers bond + earns reward
+    |                  Proposer recovers bounty + earns reward
     |
-    +-- Dispute filed --> Disputer posts equal bond
+    +-- Dispute filed --> Disputer posts equal bounty
                           |
                           v
                     Escalation Manager routes to:
@@ -101,8 +101,8 @@ Liveness window opens (configurable: 30 min -- 7 days)
                           +-- Custom arbitrator (Kleros, DAO, etc.)
                           |
                           v
-                    Winner: bond + loser's bond
-                    Loser: forfeits bond
+                    Winner: bounty + loser's bounty
+                    Loser: forfeits bounty
 ```
 
 ### 2.5 The DVM (Data Verification Mechanism)
@@ -115,10 +115,10 @@ commit-reveal scheme to prevent herding:
 3. Votes are weighted by UMA token balance
 4. The majority result is final and binding
 5. Voters who align with the majority earn a pro-rata share of the losing
-   bond; minority voters earn nothing
+   bounty; minority voters earn nothing
 
 Economic security: a 51% attack on the DVM would require acquiring 51% of
-UMA's circulating supply at the cost of the attack. For high-value bonds this
+UMA's circulating supply at the cost of the attack. For high-value bounties this
 attack cost vs. gain analysis is a key security parameter at issuance.
 
 ---
@@ -134,12 +134,12 @@ automatically. Contested markets go to UMA DVM voter arbitration.
 
 Scale: Polymarket has resolved thousands of markets via UMA, covering US
 elections, geopolitical events, sports outcomes, scientific discoveries, and
-regulatory decisions. This is the most direct analogue to NyxForge bond
+regulatory decisions. This is the most direct analogue to NyxForge bounty
 resolution -- outcome-contingent financial contracts with human-language
 conditions.
 
 Example market resolved via UMA: "Will the FDA approve a new Alzheimer's
-drug by end of 2025?" -- a query structurally identical to a NyxForge bond.
+drug by end of 2025?" -- a query structurally identical to a NyxForge bounty.
 
 ### 3.2 Across Protocol (Bridge Security)
 
@@ -161,7 +161,7 @@ and ShapeShift.
 
 Risk Labs pioneered KPI (Key Performance Indicator) options: tokens that pay
 out if a measurable goal is hit by a deadline. These are structurally identical
-to NyxForge bonds. UMA's oracle resolves whether the KPI was met. Examples
+to NyxForge bounties. UMA's oracle resolves whether the KPI was met. Examples
 include protocol TVL targets, developer activity metrics, and governance
 participation thresholds.
 
@@ -181,28 +181,28 @@ claims.
 
 UMA's Optimistic Oracle fits NyxForge in two complementary roles:
 
-Tier 1 (qualitative bonds): For bonds whose conditions cannot be verified by
+Tier 1 (qualitative bounties): For bounties whose conditions cannot be verified by
 an API call alone -- outcomes requiring expert review, documentary evidence, or
 judgment calls -- UMA allows any party to propose the verdict in plain English,
-backed by a bond, with a dispute window for challenge.
+backed by a bounty, with a dispute window for challenge.
 
-Tier 2 (escalation layer): For bonds that have a primary oracle (TLS-Notary
+Tier 2 (escalation layer): For bounties that have a primary oracle (TLS-Notary
 or automated data feed) but whose result is contested, UMA provides the
-escalation mechanism. A disputer posts an equal bond to challenge the TLS-
+escalation mechanism. A disputer posts an equal bounty to challenge the TLS-
 Notary-proven result; UMA arbitrates.
 
 ### 4.2 Integration Architecture
 
-Because NyxForge's MVP uses .bond files and DLEQ/PTLC rather than EVM smart
-contracts, UMA cannot be called directly from the bond collateral contract.
+Because NyxForge's MVP uses .bounty files and DLEQ/PTLC rather than EVM smart
+contracts, UMA cannot be called directly from the bounty collateral contract.
 Two integration patterns are available:
 
-Pattern A -- EVM sidechain bond: The bond is issued on an EVM L2 (e.g.,
+Pattern A -- EVM sidechain bounty: The bounty is issued on an EVM L2 (e.g.,
 Arbitrum) with a PolicyBond.sol contract. UMA's OOv3 is called directly.
 The PTLC/XMR collateral is bridged or mirrored. Clean integration, requires
 EVM.
 
-Pattern B -- Trusted relayer bridge: The bond is a native .bond file. A
+Pattern B -- Trusted relayer bridge: The bounty is a native .bounty file. A
 NyxForge "resolution relayer" watches the UMA settlement event on Ethereum
 and, after confirmation, co-signs the PTLC unlock. The relayer is a trusted
 role but can be a multi-sig of independent parties to distribute trust.
@@ -212,7 +212,7 @@ long-term.
 
 ### 4.3 Example 1 -- Alzheimer's Cure Bounty (Qualitative Tier 1)
 
-Bond condition: "FDA approves a treatment reducing new Alzheimer's diagnoses
+Bounty condition: "FDA approves a treatment reducing new Alzheimer's diagnoses
 by 50% before 2045-12-31."
 
 Scenario: Dr. Marcus Webb's automated FDA data feed returns a positive result.
@@ -228,9 +228,9 @@ UMA flow:
    Assertion: "The FDA approved drug MemoraCure (NDA 999999) on 2044-11-03.
    Independent analysis by the Cochrane Collaboration (DOI: 10.1002/xxx)
    confirms a 52% reduction in new Alzheimer's diagnoses in the treated
-   population. Bond terms are met."
+   population. Bounty terms are met."
 
-   Bond posted: 5,000 USDC
+   Bounty posted: 5,000 USDC
    Liveness: 7 days
 
 2. Marchetti disputes within the 7-day window, posting 5,000 USDC.
@@ -242,19 +242,19 @@ UMA flow:
 4. DVM voters deliberate (48 hours). Majority concludes the Cochrane review
    meets the "50%" threshold. Webb's assertion is confirmed.
 
-5. Webb recovers his 5,000 USDC bond plus a portion of Marchetti's 5,000 USDC
-   as reward. Marchetti forfeits her bond.
+5. Webb recovers his 5,000 USDC bounty plus a portion of Marchetti's 5,000 USDC
+   as reward. Marchetti forfeits her bounty.
 
 6. The NyxForge resolution relayer observes the UMA settlement event and
    co-signs the PTLC unlock. ARA receives the collateral.
 
-### 4.4 Example 2 -- Long Now Bond (Century-Scale Escalation)
+### 4.4 Example 2 -- Long Now Bounty (Century-Scale Escalation)
 
-Bond condition: "Global average healthy life expectancy exceeds 90 years
+Bounty condition: "Global average healthy life expectancy exceeds 90 years
 according to WHO data before 2100-12-31."
 
 Scenario: In 2099, automated TLS-Notary proofs from three oracle nodes show
-WHO HALE = 91.3 years. The bond is flagged for resolution. A disputer claims
+WHO HALE = 91.3 years. The bounty is flagged for resolution. A disputer claims
 the oracle nodes colluded and the real WHO figure is 88.7 (a different
 methodological revision).
 
@@ -262,32 +262,32 @@ UMA flow:
 
 1. An automated NyxForge resolution agent proposes: "WHO HALE global figure
    for 2099 is 91.3 per WHO GHO OData API, fetched with TLS-Notary proofs
-   attached as IPFS evidence package (CID: bafyxxx). Bond terms are met."
+   attached as IPFS evidence package (CID: bafyxxx). Bounty terms are met."
 
    Evidence attached: three independent TLS-Notary proof JSONs archived on
    Arweave, each from a different oracle node and Notary.
 
-2. Disputer posts an equal bond, attaching a counter-proof showing the
+2. Disputer posts an equal bounty, attaching a counter-proof showing the
    alternative WHO methodology figure of 88.7.
 
 3. UMA DVM arbitrates. Voters review both proof packages. The majority rules
-   on which WHO methodology the bond's original terms referenced (the bond's
+   on which WHO methodology the bounty's original terms referenced (the bounty's
    oracle_spec field points to a specific WHO indicator code, resolving the
    ambiguity).
 
 4. Settlement fires; NyxForge relayer co-signs the PTLC unlock or refund.
 
-Key design implication: bond terms should specify the exact data source
+Key design implication: bounty terms should specify the exact data source
 identifier (WHO indicator code, FDA NDA number) at issuance to prevent
 ambiguity disputes. UMA's DVM can always fall back to reading the original
-bond document to determine intent.
+bounty document to determine intent.
 
 ### 4.5 Example 3 -- oSnap-Style NGO Governance Integration
 
-Bond condition: "The Alzheimer's Research Alliance board votes to certify
+Bounty condition: "The Alzheimer's Research Alliance board votes to certify
 that the cure milestone has been achieved."
 
-This is a fully qualitative bond -- the condition is an institutional
+This is a fully qualitative bounty -- the condition is an institutional
 governance decision, not a data point. UMA's oSnap pattern applies:
 
 1. ARA holds a formal board vote via their governance system (Snapshot or
@@ -302,11 +302,11 @@ governance decision, not a data point. UMA's oSnap pattern applies:
 3. The 7-day liveness window opens. Any bondholder who believes the vote was
    fraudulent or the milestone was not met can dispute.
 
-4. If no dispute: bond resolves. ARA receives collateral.
+4. If no dispute: bounty resolves. ARA receives collateral.
    If disputed: UMA DVM reviews the Arweave-archived vote record and
    supporting evidence.
 
-This pattern allows NyxForge to handle bonds where the judgment is inherently
+This pattern allows NyxForge to handle bounties where the judgment is inherently
 institutional -- a board vote, a scientific panel consensus, a regulatory
 ruling -- without requiring those institutions to integrate any on-chain
 tooling directly.
@@ -315,12 +315,12 @@ tooling directly.
 
 The liveness window is the key security parameter. Recommended values:
 
-| Bond type | Liveness window | Rationale |
+| Bounty type | Liveness window | Rationale |
 | :-------- | :-------------- | :-------- |
 | Automated data feed (TLS-Notary proven) | 3 days | Low dispute probability; short window reduces lockup |
 | Expert review (human judge assertion) | 7 days | More complex; stakeholders need time to review |
 | Institutional governance assertion | 14 days | Higher stakes; backers need time to organize a dispute |
-| High-value bonds (>$1M collateral) | 30 days | Longer window justified by value at risk |
+| High-value bounties (>$1M collateral) | 30 days | Longer window justified by value at risk |
 
 ---
 
@@ -328,12 +328,12 @@ The liveness window is the key security parameter. Recommended values:
 
 | Limitation | Detail |
 | :--------- | :------ |
-| EVM-native | OOv3 is EVM only. Native .bond file integration requires a trusted relayer bridge. |
-| UMA token dependency | The DVM requires UMA token holders to vote. Long-term voter turnout for obscure bonds on 50-year timelines is uncertain. |
+| EVM-native | OOv3 is EVM only. Native .bounty file integration requires a trusted relayer bridge. |
+| UMA token dependency | The DVM requires UMA token holders to vote. Long-term voter turnout for obscure bounties on 50-year timelines is uncertain. |
 | Liveness latency | Even a 3-day liveness window means resolution is not instant. For time-sensitive payouts this adds friction. |
-| Bond capital requirement | Proposers must post a bond denominated in an ERC-20. For anonymous proposers this requires on-chain capital, which may compromise privacy. |
+| Bounty capital requirement | Proposers must post a bounty denominated in an ERC-20. For anonymous proposers this requires on-chain capital, which may compromise privacy. |
 | DVM voter expertise | UMA token holders may lack domain expertise to evaluate highly technical scientific disputes (e.g., clinical trial methodology). Custom escalation managers routing to Kleros courts with domain-expert jurors partially mitigate this. |
-| Governance attack surface | A large UMA token holder could influence DVM votes on specific disputes. For bonds with very high collateral the attack cost vs. gain ratio must be assessed at issuance. |
+| Governance attack surface | A large UMA token holder could influence DVM votes on specific disputes. For bounties with very high collateral the attack cost vs. gain ratio must be assessed at issuance. |
 
 ---
 

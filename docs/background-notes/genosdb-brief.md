@@ -156,7 +156,7 @@ actual data, not a proof about the data.
 
 Even with data encryption enabled, the graph structure is visible to peers:
 which nodes exist, how many edges they have, when they were last updated, and
-which peer keys wrote them. For a bond system this leaks significant
+which peer keys wrote them. For a bounty system this leaks significant
 information: who is transacting with whom, when, and at what frequency.
 
 ### 4.5 Summary
@@ -209,22 +209,22 @@ but is the weakest on privacy of any option considered for NyxForge.
 
 ### Potential roles
 
-GenosDB could serve as a lightweight P2P sync layer for non-sensitive bond
+GenosDB could serve as a lightweight P2P sync layer for non-sensitive bounty
 metadata in a public-facing NyxForge deployment where privacy is traded for
 developer convenience. Specific candidates:
 
-- Syncing the bond campaign public listing (title, terms hash, progress,
+- Syncing the bounty campaign public listing (title, terms hash, progress,
   deadline) across NGO admin nodes
 - P2P real-time backer count updates on the landing page
-- Collaborative editing of draft bond terms before publication
+- Collaborative editing of draft bounty terms before publication
 
 ### Hard blockers for privacy-sensitive use
 
 GenosDB must not be used for:
 
 - Syncing backer identity data or return address information
-- Transmitting or storing .bond files or PTLC parameters
-- Any data that links a specific donor to a specific bond
+- Transmitting or storing .bounty files or PTLC parameters
+- Any data that links a specific donor to a specific bounty
 - Oracle attestation records
 
 ### Recommended verdict

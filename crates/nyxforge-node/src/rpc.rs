@@ -139,8 +139,8 @@ async fn dispatch(state: &NodeState, req: RpcRequest) -> RpcResponse {
             // bounties.issue activates an existing Draft bounty by locking collateral.
             // The bounty must have already passed judge approval (state = Draft),
             // unless the node was started with --allow-unverifiable.
-            let bond_id_hex = req.params["bounty_id"].as_str().unwrap_or("");
-            let id_bytes = match parse_hex32(bond_id_hex) {
+            let bounty_id_hex = req.params["bounty_id"].as_str().unwrap_or("");
+            let id_bytes = match parse_hex32(bounty_id_hex) {
                 Some(b) => b,
                 None => return RpcResponse::err("invalid bounty_id: expected 32-byte hex"),
             };
@@ -218,8 +218,8 @@ async fn dispatch(state: &NodeState, req: RpcRequest) -> RpcResponse {
         }
 
         "bounties.comment" => {
-            let bond_id_hex = req.params["bounty_id"].as_str().unwrap_or("");
-            let id_bytes = match hex::decode(bond_id_hex) {
+            let bounty_id_hex = req.params["bounty_id"].as_str().unwrap_or("");
+            let id_bytes = match hex::decode(bounty_id_hex) {
                 Ok(b) if b.len() == 32 => { let mut arr = [0u8; 32]; arr.copy_from_slice(&b); arr }
                 _ => return RpcResponse::err("invalid bounty_id: expected 32-byte hex"),
             };
@@ -251,13 +251,13 @@ async fn dispatch(state: &NodeState, req: RpcRequest) -> RpcResponse {
             let comment = BountyComment::new(bounty_id, author, body);
             let comment_id = hex::encode(comment.id.as_bytes());
             state.insert_comment(comment).await;
-            info!(bounty_id = %bond_id_hex, comment_id = %comment_id, "comment posted");
+            info!(bounty_id = %bounty_id_hex, comment_id = %comment_id, "comment posted");
             RpcResponse::ok(serde_json::json!({ "comment_id": comment_id }))
         }
 
         "bounties.comments" => {
-            let bond_id_hex = req.params["bounty_id"].as_str().unwrap_or("");
-            let id_bytes = match hex::decode(bond_id_hex) {
+            let bounty_id_hex = req.params["bounty_id"].as_str().unwrap_or("");
+            let id_bytes = match hex::decode(bounty_id_hex) {
                 Ok(b) if b.len() == 32 => { let mut arr = [0u8; 32]; arr.copy_from_slice(&b); arr }
                 _ => return RpcResponse::err("invalid bounty_id: expected 32-byte hex"),
             };
@@ -297,24 +297,24 @@ async fn dispatch(state: &NodeState, req: RpcRequest) -> RpcResponse {
             }
 
             bounty.state = BountyState::PendingJudgeApproval;
-            let bond_id_hex = hex::encode(bounty.id.as_bytes());
+            let bounty_id_hex = hex::encode(bounty.id.as_bytes());
             // Clear any previous responses if re-submitted after a rejection.
             state.clear_judge_responses(&bounty.id).await;
             state.insert_bounty(bounty.clone()).await;
-            info!(bounty_id = %bond_id_hex, judges = bounty.judge.judge_keys.len(),
+            info!(bounty_id = %bounty_id_hex, judges = bounty.judge.judge_keys.len(),
                   "bounty submitted for judge approval");
             RpcResponse::ok(serde_json::json!({
-                "bounty_id":      bond_id_hex,
+                "bounty_id":      bounty_id_hex,
                 "awaiting":     bounty.judge.judge_keys.len(),
             }))
         }
 
         "bounties.judge_accept" => {
-            let bond_id_bytes = match parse_hex32(req.params["bounty_id"].as_str().unwrap_or("")) {
+            let bounty_id_bytes = match parse_hex32(req.params["bounty_id"].as_str().unwrap_or("")) {
                 Some(b) => b,
                 None => return RpcResponse::err("invalid bounty_id"),
             };
-            let bounty_id = Digest::from_bytes(bond_id_bytes);
+            let bounty_id = Digest::from_bytes(bounty_id_bytes);
 
             let bounty = match state.get_bounty(&bounty_id).await {
                 Some(b) => b,
@@ -344,17 +344,17 @@ async fn dispatch(state: &NodeState, req: RpcRequest) -> RpcResponse {
                 signature: vec![], // stub
             };
             let all_accepted = state.record_judge_response(response).await;
-            let bond_id_hex = hex::encode(bounty_id.as_bytes());
+            let bounty_id_hex = hex::encode(bounty_id.as_bytes());
 
             if all_accepted {
                 // Advance bounty to Draft.
                 let mut draft_bounty = bounty;
                 draft_bounty.state = BountyState::Draft;
                 state.insert_bounty(draft_bounty).await;
-                info!(bounty_id = %bond_id_hex, "all judges accepted — bounty advanced to Draft");
+                info!(bounty_id = %bounty_id_hex, "all judges accepted — bounty advanced to Draft");
                 RpcResponse::ok(serde_json::json!({
-                    "bounty_id": bond_id_hex,
-                    "bond_state": "Draft",
+                    "bounty_id": bounty_id_hex,
+                    "bounty_state": "Draft",
                     "message": "All judges have accepted. Bounty is now in Draft state and ready for issuance.",
                 }))
             } else {
@@ -363,21 +363,21 @@ async fn dispatch(state: &NodeState, req: RpcRequest) -> RpcResponse {
                     .filter(|k| !responses.iter().any(|r| r.judge_key == **k && r.accepted))
                     .map(|k| hex::encode(&k.0))
                     .collect();
-                info!(bounty_id = %bond_id_hex, still_pending = pending.len(), "judge accepted");
+                info!(bounty_id = %bounty_id_hex, still_pending = pending.len(), "judge accepted");
                 RpcResponse::ok(serde_json::json!({
-                    "bounty_id":        bond_id_hex,
-                    "bond_state":     "PendingJudgeApproval",
+                    "bounty_id":        bounty_id_hex,
+                    "bounty_state":     "PendingJudgeApproval",
                     "still_pending":  pending,
                 }))
             }
         }
 
         "bounties.judge_reject" => {
-            let bond_id_bytes = match parse_hex32(req.params["bounty_id"].as_str().unwrap_or("")) {
+            let bounty_id_bytes = match parse_hex32(req.params["bounty_id"].as_str().unwrap_or("")) {
                 Some(b) => b,
                 None => return RpcResponse::err("invalid bounty_id"),
             };
-            let bounty_id = Digest::from_bytes(bond_id_bytes);
+            let bounty_id = Digest::from_bytes(bounty_id_bytes);
 
             let bounty = match state.get_bounty(&bounty_id).await {
                 Some(b) => b,
@@ -409,20 +409,20 @@ async fn dispatch(state: &NodeState, req: RpcRequest) -> RpcResponse {
                 signature: vec![],
             };
             state.record_judge_response(response).await;
-            let bond_id_hex = hex::encode(bounty_id.as_bytes());
-            info!(bounty_id = %bond_id_hex, ?reason, "judge rejected bounty");
+            let bounty_id_hex = hex::encode(bounty_id.as_bytes());
+            info!(bounty_id = %bounty_id_hex, ?reason, "judge rejected bounty");
             RpcResponse::ok(serde_json::json!({
-                "bounty_id": bond_id_hex,
+                "bounty_id": bounty_id_hex,
                 "message": "Rejection recorded. Issuer must revise judge list or threshold and re-submit.",
             }))
         }
 
         "bounties.judge_status" => {
-            let bond_id_bytes = match parse_hex32(req.params["bounty_id"].as_str().unwrap_or("")) {
+            let bounty_id_bytes = match parse_hex32(req.params["bounty_id"].as_str().unwrap_or("")) {
                 Some(b) => b,
                 None => return RpcResponse::err("invalid bounty_id"),
             };
-            let bounty_id = Digest::from_bytes(bond_id_bytes);
+            let bounty_id = Digest::from_bytes(bounty_id_bytes);
             let bounty = match state.get_bounty(&bounty_id).await {
                 Some(b) => b,
                 None => return RpcResponse::err("bounty not found"),
@@ -449,7 +449,7 @@ async fn dispatch(state: &NodeState, req: RpcRequest) -> RpcResponse {
 
             RpcResponse::ok(serde_json::json!({
                 "bounty_id":    hex::encode(bounty_id.as_bytes()),
-                "bond_state": bounty.state,
+                "bounty_state": bounty.state,
                 "judges":    status,
             }))
         }
@@ -458,11 +458,11 @@ async fn dispatch(state: &NodeState, req: RpcRequest) -> RpcResponse {
             // Allows the issuer to replace the judge list on a
             // PendingJudgeApproval bounty after one or more rejections.
             // Clears all existing responses so judges must re-accept.
-            let bond_id_bytes = match parse_hex32(req.params["bounty_id"].as_str().unwrap_or("")) {
+            let bounty_id_bytes = match parse_hex32(req.params["bounty_id"].as_str().unwrap_or("")) {
                 Some(b) => b,
                 None => return RpcResponse::err("invalid bounty_id"),
             };
-            let bounty_id = Digest::from_bytes(bond_id_bytes);
+            let bounty_id = Digest::from_bytes(bounty_id_bytes);
             let mut bounty = match state.get_bounty(&bounty_id).await {
                 Some(b) => b,
                 None => return RpcResponse::err("bounty not found"),
@@ -498,8 +498,8 @@ async fn dispatch(state: &NodeState, req: RpcRequest) -> RpcResponse {
         }
 
         "bounties.auction_price" => {
-            let bond_id_hex = req.params["bounty_id"].as_str().unwrap_or("");
-            let id_bytes = match parse_hex32(bond_id_hex) {
+            let bounty_id_hex = req.params["bounty_id"].as_str().unwrap_or("");
+            let id_bytes = match parse_hex32(bounty_id_hex) {
                 Some(b) => b,
                 None => return RpcResponse::err("invalid bounty_id: expected 32-byte hex"),
             };
@@ -516,18 +516,18 @@ async fn dispatch(state: &NodeState, req: RpcRequest) -> RpcResponse {
             }).unwrap_or(0);
             let price = bounty.auction.current_price(elapsed);
             RpcResponse::ok(serde_json::json!({
-                "bounty_id":       bond_id_hex,
+                "bounty_id":       bounty_id_hex,
                 "price_micro_drk": price.0,
             }))
         }
 
         "bounties.buy" => {
-            let bond_id_hex = req.params["bounty_id"].as_str().unwrap_or("");
+            let bounty_id_hex = req.params["bounty_id"].as_str().unwrap_or("");
             let quantity = req.params["quantity"].as_u64().unwrap_or(0);
             if quantity == 0 {
                 return RpcResponse::err("quantity must be > 0");
             }
-            let id_bytes = match parse_hex32(bond_id_hex) {
+            let id_bytes = match parse_hex32(bounty_id_hex) {
                 Some(b) => b,
                 None => return RpcResponse::err("invalid bounty_id: expected 32-byte hex"),
             };
@@ -733,7 +733,7 @@ mod tests {
     // --- bounties.list ---
 
     #[tokio::test]
-    async fn bonds_list_empty_on_fresh_state() {
+    async fn bounties_list_empty_on_fresh_state() {
         let (state, _dir) = test_state().await;
         let resp = dispatch(&state, req("bounties.list", serde_json::json!({}))).await;
         assert!(resp.error.is_none());
@@ -744,7 +744,7 @@ mod tests {
     // --- bounties.get ---
 
     #[tokio::test]
-    async fn bonds_get_unknown_id_returns_error() {
+    async fn bounties_get_unknown_id_returns_error() {
         let (state, _dir) = test_state().await;
         let resp = dispatch(&state, req("bounties.get", serde_json::json!({
             "id": "a".repeat(64)
@@ -754,7 +754,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn bonds_get_invalid_id_returns_error() {
+    async fn bounties_get_invalid_id_returns_error() {
         let (state, _dir) = test_state().await;
         let resp = dispatch(&state, req("bounties.get", serde_json::json!({
             "id": "not-hex"
@@ -765,10 +765,10 @@ mod tests {
     // --- bounties.propose then bounties.list and bounties.get ---
 
     #[tokio::test]
-    async fn propose_bond_appears_in_list_and_get() {
+    async fn propose_bounty_appears_in_list_and_get() {
         let (state, _dir) = test_state().await;
         let bounty = draft_bounty();
-        let bond_id_hex = hex::encode(bounty.id.as_bytes());
+        let bounty_id_hex = hex::encode(bounty.id.as_bytes());
 
         // Propose
         let propose_resp = dispatch(&state, req("bounties.propose", serde_json::json!({
@@ -784,7 +784,7 @@ mod tests {
         // Get — bounty.id serialises as a byte array (Digest is [u8;32]), so just
         // verify the RPC succeeded and returned the expected goal title.
         let get_resp = dispatch(&state, req("bounties.get", serde_json::json!({
-            "id": bond_id_hex
+            "id": bounty_id_hex
         }))).await;
         assert!(get_resp.error.is_none(), "{:?}", get_resp.error);
         let result = get_resp.result.unwrap();
@@ -794,29 +794,29 @@ mod tests {
     // --- bounties.issue (allow_unverifiable = true) ---
 
     #[tokio::test]
-    async fn issue_draft_bond_sets_active_state() {
+    async fn issue_draft_bounty_sets_active_state() {
         let (state, _dir) = test_state().await;
         let bounty = draft_bounty();
-        let bond_id_hex = hex::encode(bounty.id.as_bytes());
+        let bounty_id_hex = hex::encode(bounty.id.as_bytes());
 
         // Store bounty as Draft first
         state.insert_bounty(bounty).await;
 
         let resp = dispatch(&state, req("bounties.issue", serde_json::json!({
-            "bounty_id": bond_id_hex
+            "bounty_id": bounty_id_hex
         }))).await;
         assert!(resp.error.is_none(), "{:?}", resp.error);
 
         // Confirm state is now Active
         let get_resp = dispatch(&state, req("bounties.get", serde_json::json!({
-            "id": bond_id_hex
+            "id": bounty_id_hex
         }))).await;
         let state_val = get_resp.result.unwrap()["state"].clone();
         assert_eq!(state_val.as_str().unwrap_or(""), "Active");
     }
 
     #[tokio::test]
-    async fn issue_nonexistent_bond_returns_error() {
+    async fn issue_nonexistent_bounty_returns_error() {
         let (state, _dir) = test_state().await;
         let resp = dispatch(&state, req("bounties.issue", serde_json::json!({
             "bounty_id": "b".repeat(64)
@@ -899,7 +899,7 @@ mod tests {
     // --- status ---
 
     #[tokio::test]
-    async fn status_returns_version_and_bond_count() {
+    async fn status_returns_version_and_bounty_count() {
         let (state, _dir) = test_state().await;
         let resp = dispatch(&state, req("status", serde_json::json!({}))).await;
         assert!(resp.error.is_none());

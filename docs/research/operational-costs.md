@@ -10,17 +10,17 @@
 ### A. Legal & Regulatory Compliance
 *   **Defense Funds:** Essential for protecting delegates and core contributors (e.g., MakerDAO's $5M fund).
 *   **Compliance Audits:** Ongoing reviews of DAO structures and token classifications (Howey Test).
-*   **RWA Wrappers:** If bonds represent real-world assets, costs include Special Purpose Vehicles (SPVs) and trustee fees.
+*   **RWA Wrappers:** If bounties represent real-world assets, costs include Special Purpose Vehicles (SPVs) and trustee fees.
 *   **Licensing:** Meeting regional requirements (e.g., California's DFAL mandates by July 2026).
 
 ### B. Lobbying & Political Influence
 *   **K Street Presence:** Major projects now maintain permanent lobbying presices in Washington D.C. to influence crypto-friendly legislation (e.g., the GENIUS Act 2025).
 *   **Trade Associations:** Dues for groups like the Coin Center or Blockchain Association.
-*   **Educational Outreach:** Funding research and briefings for policymakers regarding "Policy Bonds."
+*   **Educational Outreach:** Funding research and briefings for policymakers regarding "Policy Bounties."
 
 ### C. Protocol Infrastructure & Oracles
 *   **Compute Costs:** Paying for AO Compute Units (CUs) and Arweave storage.
-*   **Oracle Subscriptions:** Ongoing fees for high-fidelity data feeds (Chainlink, Pyth, Tellor) required for bond settlement.
+*   **Oracle Subscriptions:** Ongoing fees for high-fidelity data feeds (Chainlink, Pyth, Tellor) required for bounty settlement.
 *   **RPC & Indexing:** Paying for high-availability nodes (Infura/Alchemy) and data subgraphs (The Graph).
 
 ### D. Security & Risk Management
@@ -29,7 +29,7 @@
 *   **Bug Bounties:** Ongoing incentives for white-hat disclosure (e.g., Immunefi).
 
 ### E. Marketing & Public Relations
-*   **Brand Awareness:** Global campaigns to drive "Policy Bond" adoption.
+*   **Brand Awareness:** Global campaigns to drive "Policy Bounty" adoption.
 *   **Narrative Management:** Specialized PR firms for crisis management and major launches.
 *   **Community Support:** 24/7 moderation for Discord/Telegram to prevent social engineering.
 
@@ -41,10 +41,10 @@ Based on the 100-year model (15% of annual emission), the following priority all
 
 | Priority | Category | Est. Allocation | Purpose |
 | :--- | :--- | :--- | :--- |
-| **1** | **Legal & Lobbying** | 35% (52.5B) | Sovereign status protection and bond recognition. |
+| **1** | **Legal & Lobbying** | 35% (52.5B) | Sovereign status protection and bounty recognition. |
 | **2** | **Security & Audits** | 25% (37.5B) | Ensuring the 100-year code remains unhackable. |
 | **3** | **Infrastructure/Oracles** | 20% (30.0B) | AO compute fees and settlement data feeds. |
-| **4** | **Marketing & PR** | 15% (22.5B) | User acquisition and "Policy Bond" evangelism. |
+| **4** | **Marketing & PR** | 15% (22.5B) | User acquisition and "Policy Bounty" evangelism. |
 | **5** | **Administration/Misc** | 5% (7.5B) | Domain names, taxes, and general HR. |
 
 ---

@@ -118,7 +118,7 @@ pub fn process_issue_bounty(params: &IssueBountyParams) -> ContractResult<Bounty
 
 /// Process a `CancelBounty` instruction (only valid while DRAFT).
 pub fn process_cancel_bounty(
-    _bond: &Bounty,
+    _bounty: &Bounty,
     _params: &CancelBountyParams,
 ) -> ContractResult<()> {
     // TODO: verify issuer_sig with bounty.issuer pubkey.

@@ -18,8 +18,8 @@ test.describe('Splash screen', () => {
   test('transitions to main shell automatically', async ({ page }) => {
     // Splash animates for ~900ms then waits 600ms before transition
     await page.waitForTimeout(3_000);
-    // After transition the Bond Market screen should be visible
-    await waitForSemanticsText(page, 'Bond Market', 8_000);
+    // After transition the Bounty Market screen should be visible
+    await waitForSemanticsText(page, 'Bounty Market', 8_000);
   });
 
   test('visual snapshot', async ({ page }) => {

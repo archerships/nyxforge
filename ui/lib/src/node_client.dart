@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-/// JSON-RPC client for the local nyxforge-node binary (Bearer Bond MVP).
+/// JSON-RPC client for the local nyxforge-node binary (Bearer Bounty MVP).
 class NodeClient {
   NodeClient({this.baseUrl = 'http://127.0.0.1:8888/rpc'});
 
@@ -35,19 +35,19 @@ class NodeClient {
     final result = await call('status') as Map<String, dynamic>;
     return NodeStatus(
       version: result['version'] ?? '0.1.0',
-      bondCount: result['bonds'] ?? 0,
+      bountyCount: result['bounties'] ?? 0,
     );
   }
 
-  Future<List<Bond>> bondList() async {
-    final result = await call('bonds.list') as Map<String, dynamic>;
-    final bonds = result['bonds'] as List<dynamic>? ?? [];
-    return bonds.map((b) => Bond.fromJson(b as Map<String, dynamic>)).toList();
+  Future<List<Bounty>> bountyList() async {
+    final result = await call('bounties.list') as Map<String, dynamic>;
+    final bounties = result['bounties'] as List<dynamic>? ?? [];
+    return bounties.map((b) => Bounty.fromJson(b as Map<String, dynamic>)).toList();
   }
 
-  Future<Bond> bondGet(String file) async {
-    final result = await call('bonds.get', {'file': file}) as Map<String, dynamic>;
-    return Bond.fromJson(result);
+  Future<Bounty> bountyGet(String file) async {
+    final result = await call('bounties.get', {'file': file}) as Map<String, dynamic>;
+    return Bounty.fromJson(result);
   }
 
   // ── Stubs for Wallet and Miner (to be implemented in Phase 5) ──
@@ -70,22 +70,22 @@ class NodeClient {
   Future<void> minerStop() async {}
   Future<void> minerSetThreads(int n) async {}
 
-  // ── Stubs for Bond Lifecycle ──
+  // ── Stubs for Bounty Lifecycle ──
 
-  Future<String> bondPropose(Map<String, dynamic> bond) async => 'dummy_bond_id';
-  Future<void> bondSubmitForApproval(String id) async {}
-  Future<void> bondOracleAccept(String id, String key) async {}
-  Future<void> bondIssue(String id) async {}
-  Future<int> bondAuctionPrice(String id) async => 1000000;
-  Future<dynamic> bondBuy(String id, int qty) async => null;
+  Future<String> bountyPropose(Map<String, dynamic> bounty) async => 'dummy_bounty_id';
+  Future<void> bountySubmitForApproval(String id) async {}
+  Future<void> bountyOracleAccept(String id, String key) async {}
+  Future<void> bountyIssue(String id) async {}
+  Future<int> bountyAuctionPrice(String id) async => 1000000;
+  Future<dynamic> bountyBuy(String id, int qty) async => null;
 
   void dispose() => _client.close();
 }
 
 class NodeStatus {
-  const NodeStatus({required this.version, required this.bondCount});
+  const NodeStatus({required this.version, required this.bountyCount});
   final String version;
-  final int bondCount;
+  final int bountyCount;
 }
 
 class WalletAddresses {
@@ -113,8 +113,8 @@ class MinerStatus {
   final int xmrPendingPico;
 }
 
-class Bond {
-  Bond({
+class Bounty {
+  Bounty({
     required this.file,
     required this.seriesId,
     required this.serial,
@@ -144,8 +144,8 @@ class Bond {
   final int oracleTotal;
   final double progress;
 
-  factory Bond.fromJson(Map<String, dynamic> j) {
-    return Bond(
+  factory Bounty.fromJson(Map<String, dynamic> j) {
+    return Bounty(
       file: j['file'] ?? '',
       seriesId: j['series_id'] ?? '',
       serial: j['serial'] ?? 0,

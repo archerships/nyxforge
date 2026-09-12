@@ -15,7 +15,7 @@ use crate::state::NodeState;
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub enum SyncRequest {
     /// Ask for all bounty series known to the peer.
-    BondList,
+    BountyList,
     /// Ask for all resting orders for a bounty series.
     OrderBook { bounty_id: nyxforge_core::bounty::BountyId },
     /// Ask for the nullifier tree root (for light client verification).
@@ -24,7 +24,7 @@ pub enum SyncRequest {
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub enum SyncResponse {
-    BondList(Vec<nyxforge_core::bounty::Bounty>),
+    BountyList(Vec<nyxforge_core::bounty::Bounty>),
     OrderBook(Vec<nyxforge_core::market::Order>),
     NullifierRoot(nyxforge_core::types::Digest),
     NotFound,
@@ -41,7 +41,7 @@ pub async fn initial_sync(state: &NodeState, _bootstrap_peers: &[String]) -> Res
 
     // TODO:
     //   1. Open request-response stream to each bootstrap peer.
-    //   2. Send SyncRequest::BondList, receive SyncResponse::BondList.
+    //   2. Send SyncRequest::BountyList, receive SyncResponse::BountyList.
     //   3. For each bounty, send SyncRequest::OrderBook.
     //   4. Verify and apply all received data.
 

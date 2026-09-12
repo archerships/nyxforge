@@ -83,7 +83,7 @@ impl Circuit<Fp> for MintCircuit {
 
     fn synthesize(&self, config: MintConfig, mut layouter: impl Layouter<Fp>) -> Result<(), Error> {
         // Load bounty_id and quantity as the first pair.
-        let (bond_id_cell, qty_cell) = layouter.assign_region(
+        let (bounty_id_cell, qty_cell) = layouter.assign_region(
             || "load witness pair 1",
             |mut region| {
                 let a = region.assign_advice(|| "bounty_id",  config.state[0], 0, || self.bounty_id)?;
@@ -91,7 +91,7 @@ impl Circuit<Fp> for MintCircuit {
                 Ok((a, b))
             },
         )?;
-        let bond_id_cell_ref = bond_id_cell.cell();
+        let bounty_id_cell_ref = bounty_id_cell.cell();
 
         // h1 = Poseidon2(bounty_id, quantity)
         let h1 = {
@@ -99,7 +99,7 @@ impl Circuit<Fp> for MintCircuit {
                 Pow5Chip::construct(config.poseidon.clone()),
                 layouter.namespace(|| "h1 init"),
             )?;
-            hasher.hash(layouter.namespace(|| "h1 hash"), [bond_id_cell, qty_cell])?
+            hasher.hash(layouter.namespace(|| "h1 hash"), [bounty_id_cell, qty_cell])?
         };
 
         // Load owner_pk and randomness as the second pair.
@@ -132,7 +132,7 @@ impl Circuit<Fp> for MintCircuit {
 
         // Constrain commitment == instance[0] and bounty_id == instance[1].
         layouter.constrain_instance(commitment.cell(), config.instance, 0)?;
-        layouter.constrain_instance(bond_id_cell_ref, config.instance, 1)?;
+        layouter.constrain_instance(bounty_id_cell_ref, config.instance, 1)?;
 
         Ok(())
     }
@@ -144,24 +144,24 @@ mod tests {
     use crate::primitives::{fp_from_bytes, note_commitment};
     use halo2_proofs::dev::MockProver;
 
-    const BOND_ID:    [u8; 32] = [0x01u8; 32];
+    const BOUNTY_ID:    [u8; 32] = [0x01u8; 32];
     const QTY:        u64      = 10;
     const OWNER_PK:   [u8; 32] = [0xBBu8; 32];
     const RANDOMNESS: [u8; 32] = [0x42u8; 32];
 
     fn test_circuit() -> (MintCircuit, Vec<Vec<Fp>>) {
-        let commitment = note_commitment(&BOND_ID, QTY, &OWNER_PK, &RANDOMNESS);
-        let bond_id_fp = fp_from_bytes(&BOND_ID);
+        let commitment = note_commitment(&BOUNTY_ID, QTY, &OWNER_PK, &RANDOMNESS);
+        let bounty_id_fp = fp_from_bytes(&BOUNTY_ID);
 
         let circuit = MintCircuit {
-            bounty_id:    Value::known(bond_id_fp),
+            bounty_id:    Value::known(bounty_id_fp),
             quantity:   Value::known(Fp::from(QTY)),
             owner_pk:   Value::known(fp_from_bytes(&OWNER_PK)),
             randomness: Value::known(fp_from_bytes(&RANDOMNESS)),
         };
 
         // Instance column: [commitment, bounty_id]
-        let instances = vec![commitment, bond_id_fp];
+        let instances = vec![commitment, bounty_id_fp];
         (circuit, vec![instances])
     }
 
@@ -183,7 +183,7 @@ mod tests {
     }
 
     #[test]
-    fn mint_circuit_fails_with_wrong_bond_id() {
+    fn mint_circuit_fails_with_wrong_bounty_id() {
         let (circuit, mut instances) = test_circuit();
         instances[0][1] = Fp::from(0xdeadbeefu64);
         let k = 9;

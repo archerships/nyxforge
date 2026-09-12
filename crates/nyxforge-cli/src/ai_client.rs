@@ -57,8 +57,8 @@ impl SuggestedBountyParams {
 
 #[derive(Debug, Deserialize)]
 pub struct BountyAssistance {
-    pub similar_bonds:  Vec<SimilarBounty>,
-    pub suggested_bond: SuggestedBountyParams,
+    pub similar_bounties:  Vec<SimilarBounty>,
+    pub suggested_bounty: SuggestedBountyParams,
     /// 2-3 sentence summary of findings and recommendations.
     pub analysis:       String,
 }
@@ -93,13 +93,13 @@ impl AnthropicClient {
     /// Analyse a natural-language goal description against a list of existing
     /// bounties (JSON values from `bounties.list`) and return matching bounties plus a
     /// suggested new bounty specification.
-    pub async fn assist_bond_creation(
+    pub async fn assist_bounty_creation(
         &self,
         description: &str,
         existing_bounties: &[Value],
     ) -> Result<BountyAssistance> {
         // Build a compact summary of existing bounties to stay within token limits.
-        let bonds_summary: Vec<Value> = existing_bounties.iter().take(30).map(|b| {
+        let bounties_summary: Vec<Value> = existing_bounties.iter().take(30).map(|b| {
             serde_json::json!({
                 "bounty_id":    b["id"],
                 "title":      b["goal"]["title"],
@@ -115,7 +115,7 @@ impl AnthropicClient {
         let user_message = format!(
             "## User's goal\n{description}\n\n\
              ## Existing bounties on this network\n{}",
-            serde_json::to_string_pretty(&bonds_summary)?
+            serde_json::to_string_pretty(&bounties_summary)?
         );
 
         let body = serde_json::json!({
@@ -200,7 +200,7 @@ Reply with ONLY a valid JSON object — no markdown, no prose outside the JSON.
 Use this exact schema:
 
 {
-  "similar_bonds": [
+  "similar_bounties": [
     {
       "bounty_id":     "<id field from the existing bounties list>",
       "title":       "<bounty title>",
@@ -208,7 +208,7 @@ Use this exact schema:
       "explanation": "<1–2 sentences: why similar and what differs>"
     }
   ],
-  "suggested_bond": {
+  "suggested_bounty": {
     "title":           "<concise title, max 60 chars>",
     "description":     "<detailed description of goal and how it will be measured>",
     "data_id":         "<canonical data source id>",

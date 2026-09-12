@@ -106,9 +106,9 @@ if [[ "${READY}" != "true" ]]; then
 fi
 success "Node is up (PID ${NODE_PID})"
 
-# -- Seed demo bonds ----------------------------------------------------------
-info "Seeding demo bonds..."
-python3 "${SCRIPT_DIR}/seed-demo-bonds.py"
+# -- Seed demo bounties ----------------------------------------------------------
+info "Seeding demo bounties..."
+python3 "${SCRIPT_DIR}/seed-demo-bounties.py"
 
 # -- Start Flutter ------------------------------------------------------------
 if [[ "${START_UI}" == "true" ]]; then

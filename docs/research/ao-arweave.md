@@ -1,7 +1,7 @@
 # AO/Arweave Network Research Brief (NyxForge)
 
 **Status:** [ACTIVE RESEARCH: 2026-04-20]
-**Objective:** Evaluate AO and Arweave as a permanent storage and parallel computing substrate for NyxForge bond lifecycle management.
+**Objective:** Evaluate AO and Arweave as a permanent storage and parallel computing substrate for NyxForge bounty lifecycle management.
 
 ---
 
@@ -37,14 +37,14 @@ AO (Arweave Object) is a hyper-parallel computing layer built on top of Arweave.
 
 ## 5. NyxForge Integration Potential
 ### Alignment
-*   **Permanence:** NyxForge `.bond` files can be stored permanently on Arweave, ensuring the long-term validity of social policy bonds.
-*   **Parallelism:** AO’s architecture is ideal for high-throughput bond matchmaking and complex "Policy Bond" settlement logic that doesn't require a global state.
+*   **Permanence:** NyxForge `.bounty` files can be stored permanently on Arweave, ensuring the long-term validity of social policy bonds.
+*   **Parallelism:** AO’s architecture is ideal for high-throughput bounty matchmaking and complex "Policy Bounty" settlement logic that doesn't require a global state.
 *   **Sovereign Computing:** AO processes are essentially autonomous agents, aligning with the "Sovereign Engineering" ethos.
 
 ### Next Research Steps
-*   [ ] Prototype a `.bond` registry process on AO using Lua/WASM.
-*   [ ] Evaluate **Irys** (formerly Bundlr) for high-speed bond data ingestion.
-*   [ ] Analyze "Sixth Entity" autonomous agent patterns for automated bond settlement on AO.
+*   [ ] Prototype a `.bounty` registry process on AO using Lua/WASM.
+*   [ ] Evaluate **Irys** (formerly Bundlr) for high-speed bounty data ingestion.
+*   [ ] Analyze "Sixth Entity" autonomous agent patterns for automated bounty settlement on AO.
 
 ---
 

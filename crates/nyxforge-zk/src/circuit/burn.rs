@@ -191,7 +191,7 @@ impl Circuit<Fp> for BurnCircuit {
         };
 
         // Load bounty_id for the public instance constraint.
-        let bond_id_cell = layouter.assign_region(
+        let bounty_id_cell = layouter.assign_region(
             || "load bounty_id for instance",
             |mut region| {
                 region.assign_advice(|| "bounty_id", config.state[0], 0, || self.bounty_id)
@@ -200,7 +200,7 @@ impl Circuit<Fp> for BurnCircuit {
 
         // ----- Constrain public instances -----
         layouter.constrain_instance(nullifier.cell(),                   config.instance, 0)?;
-        layouter.constrain_instance(bond_id_cell.cell(),                config.instance, 1)?;
+        layouter.constrain_instance(bounty_id_cell.cell(),                config.instance, 1)?;
         // instance[2] = judge_attest_pk — now CIRCUIT-CONSTRAINED.
         // The circuit proves the prover knows judge_attest_key s.t.
         // Poseidon2(judge_attest_key, domain) == judge_attest_pk.
@@ -221,7 +221,7 @@ mod tests {
     };
     use halo2_proofs::dev::MockProver;
 
-    const BOND_ID:            [u8; 32] = [0x01u8; 32];
+    const BOUNTY_ID:            [u8; 32] = [0x01u8; 32];
     const SERIAL:             [u8; 32] = [0x55u8; 32];
     const OWNER_SECRET:       [u8; 32] = [0xAAu8; 32];
     const ORACLE_ATTEST_KEY:  [u8; 32] = [0xEEu8; 32];
@@ -239,7 +239,7 @@ mod tests {
         let judge_attest_pk   = fp_from_bytes(&judge_attest_pk_from_key(&ORACLE_ATTEST_KEY));
 
         let circuit = BurnCircuit {
-            bounty_id:              Value::known(fp_from_bytes(&BOND_ID)),
+            bounty_id:              Value::known(fp_from_bytes(&BOUNTY_ID)),
             serial:               Value::known(fp_from_bytes(&SERIAL)),
             owner_secret:         Value::known(fp_from_bytes(&OWNER_SECRET)),
             judge_attest_key:    Value::known(fp_from_bytes(&ORACLE_ATTEST_KEY)),
@@ -252,7 +252,7 @@ mod tests {
         // Instance: [nullifier, bounty_id, judge_attest_pk, payout_commitment, payout_amount]
         let instances = vec![
             nullifier_fp,
-            fp_from_bytes(&BOND_ID),
+            fp_from_bytes(&BOUNTY_ID),
             judge_attest_pk,   // instance[2] — now CIRCUIT-CONSTRAINED
             payout_cm,
             payout_amount,

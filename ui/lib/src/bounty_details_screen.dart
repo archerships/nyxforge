@@ -3,22 +3,22 @@ import 'theme.dart';
 import 'node_client.dart';
 
 // ---------------------------------------------------------------------------
-// Screen: Bond Details & Lifecycle Management
+// Screen: Bounty Details & Lifecycle Management
 // ---------------------------------------------------------------------------
 
-class BondDetailsScreen extends StatefulWidget {
-  final String bondId;
-  const BondDetailsScreen({super.key, required this.bondId});
+class BountyDetailsScreen extends StatefulWidget {
+  final String bountyId;
+  const BountyDetailsScreen({super.key, required this.bountyId});
 
   @override
-  State<BondDetailsScreen> createState() => _BondDetailsScreenState();
+  State<BountyDetailsScreen> createState() => _BountyDetailsScreenState();
 }
 
-class _BondDetailsScreenState extends State<BondDetailsScreen> {
+class _BountyDetailsScreenState extends State<BountyDetailsScreen> {
   final _client = NodeClient();
   bool _loading = true;
   String? _error;
-  Map<String, dynamic>? _bond;
+  Map<String, dynamic>? _bounty;
 
   @override
   void initState() {
@@ -29,9 +29,9 @@ class _BondDetailsScreenState extends State<BondDetailsScreen> {
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; });
     try {
-      // In a real app, this would fetch the full BondV2 object
-      final bond = await _client.bondGet(widget.bondId);
-      if (mounted) setState(() { _bond = bond; _loading = false; });
+      // In a real app, this would fetch the full BountyV2 object
+      final bounty = await _client.bountyGet(widget.bountyId);
+      if (mounted) setState(() { _bounty = bounty; _loading = false; });
     } on NodeException catch (e) {
       if (mounted) setState(() { _error = e.message; _loading = false; });
     }
@@ -41,14 +41,14 @@ class _BondDetailsScreenState extends State<BondDetailsScreen> {
   Widget build(BuildContext context) {
     if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     if (_error != null) return Scaffold(body: Center(child: Text(_error!)));
-    if (_bond == null) return const Scaffold(body: Center(child: Text('Bond not found')));
+    if (_bounty == null) return const Scaffold(body: Center(child: Text('Bounty not found')));
 
     final tt = Theme.of(context).textTheme;
-    final state = _bond!['state'] as String;
+    final state = _bounty!['state'] as String;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Bond Detail', style: tt.titleMedium),
+        title: Text('Bounty Detail', style: tt.titleMedium),
         backgroundColor: NyxColors.background,
         elevation: 0,
       ),
@@ -57,7 +57,7 @@ class _BondDetailsScreenState extends State<BondDetailsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── Header: Basic Meta ────────────────────────────────
-            _HeaderSection(bond: _bond!),
+            _HeaderSection(bounty: _bounty!),
 
             const Divider(height: 1, color: NyxColors.border),
 
@@ -74,13 +74,13 @@ class _BondDetailsScreenState extends State<BondDetailsScreen> {
 
   Widget _buildStateView(String state) {
     switch (state) {
-      case 'Proposed':    return _ProposedView(bond: _bond!);
-      case 'Active':      return _ActiveView(bond: _bond!);
-      case 'Challenge':   return _ChallengeView(bond: _bond!);
-      case 'Maintenance': return _MaintenanceView(bond: _bond!);
-      case 'Redeemable':  return _RedeemableView(bond: _bond!);
-      case 'Settled':     return _SettledView(bond: _bond!);
-      case 'Expired':     return _ExpiredView(bond: _bond!);
+      case 'Proposed':    return _ProposedView(bounty: _bounty!);
+      case 'Active':      return _ActiveView(bounty: _bounty!);
+      case 'Challenge':   return _ChallengeView(bounty: _bounty!);
+      case 'Maintenance': return _MaintenanceView(bounty: _bounty!);
+      case 'Redeemable':  return _RedeemableView(bounty: _bounty!);
+      case 'Settled':     return _SettledView(bounty: _bounty!);
+      case 'Expired':     return _ExpiredView(bounty: _bounty!);
       default:            return Text('Unknown State: $state');
     }
   }
@@ -91,13 +91,13 @@ class _BondDetailsScreenState extends State<BondDetailsScreen> {
 // ---------------------------------------------------------------------------
 
 class _HeaderSection extends StatelessWidget {
-  final Map<String, dynamic> bond;
-  const _HeaderSection({required this.bond});
+  final Map<String, dynamic> bounty;
+  const _HeaderSection({required this.bounty});
 
   @override
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
-    final goals = bond['goals'] as List;
+    final goals = bounty['goals'] as List;
     final goal = goals.first;
 
     return Container(
@@ -106,7 +106,7 @@ class _HeaderSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _StateBadge(state: bond['state']),
+          _StateBadge(state: bounty['state']),
           const SizedBox(height: 12),
           Text(goal['title'], style: tt.displaySmall?.copyWith(fontSize: 22)),
           const SizedBox(height: 8),
@@ -116,7 +116,7 @@ class _HeaderSection extends StatelessWidget {
             children: [
               _MetaItem(label: 'Expiry', value: goal['deadline'].split('T')[0]),
               const SizedBox(width: 24),
-              _MetaItem(label: 'Supply', value: '${bond['total_supply']} units'),
+              _MetaItem(label: 'Supply', value: '${bounty['total_supply']} units'),
             ],
           ),
         ],
@@ -130,8 +130,8 @@ class _HeaderSection extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _ProposedView extends StatelessWidget {
-  final Map<String, dynamic> bond;
-  const _ProposedView({required this.bond});
+  final Map<String, dynamic> bounty;
+  const _ProposedView({required this.bounty});
 
   @override
   Widget build(BuildContext context) {
@@ -159,8 +159,8 @@ class _ProposedView extends StatelessWidget {
 }
 
 class _ActiveView extends StatelessWidget {
-  final Map<String, dynamic> bond;
-  const _ActiveView({required this.bond});
+  final Map<String, dynamic> bounty;
+  const _ActiveView({required this.bounty});
 
   @override
   Widget build(BuildContext context) {
@@ -183,7 +183,7 @@ class _ActiveView extends StatelessWidget {
         _ReviewRow('Current Value', '412.5 ppm'),
         _ReviewRow('Goal Threshold', '< 350.0 ppm'),
         const SizedBox(height: 32),
-        const Text('This is a Hybrid bond. Any anonymous actor can assert the goal has been met by posting a bond.',
+        const Text('This is a Hybrid bounty. Any anonymous actor can assert the goal has been met by posting a bounty.',
             style: TextStyle(color: NyxColors.textMuted, fontSize: 12)),
         const SizedBox(height: 12),
         SizedBox(
@@ -199,8 +199,8 @@ class _ActiveView extends StatelessWidget {
 }
 
 class _ChallengeView extends StatelessWidget {
-  final Map<String, dynamic> bond;
-  const _ChallengeView({required this.bond});
+  final Map<String, dynamic> bounty;
+  const _ChallengeView({required this.bounty});
 
   @override
   Widget build(BuildContext context) {
@@ -250,8 +250,8 @@ class _ChallengeView extends StatelessWidget {
 }
 
 class _MaintenanceView extends StatelessWidget {
-  final Map<String, dynamic> bond;
-  const _MaintenanceView({required this.bond});
+  final Map<String, dynamic> bounty;
+  const _MaintenanceView({required this.bounty});
 
   @override
   Widget build(BuildContext context) {
@@ -259,7 +259,7 @@ class _MaintenanceView extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SectionTitle('Stability Endowment'),
-        const Text('This bond is in maintenance mode, paying stability dividends from XMR yield.',
+        const Text('This bounty is in maintenance mode, paying stability dividends from XMR yield.',
             style: TextStyle(color: NyxColors.textMuted, fontSize: 13)),
         const SizedBox(height: 20),
         Container(
@@ -293,8 +293,8 @@ class _MaintenanceView extends StatelessWidget {
 }
 
 class _RedeemableView extends StatelessWidget {
-  final Map<String, dynamic> bond;
-  const _RedeemableView({required this.bond});
+  final Map<String, dynamic> bounty;
+  const _RedeemableView({required this.bounty});
 
   @override
   Widget build(BuildContext context) {
@@ -317,7 +317,7 @@ class _RedeemableView extends StatelessWidget {
             children: [
               const Text('REDEEMABLE VALUE', style: TextStyle(color: NyxColors.textMuted, fontSize: 12)),
               const Text('12.5 XMR', style: TextStyle(color: NyxColors.textPrimary, fontSize: 32, fontWeight: FontWeight.bold)),
-              const Text('Per Bond Note', style: TextStyle(color: NyxColors.textMuted, fontSize: 11)),
+              const Text('Per Bounty Note', style: TextStyle(color: NyxColors.textMuted, fontSize: 11)),
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
@@ -335,22 +335,22 @@ class _RedeemableView extends StatelessWidget {
 }
 
 class _SettledView extends StatelessWidget {
-  final Map<String, dynamic> bond;
-  const _SettledView({required this.bond});
+  final Map<String, dynamic> bounty;
+  const _SettledView({required this.bounty});
 
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text('Bond Settled. Payouts complete.', style: TextStyle(color: NyxColors.textMuted)));
+    return const Center(child: Text('Bounty Settled. Payouts complete.', style: TextStyle(color: NyxColors.textMuted)));
   }
 }
 
 class _ExpiredView extends StatelessWidget {
-  final Map<String, dynamic> bond;
-  const _ExpiredView({required this.bond});
+  final Map<String, dynamic> bounty;
+  const _ExpiredView({required this.bounty});
 
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text('Bond Expired. Collateral returned to issuer.', style: TextStyle(color: NyxColors.textMuted)));
+    return const Center(child: Text('Bounty Expired. Collateral returned to issuer.', style: TextStyle(color: NyxColors.textMuted)));
   }
 }
 

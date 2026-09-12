@@ -1,6 +1,6 @@
 [package]
 name        = "nyxforge-zk"
-description = "ZK circuits for anonymous bond mint, transfer, and redemption"
+description = "ZK circuits for anonymous bounty mint, transfer, and redemption"
 version.workspace    = true
 edition.workspace    = true
 authors.workspace    = true

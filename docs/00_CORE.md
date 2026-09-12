@@ -3,8 +3,8 @@
 > Version 0.2 — living document — April 2026
 >
 > Authority note: This file is the v2.0+ aspirational spec and long-form product
-> narrative.  For the active build target (bearer .bond files, SQLite schema,
-> multi-term bonds, DLEQ/PTLC collateral), see `00_MVP.md`.  Where the two files
+> narrative.  For the active build target (bearer .bounty files, SQLite schema,
+> multi-term bounties, DLEQ/PTLC collateral), see `00_MVP.md`.  Where the two files
 > conflict, `00_MVP.md` takes precedence for all current development decisions.
 
 ---
@@ -18,7 +18,7 @@
 5. [Core Concepts](#5-core-concepts)
 6. [Functional Requirements](#6-functional-requirements)
 7. [Non-Functional Requirements](#7-non-functional-requirements)
-8. [Bond Lifecycle](#8-bond-lifecycle)
+8. [Bounty Lifecycle](#8-bounty-lifecycle)
 9. [Oracle Network](#9-oracle-network)
 10. [Market Mechanics](#10-market-mechanics)
 11. [Wallet & Key Management](#11-wallet--key-management)
@@ -31,7 +31,7 @@
 18. [Roadmap](#18-roadmap)
 19. [Glossary](#19-glossary)
 20. [v2.0 Architectural Extensions](#20-v20-architectural-extensions)
-21. [.bond Archive Format](#21-bond-archive-format)
+21. [.bounty Archive Format](#21-bounty-archive-format)
 
 ---
 
@@ -81,7 +81,7 @@ participation from:
 
 ### 2.4 Trust requirements
 
-Existing social impact bond programmes require trusting the issuer to lock
+Existing social impact bounty programmes require trusting the issuer to lock
 collateral, the oracle to measure results honestly, and the settlement agent to
 pay out on time.  Each trust assumption is a failure point and a censorship
 vector.
@@ -126,8 +126,8 @@ be played anonymously by default.
 ## 4. Product Overview
 
 NyxForge is a system for creating and trading **Social Policy Bonds** as
-self-contained **bearer instruments**. A bond is represented by a single
-`.bond` file (SQLite) that contains the goal, the collateral details, and the
+self-contained **bearer instruments**. A bounty is represented by a single
+`.bounty` file (SQLite) that contains the goal, the collateral details, and the
 evidence required for settlement.
 
 The core loop:
@@ -136,11 +136,11 @@ The core loop:
     They select an oracle panel and lock the collateral using a currency-specific
     mechanism (**DLEQ/PTLC adaptor signatures** for XMR/BTC/ZEC, or a **Smart
     Contract Escrow** for ETH).
-2.  **Possession as Ownership:** Possession of the `.bond` file (and the
+2.  **Possession as Ownership:** Possession of the `.bounty` file (and the
     corresponding secret scalar) constitutes ownership. There is no central
     registry, no P2P network, and no ZK ownership circuit in the MVP.
-3.  **Bilateral Trading:** Bonds are traded directly between individuals (off-chain)
-    by exchanging the `.bond` file and re-encrypting the secret scalar to the
+3.  **Bilateral Trading:** Bounties are traded directly between individuals (off-chain)
+    by exchanging the `.bounty` file and re-encrypting the secret scalar to the
     buyer's public key.
 4.  **Oracle Settlement:** Oracle operators monitor the goal. On achievement, they
     publish a settlement credential (**s_met** scalar or an **EIP-712 signature**).
@@ -166,16 +166,16 @@ using decentralized adaptor signatures and smart contracts.
 
 ### 5.2 GoalSpec
 
-The machine-readable definition of a bond's outcome target.  A bond has one or
+The machine-readable definition of a bounty's outcome target.  A bounty has one or
 more terms; if there are multiple terms, `term_aggregation` specifies whether
 all must be met (AND) or any one suffices (OR).
 
 In the MVP SQLite schema (see `00_MVP.md` Section 4.1):
 
 ```sql
--- bond_spec table
+-- bounty_spec table
 goal_type        TEXT    -- derived from terms: quantitative | qualitative | hybrid
-term_aggregation TEXT    -- AND | OR; null when bond has exactly one term
+term_aggregation TEXT    -- AND | OR; null when bounty has exactly one term
 
 -- terms table (one row per term)
 seq        INTEGER  -- 1-based display order
@@ -187,19 +187,19 @@ threshold  REAL
 aggregation TEXT    -- e.g. annual_mean
 ```
 
-### 5.3 Bearer Bond (.bond file)
+### 5.3 Bearer Bounty (.bounty file)
 
 The primary unit of ownership in NyxForge. It is an encrypted SQLite container
-holding the full state of the bond.
+holding the full state of the bounty.
 
 - **Archival stability:** SQLite is a Library of Congress recommended format for
   long-term data preservation.
-- **Atomic state:** The file IS the bond. It contains the goal, the history,
+- **Atomic state:** The file IS the bounty. It contains the goal, the history,
   the evidence BLOBs, and the settlement logic.
 
 ### 5.4 Oracle Attestation
 
-A signed statement by a registered oracle operator asserting whether a bond's
+A signed statement by a registered oracle operator asserting whether a bounty's
 goal was met. For MVP, attestations result in the release of a **secret scalar
 (s_met)** or a **smart contract signature**.
 
@@ -216,7 +216,7 @@ DRK (DarkFi) integration and ZK-note ownership models are deferred to v2.0+.
 
 ### 5.6 Supported collateral currencies
 
-Bond collateral can be locked in any supported currency. The locking mechanism varies by chain:
+Bounty collateral can be locked in any supported currency. The locking mechanism varies by chain:
 
 | Currency | Lock mechanism | Oracle Credential | Privacy |
 |---|---|---|---|
@@ -225,11 +225,11 @@ Bond collateral can be locked in any supported currency. The locking mechanism v
 | BTC | ptlc_btc | s_met scalar | Pseudonymous (Taproot) |
 | ETH | eth_escrow | EIP-712 Signature | Pseudonymous (EVM) |
 
-The issuer specifies the currency and amount in `CollateralSpec` at bond creation. The `return_address` field specifies where collateral is returned if the goal is not met.
+The issuer specifies the currency and amount in `CollateralSpec` at bounty creation. The `return_address` field specifies where collateral is returned if the goal is not met.
 
 ### 5.7 Oracle trust model — attestors, not custodians
 
-Oracles **attest to real-world outcomes**; they do not control fund routing. Two outcomes are pre-committed at bond setup:
+Oracles **attest to real-world outcomes**; they do not control fund routing. Two outcomes are pre-committed at bounty setup:
 
 - **`s_met`**: oracle scalar proving "goal was achieved" — reveals the spending key for the payout collateral output
 - **`s_fail`**: oracle scalar proving "goal failed / expired" — reveals the spending key for the refund output
@@ -243,7 +243,7 @@ The enforcement mechanism varies by chain:
 
 For chains requiring a two-phase claim (XMR, BTC):
 1. Oracle publishes `s_met` → unlocks an intermediate collateral output.
-2. The current bond holder combines the oracle's scalar with their own secret to sweep the funds to their `payout_address`.
+2. The current bounty holder combines the oracle's scalar with their own secret to sweep the funds to their `payout_address`.
 
 Neither the oracle nor an outside observer can complete both phases.
 
@@ -252,7 +252,7 @@ Neither the oracle nor an outside observer can complete both phases.
 #### The primary issuance problem
 
 A naive implementation locks collateral and stores the secret scalar in the
-`.bond` file at issuance time, then "transfers" to the first buyer by
+`.bounty` file at issuance time, then "transfers" to the first buyer by
 re-encrypting the scalar to the buyer's public key.  This is insecure: the
 issuer held the scalar in plaintext during setup and can retain a copy.  If the
 goal is later met, the issuer can sweep the collateral ahead of the buyer.
@@ -262,7 +262,7 @@ Re-encryption alone does not solve this for primary issuance.
 #### Trustless primary issuance (MVP)
 
 The MVP solves the problem by removing the issuer from scalar generation
-entirely.  The buyer participates in bond setup before collateral is locked:
+entirely.  The buyer participates in bounty setup before collateral is locked:
 
 1. Buyer generates a fresh keypair `(b, B)` where `B = b*G`.
 2. Buyer sends `B` (pubkey only) to the issuer.
@@ -270,10 +270,10 @@ entirely.  The buyer participates in bond setup before collateral is locked:
    `holder_pubkey`.  The wizard derives the collateral lock address from `B`
    and the oracle adaptor point; it never generates or stores a plaintext
    scalar that the issuer could later use.
-4. Collateral is locked.  The `.bond` file is created with
+4. Collateral is locked.  The `.bounty` file is created with
    `scalar_encrypted = enc(t, B)` where `t` is the buyer's adaptor contribution
    (generated on the buyer's machine).
-5. Issuer sends the `.bond` file to the buyer.  The buyer verifies
+5. Issuer sends the `.bounty` file to the buyer.  The buyer verifies
    `lock_txid` on-chain and confirms `holder_pubkey == B`.
 6. Buyer pays the issuer.
 
@@ -282,18 +282,18 @@ sweep even after `s_met` is published because the full spending key requires
 `b + s_met` (discrete log of the lock address), and `b` is known only to the
 buyer.
 
-**Practical implication:** the buyer must provide their pubkey before the bond
+**Practical implication:** the buyer must provide their pubkey before the bounty
 is issued.  The creation wizard requires a `--holder-pubkey` argument (or
-prompts for it interactively) for any bond that will be sold on the primary
-market.  An issuer who creates a bond for their own account first and re-sells
+prompts for it interactively) for any bounty that will be sold on the primary
+market.  An issuer who creates a bounty for their own account first and re-sells
 it later cannot offer trustless primary issuance without DLEQ re-keying (see
 Phase 2 below).
 
 #### Secondary transfer (re-encryption)
 
-Once a buyer holds a bond, any subsequent transfer is safe via re-encryption:
+Once a buyer holds a bounty, any subsequent transfer is safe via re-encryption:
 
-1. Seller runs `nyxforge-cli bond transfer <file> <buyer_pubkey>`.
+1. Seller runs `nyxforge-cli bounty transfer <file> <buyer_pubkey>`.
 2. The CLI re-encrypts `scalar_encrypted` from the seller's key to the buyer's
    key and updates `holder_pubkey`.
 3. Seller sends the updated file to the buyer and receives payment.
@@ -303,52 +303,52 @@ Once a buyer holds a bond, any subsequent transfer is safe via re-encryption:
 
 The re-encryption is enforced by the file format: `scalar_encrypted` is an
 ECIES ciphertext bound to `holder_pubkey`.  Any transfer attempt that does not
-produce a valid ciphertext for the new pubkey will be rejected by `bond verify`.
+produce a valid ciphertext for the new pubkey will be rejected by `bounty verify`.
 
 #### DLEQ re-keying (Phase 2)
 
 Phase 2 will implement blind re-keying via DLEQ proofs, allowing an issuer who
-created a bond without a specific buyer in mind to subsequently transfer to a
+created a bounty without a specific buyer in mind to subsequently transfer to a
 buyer without the buyer needing to trust that the issuer deleted their scalar
 copy.  The issuer proves the re-key was performed correctly (discrete log
 relationship between old and new lock address) without learning the buyer's
-private key.  This enables "blind issuance" workflows where bonds are created
+private key.  This enables "blind issuance" workflows where bounties are created
 speculatively and sold into the secondary market.
 
 ---
 
 ## 6. Functional Requirements (MVP)
 
-### 6.1 Bond management
+### 6.1 Bounty management
 
 | ID | Requirement |
 |----|-------------|
 | F-B01 | Issuer can define a GoalSpec via interactive CLI wizard |
 | F-B02 | AI assistant (MCP) can draft a GoalSpec from natural language |
-| F-B03 | Bond can be published in `Proposed` state for community review |
-| F-B04 | Any participant with a `.bond` file can post comments or attach evidence |
-| F-B05 | Oracles can review and accept a bond before it moves to `Draft` |
-| F-B06 | Bond issuance fails if the `data_id` has no registered oracle adapter |
+| F-B03 | Bounty can be published in `Proposed` state for community review |
+| F-B04 | Any participant with a `.bounty` file can post comments or attach evidence |
+| F-B05 | Oracles can review and accept a bounty before it moves to `Draft` |
+| F-B06 | Bounty issuance fails if the `data_id` has no registered oracle adapter |
 
 ### 6.2 Trading (Bilateral)
 
 | ID | Requirement |
 |----|-------------|
-| F-T01 | Holder can generate a signed Listing Record (`bond prove`) to prove ownership |
-| F-T02 | Holder can transfer a bond by re-encrypting the secret scalar to a recipient |
+| F-T01 | Holder can generate a signed Listing Record (`bounty prove`) to prove ownership |
+| F-T02 | Holder can transfer a bounty by re-encrypting the secret scalar to a recipient |
 | F-T03 | Trading is off-chain (file exchange over Signal/Tor) |
 | F-T04 | No shared order book or P2P network required for MVP |
 | F-T05 | Creation wizard accepts an optional `--holder-pubkey` to enable trustless primary issuance (issuer never holds the plaintext scalar) |
-| F-T06 | `bond verify` rejects a `.bond` file whose `scalar_encrypted` ciphertext does not match `holder_pubkey` |
+| F-T06 | `bounty verify` rejects a `.bounty` file whose `scalar_encrypted` ciphertext does not match `holder_pubkey` |
 
 ### 6.3 Oracle
 
 | ID | Requirement |
 |----|-------------|
 | F-O01 | Oracles sign attestations and publish settlement credentials (scalars or signatures) |
-| F-O02 | Qualitative oracles can attach evidence BLOBs (PDF/Video) to the `.bond` file |
+| F-O02 | Qualitative oracles can attach evidence BLOBs (PDF/Video) to the `.bounty` file |
 | F-O03 | Quantitative oracles fetch data via pluggable HTTP-JSON adapters |
-| F-O04 | Once `quorum` of attestations accumulate, the bond becomes `Redeemable` |
+| F-O04 | Once `quorum` of attestations accumulate, the bounty becomes `Redeemable` |
 
 ### 6.4 Redemption & settlement
 
@@ -365,7 +365,7 @@ speculatively and sold into the secondary market.
 
 ### 7.1 Privacy
 
-- All bond ownership is anonymous by default (possession-based).
+- All bounty ownership is anonymous by default (possession-based).
 - No user account or KYC required.
 - Keys generated and stored locally.
 - On-chain anonymity provided by the collateral chain (XMR/ZEC).
@@ -377,7 +377,7 @@ speculatively and sold into the secondary market.
 
 ---
 
-## 8. Bond Lifecycle
+## 8. Bounty Lifecycle
 
 ### State summary
 
@@ -394,16 +394,16 @@ speculatively and sold into the secondary market.
 
 ```
 [create] → DRAFT
-         → ACTIVE (bond issue; collateral locked)
+         → ACTIVE (bounty issue; collateral locked)
          → REDEEMABLE (oracle quorum, goal met)
          → SETTLED
          → EXPIRED (deadline passed, goal not met) → [issuer reclaims]
          → RECLAIMED
 ```
 
-Any rejection by an oracle while in `PendingOracleApproval` returns the bond to
+Any rejection by an oracle while in `PendingOracleApproval` returns the bounty to
 the issuer for revision.  The issuer may revise the oracle list (via
-`bonds.revise_oracles`), which clears all existing responses and requires all
+`bounties.revise_oracles`), which clears all existing responses and requires all
 listed oracles to re-accept from scratch.
 
 ---
@@ -412,25 +412,25 @@ listed oracles to re-accept from scratch.
 
 ### 9.1 Role
 
-Oracle operators are the link between on-chain bond contracts and real-world data. They are **attestors** — they sign statements about real-world outcomes — but they are **not custodians** of collateral. Fund routing is enforced cryptographically by the lock mechanism (DLC, DLEQ, or smart contract), not by oracle honesty. An oracle's only power is to choose which of the two pre-committed outcomes (`s_met` or `s_fail`) to publish. Publishing both is cryptographically impossible without revealing the oracle's private key.
+Oracle operators are the link between on-chain bounty contracts and real-world data. They are **attestors** — they sign statements about real-world outcomes — but they are **not custodians** of collateral. Fund routing is enforced cryptographically by the lock mechanism (DLC, DLEQ, or smart contract), not by oracle honesty. An oracle's only power is to choose which of the two pre-committed outcomes (`s_met` or `s_fail`) to publish. Publishing both is cryptographically impossible without revealing the oracle's private key.
 
 ### 9.2 Registration
 
 An oracle operator must:
 
-1. Hold a DRK keypair that they register with the bond issuer.
-2. Stake at least `required_stake` DRK (per bond or globally, TBD).
-3. Run the `nyxforge-oracle` daemon with a data adapter for the bond's `data_id`.
-4. Explicitly accept each bond they are listed on (via `oracle-accept` command or
+1. Hold a DRK keypair that they register with the bounty issuer.
+2. Stake at least `required_stake` DRK (per bounty or globally, TBD).
+3. Run the `nyxforge-oracle` daemon with a data adapter for the bounty's `data_id`.
+4. Explicitly accept each bounty they are listed on (via `oracle-accept` command or
    the oracle daemon's auto-accept policy).
 
 ### 9.3 Attestation flow
 
-1. The oracle daemon monitors active bonds and their deadlines.
+1. The oracle daemon monitors active bounties and their deadlines.
 2. At evaluation time (typically when the deadline is near or a new data release
    is available), the daemon fetches the data via the registered `DataSource` adapter.
 3. For each quantitative term it evaluates: `fetched_value OPERATOR threshold`.
-   For qualitative terms, human panel review is required.  The overall bond
+   For qualitative terms, human panel review is required.  The overall bounty
    outcome applies `term_aggregation` (AND/OR) across all term results.
 4. It produces a signed attestation scalar (`s_met` or `s_fail`) using its DRK private key.
 5. The attestation scalar is gossiped to the P2P network and — for chain-specific collateral — is used as the adaptor signature that unlocks the appropriate collateral output.
@@ -447,7 +447,7 @@ versa — results in `slash_fraction × staked_DRK` being burned from that oracl
 stake.  The remainder of the stake is returned.
 
 The slash mechanism relies on DAO governance to adjudicate disputes after the
-challenge window.  In bonds where `dao_override_allowed = false`, no post-hoc
+challenge window.  In bounties where `dao_override_allowed = false`, no post-hoc
 override is possible.
 
 ### 9.5 Data adapters
@@ -478,12 +478,12 @@ Custom adapters can be compiled into the oracle daemon or loaded as WASM plugins
 In the MVP, there is no central order book or automated matching engine.
 Trading is **bilateral and off-chain**.
 
-1.  **Discovery:** Sellers share **Listing Records** (produced by `bond prove`)
+1.  **Discovery:** Sellers share **Listing Records** (produced by `bounty prove`)
     on social media, forums, or P2P messaging (Tor/Signal).
 2.  **Negotiation:** Buyer and Seller agree on a price and payment method.
 3.  **Settlement:**
-    - Seller sends the `.bond` file to the Buyer.
-    - Buyer verifies the bond's status and ownership proof.
+    - Seller sends the `.bounty` file to the Buyer.
+    - Buyer verifies the bounty's status and ownership proof.
     - Seller re-encrypts the secret scalar (s_met) to the Buyer's public key
       and sends the updated file.
     - Buyer pays the Seller via a separate on-chain transaction.
@@ -492,14 +492,14 @@ Trading is **bilateral and off-chain**.
 
 A Listing Record allows a holder to prove ownership without revealing the
 secret scalar. It contains:
-- Bond ID and Metadata summary.
+- Bounty ID and Metadata summary.
 - Current holder's public key.
 - A signature over an exchange-provided nonce.
 
 ### 10.3 Price Discovery
 
 Price is discovered purely through social consensus and individual negotiation.
-The market price of a bond reflects the crowd's estimate of the probability
+The market price of a bounty reflects the crowd's estimate of the probability
 of goal achievement: `Price ≈ Redemption_Value × P(goal_met)`.
 
 DEX integration and automated order books are deferred to v2.0+.
@@ -570,7 +570,7 @@ default in the current prototype is stagenet.
 ### 12.1 Purpose
 
 Mining is a built-in mechanism for users to earn XMR (Monero) without a
-centralised exchange.  Earned XMR can be converted to DRK for bond collateral
+centralised exchange.  Earned XMR can be converted to DRK for bounty collateral
 and oracle staking.
 
 ### 12.2 Stack
@@ -617,9 +617,9 @@ starts the full mining stack.
 
 ### 13.1 Purpose
 
-Bond design is non-trivial: choosing the right data ID, operator, threshold,
+Bounty design is non-trivial: choosing the right data ID, operator, threshold,
 aggregation method, and deadline requires domain knowledge.  The AI assistant
-helps non-experts design well-formed bonds and surfaces existing bonds that
+helps non-experts design well-formed bounties and surfaces existing bounties that
 might overlap with their goal.
 
 ### 13.2 Architecture
@@ -629,7 +629,7 @@ to communicate with AI providers.  This keeps the AI integration provider-agnost
 and allows users to run any compatible LLM locally or via a cloud API.
 
 ```
-nyxforge-cli bond explore
+nyxforge-cli bounty explore
     └── McpClient  →  nyxforge-mcp  →  AI provider API
                             ↑
                      provider config
@@ -653,7 +653,7 @@ nyxforge-cli bond explore
 |--------|-------------|
 | `initialize` | MCP handshake; returns server capabilities |
 | `tools/list` | Returns the list of available tools |
-| `tools/call` | Invoke a tool (`bond_assist`) |
+| `tools/call` | Invoke a tool (`bounty_assist`) |
 
 **REST (provider management)**
 
@@ -665,23 +665,23 @@ nyxforge-cli bond explore
 | PUT | `/providers/default` | Set the active provider |
 | GET | `/health` | Liveness check |
 
-### 13.5 `bond_assist` tool
+### 13.5 `bounty_assist` tool
 
 Input:
 ```json
 {
   "description": "I want to reduce US unsheltered homelessness to under 100,000 by 2030",
-  "existing_bonds": [ { "id": "...", "title": "...", "goal": "..." }, ... ]
+  "existing_bounties": [ { "id": "...", "title": "...", "goal": "..." }, ... ]
 }
 ```
 
-Output (`BondAssistance`):
+Output (`BountyAssistance`):
 ```json
 {
-  "similar_bonds": [
-    { "bond_id": "...", "title": "...", "similarity": "high", "explanation": "..." }
+  "similar_bounties": [
+    { "bounty_id": "...", "title": "...", "similarity": "high", "explanation": "..." }
   ],
-  "suggested_bond": {
+  "suggested_bounty": {
     "title": "...",
     "description": "...",
     "terms": [
@@ -709,13 +709,13 @@ nyxforge-cli mcp add claude
   Provider type: Anthropic
   API key: sk-ant-…
 
-# Bond design session
-nyxforge-cli bond explore
+# Bounty design session
+nyxforge-cli bounty explore
 ```
 
 After exploring, the user can:
-- **Create bond from AI draft** — pre-fills the wizard with the AI's suggestions
-- **Back an existing bond** — view market instructions for a similar bond
+- **Create bounty from AI draft** — pre-fills the wizard with the AI's suggestions
+- **Back an existing bounty** — view market instructions for a similar bounty
 - **Start fresh** — open the wizard with no pre-fills
 - **Cancel**
 
@@ -727,7 +727,7 @@ After exploring, the user can:
 
 | Data | Visibility |
 |------|-----------|
-| Bond GoalSpecs, deadlines, data IDs | Public (shared in files) |
+| Bounty GoalSpecs, deadlines, data IDs | Public (shared in files) |
 | Oracle attestation results | Public (when published) |
 | On-chain collateral locks | Public (txid on XMR/BTC/ETH) |
 
@@ -764,8 +764,8 @@ in [architecture.md](architecture.md).
 
 | Crate | Role |
 |-------|------|
-| `nyxforge-bond` | **(NEW)** .bond SQLite schema, DLEQ primitives, file I/O |
-| `nyxforge-cli` | Interactive bond wizard; inspect/status/transfer/redeem |
+| `nyxforge-bounty` | **(NEW)** .bounty SQLite schema, DLEQ primitives, file I/O |
+| `nyxforge-cli` | Interactive bounty wizard; inspect/status/transfer/redeem |
 | `nyxforge-oracle` | Oracle accept/attest workflow; quantitative adapters |
 | `nyxforge-mcp` | AI provider bridge (Model Context Protocol) |
 | `nyxforge-core` | Shared types (deferred v2.0 types preserved) |
@@ -777,12 +777,12 @@ in [architecture.md](architecture.md).
 
 ### 15.2 Integration Status
 
-Current status: building the bearer-bond prototype.
+Current status: building the bearer-bounty prototype.
 
 1.  **Phase 0-3:** UI/UX development using Penpot, Mockoon, and Flutter.
-2.  **Phase 4:** Implementing the `nyxforge-bond` crate with rusqlite.
+2.  **Phase 4:** Implementing the `nyxforge-bounty` crate with rusqlite.
 3.  **Phase 5:** Monero stagenet integration for DLEQ collateral.
-4.  **Phase 6-7:** Wiring the UI and launching the first live bond.
+4.  **Phase 6-7:** Wiring the UI and launching the first live bounty.
 
 DarkFi L1 integration and ZK ownership proofs are moved to the v2.0/v3.0 roadmap.
 
@@ -798,7 +798,7 @@ DarkFi L1 integration and ZK ownership proofs are moved to the v2.0/v3.0 roadmap
   offer a hosted wallet service.
 - **Centralised oracle** — There is no official oracle service run by the
   NyxForge developers.  Any participant can run an oracle.
-- **Content moderation** — Bond goal specs are not reviewed or filtered by any
+- **Content moderation** — Bounty goal specs are not reviewed or filtered by any
   central authority.  Only verifiability of the goal metric is required.
 - **Mobile-native apps** — The initial target is desktop browser (WASM).
   Mobile support may follow but is not in scope.
@@ -813,11 +813,11 @@ DarkFi L1 integration and ZK ownership proofs are moved to the v2.0/v3.0 roadmap
 
 | Metric | Target (12 months post-mainnet) |
 |--------|--------------------------------|
-| Active bonds | ≥ 50 |
+| Active bounties | ≥ 50 |
 | Unique oracle operators | ≥ 10 |
 | Total collateral locked | ≥ 100,000 DRK |
-| Bonds successfully settled (goal met) | ≥ 5 |
-| Bonds expired (goal not met, collateral reclaimed) | Measurable (proves the mechanism works) |
+| Bounties successfully settled (goal met) | ≥ 5 |
+| Bounties expired (goal not met, collateral reclaimed) | Measurable (proves the mechanism works) |
 
 ### 17.2 Market quality
 
@@ -825,7 +825,7 @@ DarkFi L1 integration and ZK ownership proofs are moved to the v2.0/v3.0 roadmap
 |--------|--------|
 | Average bid-ask spread | < 5% of redemption value |
 | Median time to first trade after issuance | < 24 hours |
-| Bond price correlation with independent probability estimates | > 0.7 |
+| Bounty price correlation with independent probability estimates | > 0.7 |
 
 ### 17.3 Developer adoption
 
@@ -841,17 +841,17 @@ DarkFi L1 integration and ZK ownership proofs are moved to the v2.0/v3.0 roadmap
 
 ### Phase 0 — User Flows
 
-- [x] Full bond lifecycle diagrams (Proposed → Settled) committed to `doc/04_STORYBOARDS/`.
-- [x] Identifying all edge cases: expired bond, rejected oracle, quorum not reached.
+- [x] Full bounty lifecycle diagrams (Proposed → Settled) committed to `doc/04_STORYBOARDS/`.
+- [x] Identifying all edge cases: expired bounty, rejected oracle, quorum not reached.
 
 ### Phase 1 — Screen Designs (Penpot)
 
-- [ ] Design bond list, creation wizard, and detail screens.
-- [ ] Component library: bond card, state badges, oracle status rows.
+- [ ] Design bounty list, creation wizard, and detail screens.
+- [ ] Component library: bounty card, state badges, oracle status rows.
 
 ### Phase 2 — Mock API (Mockoon)
 
-- [x] JSON-RPC mock returning fake bonds for all 6 lifecycle states.
+- [x] JSON-RPC mock returning fake bounties for all 6 lifecycle states.
 - [x] Mock server used for Flutter and CLI front-end development.
 
 ### Phase 3 — Flutter UI (Widgetbook)
@@ -859,16 +859,16 @@ DarkFi L1 integration and ZK ownership proofs are moved to the v2.0/v3.0 roadmap
 - [ ] Build all screens in isolation via Widgetbook.
 - [ ] Compost UI with navigation and state management against Mockoon.
 
-### Phase 4 — nyxforge-bond Crate
+### Phase 4 — nyxforge-bounty Crate
 
-- [ ] SQLite integration (rusqlite) for `.bond` files.
+- [ ] SQLite integration (rusqlite) for `.bounty` files.
 - [ ] DLEQ adaptor signature library for Monero/Zcash.
 - [ ] Quantitative oracle adapters (HTTP-JSON).
 
 ### Phase 5 — Collateral & Redemption
 
-- [ ] XMR DLEQ setup at bond issuance.
-- [ ] `bond redeem`: combine adaptor + s_met → complete sweep tx.
+- [ ] XMR DLEQ setup at bounty issuance.
+- [ ] `bounty redeem`: combine adaptor + s_met → complete sweep tx.
 - [ ] Stagenet end-to-end testing (issue → attest → redeem).
 
 ### Phase 6 — Integration & Finalization
@@ -878,7 +878,7 @@ DarkFi L1 integration and ZK ownership proofs are moved to the v2.0/v3.0 roadmap
 
 ### Phase 7 — Mainnet Launch
 
-- [ ] Issue the first real bond on Monero mainnet.
+- [ ] Issue the first real bounty on Monero mainnet.
 - [ ] Grant applications (Gitcoin, Octant, CCS).
 
 ---
@@ -887,19 +887,19 @@ DarkFi L1 integration and ZK ownership proofs are moved to the v2.0/v3.0 roadmap
 
 | Term | Definition |
 |------|-----------|
-| **Bearer Bond** | A self-contained `.bond` file (SQLite) where possession equals ownership. |
+| **Bearer Bounty** | A self-contained `.bounty` file (SQLite) where possession equals ownership. |
 | **s_met / s_fail** | Pre-committed oracle attestation scalars. `s_met` unlocks the payout collateral; `s_fail` unlocks the refund. |
 | **Adaptor Signature** | A cryptographic primitive used for DLEQ/PTLC atomic swaps. |
-| **GoalSpec** | The machine-readable definition of a bond's outcome: one or more terms (each with a criterion, optional data_id/operator/threshold), plus a term_aggregation operator (AND/OR). |
-| **Listing Record** | A signed proof of ownership used to list a bond for trade without revealing the secret scalar. |
-| **Oracle Panel** | The set of oracles selected by the issuer to monitor and settle a bond. |
-| **Bilateral Trading** | Direct, off-chain exchange of `.bond` files between individuals. |
-| **Redemption Value** | The amount of collateral paid per bond unit on goal achievement. |
+| **GoalSpec** | The machine-readable definition of a bounty's outcome: one or more terms (each with a criterion, optional data_id/operator/threshold), plus a term_aggregation operator (AND/OR). |
+| **Listing Record** | A signed proof of ownership used to list a bounty for trade without revealing the secret scalar. |
+| **Oracle Panel** | The set of oracles selected by the issuer to monitor and settle a bounty. |
+| **Bilateral Trading** | Direct, off-chain exchange of `.bounty` files between individuals. |
+| **Redemption Value** | The amount of collateral paid per bounty unit on goal achievement. |
 | **DLEQ** | Discrete Log Equality proof; used to unlock Monero/Zcash collateral trustlessly. |
 | **PTLC** | Point Time-Locked Contract; used for Bitcoin Taproot collateral. |
 | **XMR** | Monero; the primary reference currency for NyxForge MVP. |
-| **Trustless Primary Issuance** | A bond creation flow where the buyer provides their public key before collateral is locked, ensuring the issuer never holds the plaintext scalar and cannot sweep on goal achievement. |
-| **DLEQ Re-keying** | A Phase 2 protocol allowing an issuer to cryptographically transfer control of an existing bond lock to a buyer's key without the buyer trusting that the issuer deleted their copy. |
+| **Trustless Primary Issuance** | A bounty creation flow where the buyer provides their public key before collateral is locked, ensuring the issuer never holds the plaintext scalar and cannot sweep on goal achievement. |
+| **DLEQ Re-keying** | A Phase 2 protocol allowing an issuer to cryptographically transfer control of an existing bounty lock to a buyer's key without the buyer trusting that the issuer deleted their copy. |
 
 ---
 
@@ -911,22 +911,22 @@ DarkFi L1 integration and ZK ownership proofs are moved to the v2.0/v3.0 roadmap
 
 The system is modeled as independent Actors communicating via asynchronous messages.
 
-- Each Bond is an Actor Process (DarkFi WASM module or AO Process).
+- Each Bounty is an Actor Process (DarkFi WASM module or AO Process).
 - State transitions are verified using Halo2 ZK-circuits. Every transaction reveals
   a nullifier and creates a new commitment in the global shielded set.
-- All bond interactions (creation, funding, redemption) produce a standardized
+- All bounty interactions (creation, funding, redemption) produce a standardized
   ZK-proof, ensuring a large, unfractured anonymity set.
 
-### 20.2 Maintenance Bonds and Stability Dividends
+### 20.2 Maintenance Bounties and Stability Dividends
 
-Unlike standard SPBs that pay once, a Maintenance Bond pays periodic Stability
+Unlike standard SPBs that pay once, a Maintenance Bounty pays periodic Stability
 Dividends to bondholders as long as a metric remains within a target range (e.g.
-"Annual Mean CO2 < 350ppm"). This makes century-scale bonds economically viable
+"Annual Mean CO2 < 350ppm"). This makes century-scale bounties economically viable
 because holders receive yield while waiting.
 
 ### 20.3 XMR Yield Endowment
 
-Bond collateral is locked in a Yield-Bearing Escrow (RandomX/P2Pool mining rewards).
+Bounty collateral is locked in a Yield-Bearing Escrow (RandomX/P2Pool mining rewards).
 
 - Principal: the base collateral (e.g. 10,000 XMR).
 - Endowment: ongoing yield from mining.
@@ -966,13 +966,13 @@ struct GoalSpecV2 {
 
 1. Post-Quantum Slots: all signature verifiers must have a migration path to
    lattice-based signatures.
-2. Stateless Verification: all evidence for a bond's resolution must be
-   self-contained so the bond can be resolved in a clean-room environment
+2. Stateless Verification: all evidence for a bounty's resolution must be
+   self-contained so the bounty can be resolved in a clean-room environment
    without relying on live Web2 APIs.
 
 ---
 
-## 21. .bond Archive Format
+## 21. .bounty Archive Format
 
 > Absorbed from: `05_TECH/proposed-alteration-hipp-archival.md` (April 2026)
 > Philosophy: D. Richard Hipp (SQLite)
@@ -981,12 +981,12 @@ struct GoalSpecV2 {
 
 The prior spec relied on Arweave (`ar://`) and HTTPS URLs for evidence storage.
 Over 200+ years, gateways disappear, domains expire, and funding models shift.
-A bond linked to an external URL is a brick waiting to happen.
+A bounty linked to an external URL is a brick waiting to happen.
 
 ### 21.2 The SQLite Container
 
 Every Social Policy Bond is maintained as a single-file SQLite database with
-the extension `.bond`. The file IS the bond -- it contains the goal, the
+the extension `.bounty`. The file IS the bounty -- it contains the goal, the
 history, the evidence, and the proofs.
 
 - Archival stability: SQLite is a Library of Congress recommended format for
@@ -999,24 +999,24 @@ External URLs are prohibited for critical adjudication data.
 
 - Schema includes an `evidence_blobs` table.
 - Proof-of-life videos, zkTLS JSON packets, and scientific PDFs are stored as
-  binary BLOBs directly inside the `.bond` file.
+  binary BLOBs directly inside the `.bounty` file.
 - Verification logic hashes the local BLOB against the GoalSpec requirement.
 
 ### 21.4 Self-Verifying Logic (WASM Bundling)
 
-Each `.bond` file bundles the WASM bytecode of the Halo2 verifier circuit
-required to settle the bond. A maintainer in the 23rd century needs only a
+Each `.bounty` file bundles the WASM bytecode of the Halo2 verifier circuit
+required to settle the bounty. A maintainer in the 23rd century needs only a
 standard WASM runtime to execute `settle()` using the evidence in the same file.
 
 ### 21.5 P2P Replication
 
-Nodes (bondholders, issuers, oracles) pin and mirror the full `.bond` files
+Nodes (bondholders, issuers, oracles) pin and mirror the full `.bounty` files
 they are invested in. New evidence and state transitions are broadcast as
 delta-updates (SQLite WAL segments) to the gossip network.
 
 ### 21.6 Security
 
-- SQLCipher (AES-256) encrypts the `.bond` container; only holders of the
-  `BondViewKey` can read evidence.
+- SQLCipher (AES-256) encrypts the `.bounty` container; only holders of the
+  `BountyViewKey` can read evidence.
 - Offline-first: payouts can be prepared and proven in a fully air-gapped
-  environment using only the `.bond` file and a local wallet.
+  environment using only the `.bounty` file and a local wallet.

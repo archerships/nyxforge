@@ -65,12 +65,12 @@ impl TransferProof {
             Digest::from_bytes(crate::primitives::fp_to_bytes(fp))
         };
 
-        let bond_id_fp     = fp_from_bytes(w.old_note.bounty_id.as_bytes());
+        let bounty_id_fp     = fp_from_bytes(w.old_note.bounty_id.as_bytes());
         let nullifier_fp   = fp_from_bytes(nullifier.as_bytes());
         let new_cm_fp      = fp_from_bytes(new_commitment.as_bytes());
 
         let circuit = TransferCircuit {
-            old_bond_id:    Value::known(bond_id_fp),
+            old_bounty_id:    Value::known(bounty_id_fp),
             old_quantity:   Value::known(Fp::from(w.old_note.quantity)),
             old_owner_pk:   Value::known(fp_from_bytes(&w.old_note.owner.0)),
             old_randomness: Value::known(fp_from_bytes(&w.old_note.randomness)),
@@ -80,7 +80,7 @@ impl TransferProof {
             new_randomness: Value::known(fp_from_bytes(&w.new_randomness)),
         };
 
-        let instances: &[&[Fp]] = &[&[nullifier_fp, new_cm_fp, bond_id_fp]];
+        let instances: &[&[Fp]] = &[&[nullifier_fp, new_cm_fp, bounty_id_fp]];
         let keys = &*TRANSFER_KEYS;
 
         let mut transcript = Blake2bWrite::<_, EqAffine, Challenge255<_>>::init(vec![]);
@@ -95,9 +95,9 @@ impl TransferProof {
     pub fn verify(&self) -> Result<(), ZkError> {
         let nullifier_fp = fp_from_bytes(self.nullifier.as_bytes());
         let new_cm_fp    = fp_from_bytes(self.new_commitment.as_bytes());
-        let bond_id_fp   = fp_from_bytes(self.bounty_id.as_bytes());
+        let bounty_id_fp   = fp_from_bytes(self.bounty_id.as_bytes());
 
-        let instances: &[&[Fp]] = &[&[nullifier_fp, new_cm_fp, bond_id_fp]];
+        let instances: &[&[Fp]] = &[&[nullifier_fp, new_cm_fp, bounty_id_fp]];
         let keys = &*TRANSFER_KEYS;
 
         let strategy       = SingleVerifier::new(&keys.params);

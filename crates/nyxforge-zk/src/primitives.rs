@@ -97,25 +97,25 @@ pub fn judge_attest_domain() -> Fp {
 /// Derive the judge attestation public key from a per-bounty attest key.
 ///
 /// ```text
-/// judge_attest_pk = Poseidon2(fp(bond_attest_key), judge_attest_domain())
+/// judge_attest_pk = Poseidon2(fp(bounty_attest_key), judge_attest_domain())
 /// ```
 ///
-/// The judge keeps `bond_attest_key` secret and shares it only with the
+/// The judge keeps `bounty_attest_key` secret and shares it only with the
 /// bounty holder after goal verification.  `judge_attest_pk` is registered on
 /// the bounty and appears as public instance[2] in the BURN circuit.
 ///
-/// The BURN circuit proves the prover knows `bond_attest_key` such that
-/// `Poseidon2(fp(bond_attest_key), domain) == judge_attest_pk`.
-pub fn judge_attest_pk_from_key(bond_attest_key: &[u8; 32]) -> [u8; 32] {
+/// The BURN circuit proves the prover knows `bounty_attest_key` such that
+/// `Poseidon2(fp(bounty_attest_key), domain) == judge_attest_pk`.
+pub fn judge_attest_pk_from_key(bounty_attest_key: &[u8; 32]) -> [u8; 32] {
     let domain = judge_attest_domain();
-    fp_to_bytes(poseidon2(fp_from_bytes(bond_attest_key), domain))
+    fp_to_bytes(poseidon2(fp_from_bytes(bounty_attest_key), domain))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    const BOND_ID:       [u8; 32] = [0x01u8; 32];
+    const BOUNTY_ID:       [u8; 32] = [0x01u8; 32];
     const QTY:           u64      = 10;
     const OWNER_PK:      [u8; 32] = [0xBBu8; 32];
     const RANDOMNESS:    [u8; 32] = [0x42u8; 32];
@@ -124,27 +124,27 @@ mod tests {
 
     #[test]
     fn commitment_is_deterministic() {
-        let a = note_commitment(&BOND_ID, QTY, &OWNER_PK, &RANDOMNESS);
-        let b = note_commitment(&BOND_ID, QTY, &OWNER_PK, &RANDOMNESS);
+        let a = note_commitment(&BOUNTY_ID, QTY, &OWNER_PK, &RANDOMNESS);
+        let b = note_commitment(&BOUNTY_ID, QTY, &OWNER_PK, &RANDOMNESS);
         assert_eq!(a, b);
     }
 
     #[test]
     fn commitment_differs_by_quantity() {
-        let a = note_commitment(&BOND_ID, 10, &OWNER_PK, &RANDOMNESS);
-        let b = note_commitment(&BOND_ID, 11, &OWNER_PK, &RANDOMNESS);
+        let a = note_commitment(&BOUNTY_ID, 10, &OWNER_PK, &RANDOMNESS);
+        let b = note_commitment(&BOUNTY_ID, 11, &OWNER_PK, &RANDOMNESS);
         assert_ne!(a, b);
     }
 
     #[test]
     fn commitment_differs_by_owner() {
-        let a = note_commitment(&BOND_ID, QTY, &OWNER_PK, &RANDOMNESS);
-        let b = note_commitment(&BOND_ID, QTY, &[0xCCu8; 32], &RANDOMNESS);
+        let a = note_commitment(&BOUNTY_ID, QTY, &OWNER_PK, &RANDOMNESS);
+        let b = note_commitment(&BOUNTY_ID, QTY, &[0xCCu8; 32], &RANDOMNESS);
         assert_ne!(a, b);
     }
 
     #[test]
-    fn commitment_differs_by_bond_id() {
+    fn commitment_differs_by_bounty_id() {
         let a = note_commitment(&[0xAAu8; 32], QTY, &OWNER_PK, &RANDOMNESS);
         let b = note_commitment(&[0xBBu8; 32], QTY, &OWNER_PK, &RANDOMNESS);
         assert_ne!(a, b);
@@ -174,8 +174,8 @@ mod tests {
     #[test]
     fn commitment_and_nullifier_are_independent() {
         // Changing randomness shifts commitment but leaves nullifier unchanged.
-        let cm_a = note_commitment(&BOND_ID, QTY, &OWNER_PK, &RANDOMNESS);
-        let cm_b = note_commitment(&BOND_ID, QTY, &OWNER_PK, &[0xFFu8; 32]);
+        let cm_a = note_commitment(&BOUNTY_ID, QTY, &OWNER_PK, &RANDOMNESS);
+        let cm_b = note_commitment(&BOUNTY_ID, QTY, &OWNER_PK, &[0xFFu8; 32]);
         let nul = note_nullifier(&OWNER_SECRET, &SERIAL);
         let nul2 = note_nullifier(&OWNER_SECRET, &SERIAL);
         assert_ne!(cm_a, cm_b);
@@ -195,7 +195,7 @@ mod tests {
     #[test]
     fn print_golden_values() {
         // Run this test with --nocapture to obtain values for updating golden vectors.
-        let cm = note_commitment(&BOND_ID, QTY, &OWNER_PK, &RANDOMNESS);
+        let cm = note_commitment(&BOUNTY_ID, QTY, &OWNER_PK, &RANDOMNESS);
         let nul = note_nullifier(&OWNER_SECRET, &SERIAL);
         println!("GOLDEN_COMMITMENT = {}", hex::encode(fp_to_bytes(cm)));
         println!("GOLDEN_NULLIFIER  = {}", hex::encode(fp_to_bytes(nul)));

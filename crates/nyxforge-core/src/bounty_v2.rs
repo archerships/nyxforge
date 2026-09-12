@@ -56,7 +56,7 @@ pub enum BountyStateV2 {
 impl BountyV2 {
     pub fn compute_id(spec: &GoalSpecV2, issuer: &PublicKey) -> Digest {
         let mut hasher = blake3::Hasher::new();
-        hasher.update(b"nyxforge::bond_v2_id");
+        hasher.update(b"nyxforge::bounty_v2_id");
         hasher.update(&issuer.0);
         hasher.update(spec.title.as_bytes());
         hasher.update(&spec.inception.timestamp().to_le_bytes());

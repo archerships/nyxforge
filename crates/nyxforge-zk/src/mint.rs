@@ -65,17 +65,17 @@ impl MintProof {
         };
         // commitment() calls primitives::note_commitment internally.
         let commitment   = note.commitment();
-        let bond_id_fp   = fp_from_bytes(witness.bounty_id.as_bytes());
+        let bounty_id_fp   = fp_from_bytes(witness.bounty_id.as_bytes());
         let commitment_fp = fp_from_bytes(commitment.as_bytes());
 
         let circuit = MintCircuit {
-            bounty_id:    Value::known(bond_id_fp),
+            bounty_id:    Value::known(bounty_id_fp),
             quantity:   Value::known(Fp::from(witness.quantity)),
             owner_pk:   Value::known(fp_from_bytes(&witness.recipient.0)),
             randomness: Value::known(fp_from_bytes(&witness.randomness)),
         };
 
-        let instances: &[&[Fp]] = &[&[commitment_fp, bond_id_fp]];
+        let instances: &[&[Fp]] = &[&[commitment_fp, bounty_id_fp]];
         let keys = &*MINT_KEYS;
 
         let mut transcript = Blake2bWrite::<_, EqAffine, Challenge255<_>>::init(vec![]);
@@ -90,9 +90,9 @@ impl MintProof {
     /// Verify a MINT proof against its public inputs.
     pub fn verify(&self) -> Result<(), ZkError> {
         let commitment_fp = fp_from_bytes(self.commitment.as_bytes());
-        let bond_id_fp    = fp_from_bytes(self.bounty_id.as_bytes());
+        let bounty_id_fp    = fp_from_bytes(self.bounty_id.as_bytes());
 
-        let instances: &[&[Fp]] = &[&[commitment_fp, bond_id_fp]];
+        let instances: &[&[Fp]] = &[&[commitment_fp, bounty_id_fp]];
         let keys = &*MINT_KEYS;
 
         let strategy    = SingleVerifier::new(&keys.params);
