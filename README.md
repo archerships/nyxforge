@@ -1,104 +1,103 @@
 # NyxForge
 
-> Anonymous, decentralised, peer-to-peer social policy bond market
-> Built on [DarkFi](https://dark.fi) · Written in Rust · Runs on WASM
+> Anonymous, permissionless social policy bond marketplace.
+> **Bearer-file architecture** -- no custom blockchain, no ZK ownership circuits, no trusted custodian.
+> **XMR-first.** Written in Rust.
 
 ---
 
-## What is NyxForge?
+## What NyxForge is
 
-**Social Policy Bonds** are financial instruments that pay out only when a measurable
-social or environmental goal is achieved (reduced homelessness, clean air targets,
-literacy rates, etc.).  Traditional SPB schemes require trusted institutions to issue
-and settle bonds.
+[Social policy bonds](https://en.wikipedia.org/wiki/Social_policy_bond) pay out only when a
+measurable real-world goal is achieved -- reduced homelessness, clean air targets,
+literacy rates. Traditional SPB schemes require trusted institutions to issue and
+settle the bond. NyxForge removes the trusted party.
 
-**NyxForge removes that requirement.**  Anyone can:
+A bounty is a **self-contained bearer instrument**: a `.bounty` file backed by crypto
+collateral locked with DLEQ/PTLC adaptor signatures or smart-contract escrow. Anyone
+holding the file and its secret scalar can verify it and redeem it. Possession is
+ownership.
 
-- **Define** a goal with verifiable, on-chain criteria.
-- **Issue** bonds backed by a DarkFi DAO treasury or individual collateral.
-- **Trade** bonds anonymously on a ZK order-book DEX.
-- **Verify** goal completion through a decentralised oracle network.
-- **Redeem** bonds via anonymous ZK settlement — no KYC, no bank, no app store.
+## Status
 
-Everything runs as WASM in the browser.  There is no Apple/Google gatekeeping.
+`doc/00_MVP.md` (**MVP spec v1.0, April 2026**) is the **current build target** and
+takes precedence over every other design document.
 
----
+| Document | Role |
+| :--- | :--- |
+| [`docs/00_MVP.md`](docs/00_MVP.md) | Current build target: bearer files, DLEQ/PTLC collateral |
+| [`docs/00_CORE.md`](docs/00_CORE.md) | v2.0 aspirational spec: ZK notes, order book, P2P network |
+| [`docs/archive/darkfi-era/`](docs/archive/darkfi-era/) | Superseded DarkFi L1 / DRK-token / ZK-note design (historical) |
+| `crates/nyxforge-zk`, `-contract`, `-node` | Preserved v2 code; **not** on the MVP critical path |
 
-## Architecture
+## How it works
+
+- **Bearer file.** One SQLite `.bounty` file per bounty, containing the goal, terms,
+  collateral details, judge panel, evidence, and verification logic. No P2P network,
+  no ZK ownership circuits, no nullifier set.
+- **Trustless collateral.** XMR (DLEQ), ZEC shielded Sapling (DLEQ), BTC Taproot
+  (PTLC), TARI (PTLC), ETH (escrow contract), NYX (ledger escrow). The judge
+  attests to the outcome but **cannot steal the collateral**: payout requires
+  completing a pre-signed adaptor transaction with `s_met`, and the issuer reclaims
+  after expiry with `s_fail`.
+- **Judges.** A human panel for qualitative goals, an HTTP-JSON oracle for
+  quantitative ones. A quorum of attestations moves the bounty to REDEEMABLE.
+- **Trading.** Bilateral and off-chain -- the file plus its scalar, exchanged over
+  Tor or Signal. No order book is needed for the MVP.
+- **Archival format.** SQLite (Library of Congress standard) plus the NyxEnvelope
+  for non-bounty files, chosen for 200-year durability.
+
+## Currencies: XMR first
+
+**XMR is the default reference implementation and the launch target** -- the MVP
+success criterion is the first live bounty on Monero mainnet.
+
+The MVP supports XMR, ZEC (Sapling), BTC (Taproot), ETH, TARI, and NYX from genesis.
+**NYX** is NyxForge's own unit, included in the MVP to support testing, reward
+accounting, and early-supporter incentives; NYX-denominated judge fees are allowed
+when the bounty's collateral currency is NYX. NYX is **not** a fundraise: the MVP
+funding model is grants (Gitcoin, Octant, Monero CCS, ZCash Foundation) plus a
+milestone-based development bounty -- no token sale, no DAO, no corporate entity.
+
+## Out of scope for the MVP
+
+Deferred to **v2**: ZK MINT/TRANSFER/BURN ownership circuits, libp2p P2P network,
+order book / DEX, Flutter browser UI, nullifier set, Merkle membership proofs, judge
+slashing, goal-text encryption.
+Deferred to **v3**: DarkFi L1 integration, full post-quantum verifiers, ZEC Orchard
+locking. Bonds with deadlines beyond 10 years are blocked on the cryptographically
+relevant quantum computer (CRQC) timeline.
+
+## Repository layout
 
 ```
-nyxforge/
-├── crates/
-│   ├── nyxforge-core        # Bond & market primitives, shared types
-│   ├── nyxforge-zk          # ZK circuits: mint / transfer / burn / verify
-│   ├── nyxforge-contract    # DarkFi WASM smart contracts
-│   ├── nyxforge-node        # P2P node (libp2p gossip + DarkFi net)
-│   ├── nyxforge-oracle      # Decentralised goal-verification oracle network
-│   └── nyxforge-web         # Browser WASM frontend (wasm-bindgen)
-└── docs/
-    ├── architecture.md      # System design deep-dive
-    ├── bond-lifecycle.md    # Bond state machine
-    └── zk-design.md         # ZK circuit descriptions
+crates/           Rust workspace: nyxforge-{core,zk,contract,node,oracle,web,wallet,miner,cli,mcp,test-fixtures}
+ui/               Flutter browser UI (v2)
+docs/             Specifications and research (see the Status table above)
+scripts/          Tooling
+src/              Archived DarkFi-era code (historical; do not re-integrate without a decision)
 ```
 
-## Bond Lifecycle
+MVP-critical work touches a `.bounty`/bounty crate, parts of `nyxforge-cli`, and a
+judge crate. Every other crate is preserved but must not be modified during MVP
+development.
 
-```
-DRAFT ──issue──► ACTIVE ──trade──► ACTIVE (new holder)
-                    │
-               goal achieved?
-                    │
-               verify (oracle)
-                    │
-               REDEEMABLE ──redeem──► SETTLED
-                    │
-               deadline passed, goal unmet
-                    │
-               EXPIRED
-```
-
-## Getting Started
-
-### Prerequisites
-
-- Rust 1.79+ (install via rustup)
-- wasm-pack (`cargo install wasm-pack`)
-- A DarkFi testnet node (see [DarkFi docs](https://dark.fi/))
-
-### Build
+## Building
 
 ```bash
-# Build all crates
-cargo build --workspace
-
-# Build WASM frontend
-cd crates/nyxforge-web
-wasm-pack build --target web
-
-# Run a local node
-cargo run -p nyxforge-node -- --testnet
+cargo build            # Rust workspace
+cargo test
 ```
 
-### Run tests
+## Documentation
 
-```bash
-cargo test --workspace
-```
+- `docs/00_MVP.md` -- the current spec: file schema, lifecycle, judge protocol, CLI
+- `docs/file-format-spec.md` -- `.bounty` and NyxEnvelope formats
+- `docs/background-notes/` -- oracle, privacy, and cryptographic research briefs
+- `docs/storyboards/` -- UI flows and rendered mockups
+- `docs/research/` -- supporting research
 
----
+## Contributing
 
-## Design Principles
-
-1. **Privacy by default** — bond ownership and trades are ZK-anonymous; only
-   goal verification results are public.
-2. **No trusted third party** — oracles are a decentralised network with economic
-   stake; settlement is trustless on-chain.
-3. **Sovereign access** — WASM in browser; no native app install required.
-4. **Outcome-driven incentives** — issuers set goals, markets price probability;
-   profit motive aligns with social good.
-
----
-
-## License
-
-AGPL-3.0.  Contributions welcome.
+Read `docs/00_MVP.md` before proposing changes. Design changes belong in the spec,
+not in code comments.
