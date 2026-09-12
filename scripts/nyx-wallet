@@ -1,0 +1,852 @@
+#!/usr/bin/env python3
+"""
+NyxForge Crypto Wallet mockup generator.
+Generates docs/storyboards/out/nyx-wallet-mockup.html
+
+Pre-bounty wallet for holding XMR, TARI, and NYX before locking
+collateral into .bounty files.
+
+5 frames:
+  1. Portfolio   -- total balance, asset list, recent activity
+  2. Coin Detail -- single-asset view, sparkline, tx history
+  3. Receive     -- address display, ASCII QR placeholder, copy
+  4. Send        -- recipient, amount, fee tier, confirm
+  5. Mining      -- XMR merge-miner + NYX/TARI, emission curve, pool controls
+"""
+import os, subprocess
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTDIR     = os.path.join(SCRIPT_DIR, "../docs/storyboards/out")
+OUTFILE    = os.path.join(OUTDIR, "nyx-wallet-mockup.html")
+
+# ---------------------------------------------------------------------------
+# Palette
+# ---------------------------------------------------------------------------
+BG           = "#0d0f1a"
+SURF         = "#131524"
+SURF_HI      = "#1a1d2e"
+ACCENT       = "#5e6ad2"
+ACC_GLO      = "#2d3068"
+TXT_PRI      = "#e8eaf0"
+TXT_SEC      = "#b8c0d8"
+TXT_MUT      = "#8b95b0"
+SUCCESS      = "#4ade80"
+DANGER       = "#f87171"
+WARN         = "#fbbf24"
+BORDER       = "#2a2d3e"
+INACT        = "#3a3d5c"
+SUCCESS_RGBA = "rgba(74,222,128,0.10)"
+WARN_RGBA    = "rgba(251,191,36,0.10)"
+ACCENT_RGBA  = "rgba(94,106,210,0.12)"
+DANGER_RGBA  = "rgba(248,113,113,0.10)"
+
+FW = 900
+
+# Coin brand accents
+XMR_COLOR  = "#ff6600"
+TARI_COLOR = "#9b59f5"
+NYX_COLOR  = ACCENT
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def section_label(text):
+    return (f'<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;'
+            f'color:{ACCENT};margin-bottom:8px;">{text}</div>')
+
+def divider(mb=12):
+    return f'<div style="height:1px;background:{BORDER};margin:0 0 {mb}px;"></div>'
+
+def status_pill(text, color, bg):
+    return (f'<span style="font-size:10px;font-weight:700;letter-spacing:0.8px;'
+            f'padding:3px 9px;border-radius:4px;color:{color};background:{bg};">'
+            f'{text}</span>')
+
+def btn(label, color=SUCCESS, text_color=BG, small=False, full=False):
+    pad = "7px 16px" if small else "13px 28px"
+    fs  = "12px"    if small else "14px"
+    wid = "width:100%;display:block;text-align:center;" if full else "display:inline-block;"
+    return (f'<div style="{wid}padding:{pad};background:{color};'
+            f'border-radius:7px;font-size:{fs};font-weight:700;color:{text_color};'
+            f'cursor:pointer;letter-spacing:0.3px;">{label}</div>')
+
+def btn_outline(label, small=False, color=None, full=False):
+    pad  = "6px 14px"  if small else "12px 27px"
+    fs   = "12px"      if small else "14px"
+    col  = color or TXT_SEC
+    bord = color or BORDER
+    wid  = "width:100%;display:block;text-align:center;" if full else "display:inline-block;"
+    return (f'<div style="{wid}padding:{pad};background:transparent;'
+            f'border:1px solid {bord};border-radius:7px;font-size:{fs};'
+            f'color:{col};cursor:pointer;">{label}</div>')
+
+def input_field(label, value, mono=False, note=None):
+    font = "monospace" if mono else "inherit"
+    n = (f'<div style="font-size:11px;color:{TXT_MUT};margin-top:4px;">{note}</div>'
+         if note else "")
+    return (f'<div style="margin-bottom:12px;">'
+            f'<div style="font-size:12px;color:{TXT_MUT};margin-bottom:4px;">{label}</div>'
+            f'<div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;'
+            f'padding:9px 13px;font-size:13px;color:{TXT_MUT};font-family:{font};">{value}</div>'
+            f'{n}</div>')
+
+def wallet_header(subtitle="Crypto Wallet"):
+    return f"""
+  <div style="background:{SURF};border-bottom:1px solid {BORDER};padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:{ACC_GLO};
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:11px;font-weight:700;color:{ACCENT};">NYX</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">NyxForge Wallet</div>
+        <div style="font-size:11px;color:{TXT_MUT};">{subtitle}</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="font-size:12px;font-family:monospace;color:{TXT_MUT};">4AB...f9c2</div>
+      <div style="width:8px;height:8px;border-radius:50%;background:{SUCCESS};"></div>
+    </div>
+  </div>"""
+
+def coin_badge(symbol, color):
+    return (f'<div style="width:36px;height:36px;border-radius:50%;'
+            f'background:{color}22;border:2px solid {color};'
+            f'display:flex;align-items:center;justify-content:center;'
+            f'font-size:10px;font-weight:700;color:{color};flex-shrink:0;">'
+            f'{symbol}</div>')
+
+def tx_row(direction, desc, amount, coin_color, date, status="confirmed"):
+    arrow = "&uarr;" if direction == "out" else "&darr;"
+    arrow_col = DANGER if direction == "out" else SUCCESS
+    sign = "-" if direction == "out" else "+"
+    sign_col = DANGER if direction == "out" else SUCCESS
+    pill_col = TXT_MUT if status == "confirmed" else WARN
+    pill_bg  = SURF_HI if status == "confirmed" else WARN_RGBA
+    return (f'<div style="display:flex;align-items:center;gap:12px;padding:9px 0;'
+            f'border-bottom:1px solid {BORDER};">'
+            f'<div style="width:30px;height:30px;border-radius:50%;'
+            f'background:{arrow_col}22;display:flex;align-items:center;'
+            f'justify-content:center;font-size:16px;color:{arrow_col};flex-shrink:0;">'
+            f'{arrow}</div>'
+            f'<div style="flex:1;min-width:0;">'
+            f'<div style="font-size:13px;color:{TXT_PRI};">{desc}</div>'
+            f'<div style="font-size:11px;color:{TXT_MUT};margin-top:2px;">{date}</div>'
+            f'</div>'
+            f'<div style="text-align:right;">'
+            f'<div style="font-size:13px;font-weight:700;color:{sign_col};">'
+            f'{sign}{amount}</div>'
+            f'<div style="margin-top:3px;">{status_pill(status.upper(), pill_col, pill_bg)}'
+            f'</div></div></div>')
+
+# ---------------------------------------------------------------------------
+# Sparkline SVG (balance history)
+# ---------------------------------------------------------------------------
+
+def sparkline_svg(points, w=340, h=48, color=ACCENT):
+    """points: list of 0..1 normalised values"""
+    n = len(points)
+    xs = [i / (n - 1) * w for i in range(n)]
+    ys = [(1 - p) * (h - 8) + 4 for p in points]
+    path = "M " + " L ".join(f"{x:.1f},{y:.1f}" for x, y in zip(xs, ys))
+    fill_path = (f"M {xs[0]:.1f},{h} L " +
+                 " L ".join(f"{x:.1f},{y:.1f}" for x, y in zip(xs, ys)) +
+                 f" L {xs[-1]:.1f},{h} Z")
+    return (f'<svg width="{w}" height="{h}" xmlns="http://www.w3.org/2000/svg"'
+            f' style="display:block;">'
+            f'<path d="{fill_path}" fill="{color}" opacity="0.10"/>'
+            f'<path d="{path}" fill="none" stroke="{color}" stroke-width="2"'
+            f' stroke-linecap="round" stroke-linejoin="round"/>'
+            f'<circle cx="{xs[-1]:.1f}" cy="{ys[-1]:.1f}" r="4"'
+            f' fill="{color}" stroke="{BG}" stroke-width="2"/>'
+            f'</svg>')
+
+# ---------------------------------------------------------------------------
+# Frame 1 -- Portfolio
+# ---------------------------------------------------------------------------
+
+PORTFOLIO_POINTS = [0.30, 0.35, 0.28, 0.40, 0.38, 0.55, 0.50, 0.62, 0.58, 0.70,
+                    0.68, 0.75, 0.72, 0.80, 0.77, 0.85, 0.83, 0.90, 0.88, 0.94]
+
+TOTAL_CARD = f"""
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:10px;
+            padding:20px 22px;margin-bottom:18px;">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+    <div>
+      <div style="font-size:12px;color:{TXT_MUT};margin-bottom:6px;letter-spacing:0.8px;">
+        TOTAL BALANCE</div>
+      <div style="font-size:34px;font-weight:700;color:{TXT_PRI};line-height:1;">
+        $4,218.40</div>
+      <div style="font-size:13px;color:{SUCCESS};margin-top:6px;">
+        +$142.30 (+3.5%) today</div>
+    </div>
+    <div>
+      {sparkline_svg(PORTFOLIO_POINTS, w=180, h=56)}
+      <div style="font-size:10px;color:{TXT_MUT};text-align:right;margin-top:4px;">
+        30-day balance</div>
+    </div>
+  </div>
+  <div style="height:1px;background:{BORDER};margin:16px 0 14px;"></div>
+  <div style="display:flex;gap:10px;">
+    {btn("Receive", color=ACCENT, text_color=TXT_PRI, small=True)}
+    {btn("Send", color=SURF_HI, text_color=TXT_SEC, small=True)}
+  </div>
+</div>"""
+
+def asset_row(symbol, name, color, balance_coin, balance_usd, change_pct, change_pos, locked):
+    change_col = SUCCESS if change_pos else DANGER
+    change_sign = "+" if change_pos else "-"
+    locked_note = ""
+    if locked:
+        locked_note = (f'<span style="font-size:10px;color:{WARN};margin-left:8px;">'
+                       f'{locked} locked</span>')
+    return (f'<div style="display:flex;align-items:center;gap:14px;padding:11px 0;'
+            f'border-bottom:1px solid {BORDER};cursor:pointer;"'
+            f' onmouseover="this.style.background=\'{SURF_HI}\'"'
+            f' onmouseout="this.style.background=\'transparent\'">'
+            + coin_badge(symbol, color)
+            + f'<div style="flex:1;min-width:0;">'
+            f'<div style="font-size:14px;font-weight:700;color:{TXT_PRI};">{name}'
+            f'  <span style="font-size:12px;font-weight:400;color:{TXT_MUT};">{symbol}</span>'
+            f'{locked_note}</div>'
+            f'<div style="font-size:12px;color:{TXT_MUT};margin-top:2px;">'
+            f'{balance_coin}</div>'
+            f'</div>'
+            f'<div style="text-align:right;">'
+            f'<div style="font-size:14px;font-weight:700;color:{TXT_PRI};">{balance_usd}</div>'
+            f'<div style="font-size:12px;color:{change_col};margin-top:2px;">'
+            f'{change_sign}{change_pct}</div>'
+            f'</div></div>')
+
+ASSET_LIST = (
+    asset_row("XMR", "Monero",  XMR_COLOR, "9.842 XMR",  "$2,951.20", "2.8%", True,  "0.90 XMR")
+  + asset_row("TARI", "Tari",   TARI_COLOR,"4,400 TARI",  "$880.00",  "5.1%", True,  None)
+  + asset_row("NYX",  "NyxForge Token", NYX_COLOR, "38,720 NYX", "$387.20", "1.2%", False, None)
+)
+
+RECENT_ACTIVITY = "".join([
+    tx_row("in",  "Received from exchange",    "2.00 XMR",  XMR_COLOR,  "Today, 09:14"),
+    tx_row("out", "Sent to 8Bf...3ac",         "500 TARI",  TARI_COLOR, "Today, 07:32"),
+    tx_row("out", "Locked: ALZ-2040 collateral","0.45 XMR", XMR_COLOR,  "Yesterday",   "confirmed"),
+    tx_row("in",  "Staking reward",             "120 NYX",  NYX_COLOR,  "2 days ago"),
+])
+
+F1 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + wallet_header("Hold, send, and lock collateral")
+      + f'<div style="padding:18px 24px;">'
+      + TOTAL_CARD
+      + f'<div style="display:flex;gap:20px;">'
+      # left: asset list
+      + f'<div style="flex:1;min-width:0;">'
+      + section_label("ASSETS")
+      + ASSET_LIST
+      + f'</div>'
+      # right: recent activity
+      + f'<div style="width:310px;flex-shrink:0;">'
+      + section_label("RECENT ACTIVITY")
+      + RECENT_ACTIVITY
+      + f'<div style="font-size:11px;color:{ACCENT};margin-top:8px;cursor:pointer;">'
+      + f'View all transactions &rarr;</div>'
+      + f'</div>'
+      + f'</div>'
+      + f'</div></div>')
+
+# ---------------------------------------------------------------------------
+# Frame 2 -- Coin Detail (XMR)
+# ---------------------------------------------------------------------------
+
+XMR_SPARK_PTS = [0.40, 0.38, 0.45, 0.50, 0.48, 0.55, 0.52, 0.60, 0.63, 0.58,
+                 0.65, 0.70, 0.68, 0.75, 0.72, 0.78, 0.80, 0.77, 0.85, 0.90]
+
+XMR_BALANCE_CARD = f"""
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:10px;
+            padding:18px 20px;margin-bottom:16px;">
+  <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px;">
+    {coin_badge("XMR", XMR_COLOR)}
+    <div>
+      <div style="font-size:18px;font-weight:700;color:{TXT_PRI};">Monero</div>
+      <div style="font-size:12px;color:{TXT_MUT};">XMR &middot; Privacy coin</div>
+    </div>
+    <div style="margin-left:auto;text-align:right;">
+      <div style="font-size:22px;font-weight:700;color:{TXT_PRI};">$2,951.20</div>
+      <div style="font-size:13px;color:{SUCCESS};">+2.8% today</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
+              padding-bottom:14px;border-bottom:1px solid {BORDER};margin-bottom:14px;">
+    {''.join(
+      f'<div style="background:{SURF_HI};border-radius:7px;padding:10px 12px;">'
+      f'<div style="font-size:11px;color:{TXT_MUT};margin-bottom:4px;">{l}</div>'
+      f'<div style="font-size:14px;font-weight:700;color:{c};">{v}</div></div>'
+      for l, v, c in [
+          ("Available",  "8.952 XMR", TXT_PRI),
+          ("Locked",     "0.890 XMR", WARN),
+          ("Pending",    "0.000 XMR", TXT_MUT),
+      ]
+    )}
+  </div>
+
+  {sparkline_svg(XMR_SPARK_PTS, w=828, h=60, color=XMR_COLOR)}
+  <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:{TXT_MUT};">
+    <span>30 days ago</span><span>15 days ago</span><span>Today</span>
+  </div>
+</div>"""
+
+XMR_TX_ROWS = "".join([
+    tx_row("in",  "Received from Kraken",        "2.000 XMR", XMR_COLOR, "Apr 23, 09:14"),
+    tx_row("out", "Locked: ALZ-2040 collateral",  "0.450 XMR", XMR_COLOR, "Apr 22, 14:08"),
+    tx_row("out", "Locked: TB-2038 collateral",   "0.900 XMR", XMR_COLOR, "Apr 21, 11:22"),
+    tx_row("in",  "Received from 9Cf...77a",      "1.500 XMR", XMR_COLOR, "Apr 20, 16:45"),
+    tx_row("out", "Sent to 8Bf...3ac",            "0.200 XMR", XMR_COLOR, "Apr 18, 08:30"),
+])
+
+DETAIL_HEADER_F2 = f"""
+<div style="padding:13px 24px;border-bottom:1px solid {BORDER};
+            display:flex;align-items:center;gap:12px;">
+  <div style="font-size:12px;color:{ACCENT};cursor:pointer;">&larr; Portfolio</div>
+  <div style="width:1px;height:16px;background:{BORDER};"></div>
+  <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Monero (XMR)</div>
+</div>"""
+
+F2 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + wallet_header("Monero (XMR)")
+      + DETAIL_HEADER_F2
+      + f'<div style="padding:18px 24px;">'
+      + XMR_BALANCE_CARD
+      + section_label("TRANSACTION HISTORY")
+      + XMR_TX_ROWS
+      + f'<div style="display:flex;gap:10px;margin-top:16px;">'
+      + btn("Receive XMR", color=ACCENT, text_color=TXT_PRI)
+      + f'&nbsp;&nbsp;'
+      + btn_outline("Send XMR")
+      + f'</div>'
+      + f'</div></div>')
+
+# ---------------------------------------------------------------------------
+# Frame 3 -- Receive
+# ---------------------------------------------------------------------------
+
+# ASCII-art QR placeholder block (monospace grid, purely decorative)
+QR_ROWS = [
+    "######## ## ####  ## ## ########",
+    "##    ## ##  ##   ## ## ##    ##",
+    "##    ## ##  ## #### ## ##    ##",
+    "########    ####    ## ########",
+    "   ##    ## ## ## ##   ##   ##  ",
+    "####  ## ## ##  #### #### ####  ",
+    "######## ## ####  ## ## ########",
+]
+QR_HTML = "".join(
+    f'<div style="font-family:monospace;font-size:9px;line-height:1.35;'
+    f'color:{TXT_MUT};letter-spacing:1px;">{row}</div>'
+    for row in QR_ROWS
+)
+
+RECEIVE_HEADER = f"""
+<div style="padding:13px 24px;border-bottom:1px solid {BORDER};
+            display:flex;align-items:center;gap:12px;">
+  <div style="font-size:12px;color:{ACCENT};cursor:pointer;">&larr; Portfolio</div>
+  <div style="width:1px;height:16px;background:{BORDER};"></div>
+  <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Receive</div>
+</div>"""
+
+COIN_SELECTOR = f"""
+{section_label("SELECT COIN")}
+<div style="display:flex;gap:8px;margin-bottom:20px;">
+  {''.join(
+    f'<div style="flex:1;padding:10px 14px;border-radius:7px;cursor:pointer;'
+    f'background:{"" + ACC_GLO if sym == "XMR" else SURF_HI};'
+    f'border:{"2px" if sym == "XMR" else "1px"} solid '
+    f'{"" + XMR_COLOR if sym == "XMR" else BORDER};'
+    f'display:flex;align-items:center;gap:8px;">'
+    + coin_badge(sym, col)
+    + f'<div>'
+    f'<div style="font-size:13px;font-weight:700;color:{TXT_PRI};">{sym}</div>'
+    f'<div style="font-size:11px;color:{TXT_MUT};">{name}</div>'
+    f'</div></div>'
+    for sym, name, col in [
+        ("XMR",  "Monero",        XMR_COLOR),
+        ("TARI", "Tari",          TARI_COLOR),
+        ("NYX",  "NyxForge",      NYX_COLOR),
+    ]
+  )}
+</div>"""
+
+ADDRESS_DISPLAY = f"""
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:10px;
+            padding:20px 22px;margin-bottom:16px;">
+  <div style="display:flex;gap:20px;align-items:flex-start;">
+    <div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:8px;
+                padding:16px;flex-shrink:0;">
+      {QR_HTML}
+      <div style="font-size:9px;color:{TXT_MUT};text-align:center;margin-top:8px;">
+        Scan to receive XMR</div>
+    </div>
+    <div style="flex:1;">
+      <div style="font-size:12px;color:{TXT_MUT};margin-bottom:8px;">
+        Your XMR deposit address</div>
+      <div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;
+                  padding:10px 13px;font-family:monospace;font-size:11px;
+                  color:{TXT_SEC};word-break:break-all;line-height:1.6;
+                  margin-bottom:10px;">
+        46bUt5XaSiCjMvPJM1KRbWiqwLbEGV9YLs<br>
+        FJezCsWBn1s8A7FLAFHhQM4Jn9wMDKe<br>
+        yU7BwXqnQNr5GT</div>
+      <div style="display:flex;gap:8px;">
+        {btn("Copy Address", color=ACCENT, text_color=TXT_PRI, small=True)}
+        {btn_outline("New Address", small=True)}
+      </div>
+      <div style="font-size:11px;color:{TXT_MUT};margin-top:12px;line-height:1.6;">
+        Subaddress &bull; never reused &bull; no linking to other transactions
+      </div>
+      <div style="background:{WARN_RGBA};border:1px solid {WARN};border-radius:6px;
+                  padding:10px 12px;margin-top:12px;font-size:12px;
+                  color:{TXT_SEC};line-height:1.5;">
+        Only send XMR to this address. Sending a different coin will result in
+        permanent loss.
+      </div>
+    </div>
+  </div>
+</div>"""
+
+PENDING_DEPOSITS = f"""
+{section_label("PENDING DEPOSITS")}
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            padding:12px 16px;">
+  {tx_row("in", "Incoming &mdash; 0 confirmations", "2.00 XMR", XMR_COLOR,
+          "Detected 1 min ago", "pending")}
+  <div style="font-size:11px;color:{TXT_MUT};padding-top:8px;">
+    XMR requires 10 confirmations (&asymp;20 min) before funds are spendable.
+  </div>
+</div>"""
+
+F3 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + wallet_header("Receive crypto")
+      + RECEIVE_HEADER
+      + f'<div style="padding:18px 24px;">'
+      + COIN_SELECTOR
+      + ADDRESS_DISPLAY
+      + PENDING_DEPOSITS
+      + f'</div></div>')
+
+# ---------------------------------------------------------------------------
+# Frame 4 -- Send
+# ---------------------------------------------------------------------------
+
+FEE_OPTIONS = f"""
+{section_label("NETWORK FEE")}
+<div style="display:flex;gap:8px;margin-bottom:16px;">
+  {''.join(
+    f'<div style="flex:1;padding:10px 12px;border-radius:7px;cursor:pointer;'
+    f'background:{"" + ACC_GLO if tier == "Standard" else SURF_HI};'
+    f'border:{"2px" if tier == "Standard" else "1px"} solid '
+    f'{"" + ACCENT if tier == "Standard" else BORDER};">'
+    f'<div style="font-size:12px;font-weight:700;'
+    f'color:{"" + TXT_PRI if tier == "Standard" else TXT_MUT};">{tier}</div>'
+    f'<div style="font-size:11px;color:{TXT_MUT};margin-top:2px;">{fee}</div>'
+    f'<div style="font-size:11px;color:{TXT_MUT};">{eta}</div></div>'
+    for tier, fee, eta in [
+        ("Economy",  "0.00001 XMR",  "~30 min"),
+        ("Standard", "0.00006 XMR",  "~5 min"),
+        ("Priority", "0.00020 XMR",  "~2 min"),
+    ]
+  )}
+</div>"""
+
+SEND_SUMMARY = f"""
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            padding:13px 16px;margin-bottom:16px;">
+  {section_label("TRANSACTION SUMMARY")}
+  {''.join(
+    f'<div style="display:flex;justify-content:space-between;margin-bottom:8px;">'
+    f'<div style="font-size:13px;color:{TXT_MUT};">{l}</div>'
+    f'<div style="font-size:13px;color:{c};font-weight:{fw};">{v}</div></div>'
+    for l, v, c, fw in [
+        ("Sending",       "1.50000 XMR",   TXT_PRI,  "700"),
+        ("Network fee",   "0.00006 XMR",   TXT_MUT,  "400"),
+        ("Total deducted","1.50006 XMR",   TXT_PRI,  "700"),
+        ("Remaining",     "7.45194 XMR",   TXT_SEC,  "400"),
+    ]
+  )}
+</div>"""
+
+SEND_HEADER = f"""
+<div style="padding:13px 24px;border-bottom:1px solid {BORDER};
+            display:flex;align-items:center;gap:12px;">
+  <div style="font-size:12px;color:{ACCENT};cursor:pointer;">&larr; Portfolio</div>
+  <div style="width:1px;height:16px;background:{BORDER};"></div>
+  <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Send XMR</div>
+</div>"""
+
+SEND_FORM = (
+    input_field("Recipient address", "4Bc...e91f &nbsp; (paste or scan)", mono=True,
+                note="Supports standard, integrated, and subaddresses")
+  + f'<div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;">'
+  + input_field("Amount", "1.5", note="Available: 8.952 XMR")
+  + input_field("Currency", "XMR")
+  + f'</div>'
+  + input_field("Memo (optional, stored locally only)", "Exchange withdrawal")
+)
+
+F4 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + wallet_header("Send crypto")
+      + SEND_HEADER
+      + f'<div style="padding:18px 24px;display:flex;gap:20px;">'
+      # left column: form
+      + f'<div style="flex:1;min-width:0;">'
+      + SEND_FORM
+      + FEE_OPTIONS
+      + f'</div>'
+      # right column: summary + confirm
+      + f'<div style="width:280px;flex-shrink:0;">'
+      + SEND_SUMMARY
+      + f'<div style="display:flex;flex-direction:column;gap:8px;">'
+      + btn("Send 1.50 XMR", color=DANGER, text_color=TXT_PRI, full=True)
+      + btn_outline("Cancel", full=True)
+      + f'</div>'
+      + f'<div style="font-size:11px;color:{TXT_MUT};margin-top:12px;line-height:1.6;">'
+      + f'XMR transactions are private by default. Recipient cannot trace'
+      + f' this payment back to your address.'
+      + f'</div>'
+      + f'</div>'
+      + f'</div></div>')
+
+# ---------------------------------------------------------------------------
+# Frame 5 -- Mining
+# ---------------------------------------------------------------------------
+
+import math as _math
+
+def emission_curve_svg(w=560, h=160):
+    """
+    NYX emission curve: 10 trillion tokens over 100 years.
+    Uses an exponential decay schedule: emission_rate(t) = A * e^(-k*t)
+    Integrated so total area = 10T. We show cumulative supply vs time.
+    k chosen so ~65% emitted by year 20, ~90% by year 50.
+    """
+    pad_l, pad_r, pad_t, pad_b = 52, 16, 14, 36
+    cw = w - pad_l - pad_r
+    ch = h - pad_t - pad_b
+
+    TOTAL   = 10_000_000_000_000   # 10 trillion
+    YEARS   = 100
+    k       = 0.055                # decay constant
+    # normalise so integral from 0..100 = TOTAL
+    # integral of e^(-kt) from 0..T = (1 - e^(-kT)) / k
+    norm    = (1 - _math.exp(-k * YEARS)) / k
+
+    def cumulative(t):
+        return TOTAL * (1 - _math.exp(-k * t)) / norm
+
+    def x_for_t(t):
+        return pad_l + cw * (t / YEARS)
+
+    def y_for_supply(s):
+        return pad_t + ch * (1 - s / TOTAL)
+
+    # Cumulative supply curve
+    pts = []
+    for i in range(101):
+        t = i
+        pts.append(f"{x_for_t(t):.1f},{y_for_supply(cumulative(t)):.1f}")
+    curve = " ".join(pts)
+
+    # Fill area under curve
+    fill_pts = [(pad_l, pad_t + ch)]
+    for i in range(101):
+        t = i
+        fill_pts.append((x_for_t(t), y_for_supply(cumulative(t))))
+    fill_pts.append((pad_l + cw, pad_t + ch))
+    fill_poly = " ".join(f"{x:.1f},{y:.1f}" for x, y in fill_pts)
+
+    # Current year marker (year 0 = launch, show at year 1)
+    cur_t  = 1
+    cur_x  = x_for_t(cur_t)
+    cur_y  = y_for_supply(cumulative(cur_t))
+    cur_s  = cumulative(cur_t) / 1e9  # billions
+
+    # Y-axis labels (trillions)
+    y_labels = ""
+    for s_T in [0, 2.5, 5, 7.5, 10]:
+        yy = y_for_supply(s_T * 1e12)
+        y_labels += (f'<text x="{pad_l - 6}" y="{yy + 4}" '
+                     f'text-anchor="end" font-size="10" fill="{TXT_MUT}">'
+                     f'{int(s_T)}T</text>')
+
+    # X-axis labels
+    x_labels = ""
+    for label, t in [("0", 0), ("25y", 25), ("50y", 50), ("75y", 75), ("100y", 100)]:
+        xx = x_for_t(t)
+        x_labels += (f'<text x="{xx}" y="{pad_t + ch + 18}" '
+                     f'text-anchor="middle" font-size="10" fill="{TXT_MUT}">{label}</text>')
+
+    # Grid lines
+    grid = ""
+    for s_T in [2.5, 5, 7.5]:
+        yy = y_for_supply(s_T * 1e12)
+        grid += (f'<line x1="{pad_l}" y1="{yy}" x2="{pad_l + cw}" y2="{yy}" '
+                 f'stroke="{BORDER}" stroke-width="1"/>')
+    for t in [25, 50, 75]:
+        xx = x_for_t(t)
+        grid += (f'<line x1="{xx}" y1="{pad_t}" x2="{xx}" y2="{pad_t + ch}" '
+                 f'stroke="{BORDER}" stroke-width="1"/>')
+
+    # Current position marker
+    grid += (f'<line x1="{cur_x}" y1="{pad_t}" x2="{cur_x}" y2="{pad_t + ch}" '
+             f'stroke="{NYX_COLOR}" stroke-width="1" stroke-dasharray="3,3"/>')
+    cur_label = (f'<rect x="{cur_x + 6}" y="{cur_y - 14}" width="72" height="20" '
+                 f'rx="4" fill="{ACC_GLO}" stroke="{NYX_COLOR}" stroke-width="1"/>'
+                 f'<text x="{cur_x + 42}" y="{cur_y + 2}" text-anchor="middle" '
+                 f'font-size="10" font-weight="700" fill="{NYX_COLOR}">'
+                 f'Year 1</text>')
+
+    # Milestone dots
+    milestone_dots = ""
+    for t_m, label_m in [(20, "65%"), (50, "90%")]:
+        xm = x_for_t(t_m)
+        ym = y_for_supply(cumulative(t_m))
+        milestone_dots += (f'<circle cx="{xm}" cy="{ym}" r="3.5" '
+                           f'fill="{NYX_COLOR}" opacity="0.6"/>'
+                           f'<text x="{xm}" y="{ym - 7}" text-anchor="middle" '
+                           f'font-size="9" fill="{TXT_MUT}">{label_m}</text>')
+
+    return f"""
+<svg width="{w}" height="{h}" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+  {grid}
+  <line x1="{pad_l}" y1="{pad_t}" x2="{pad_l}" y2="{pad_t+ch}"
+        stroke="{BORDER}" stroke-width="1"/>
+  <line x1="{pad_l}" y1="{pad_t+ch}" x2="{pad_l+cw}" y2="{pad_t+ch}"
+        stroke="{BORDER}" stroke-width="1"/>
+  <polygon points="{fill_poly}" fill="{NYX_COLOR}" opacity="0.08"/>
+  <polyline points="{curve}" fill="none" stroke="{NYX_COLOR}" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round"/>
+  {milestone_dots}
+  <circle cx="{cur_x}" cy="{cur_y}" r="5" fill="{NYX_COLOR}"
+          stroke="{BG}" stroke-width="2"/>
+  {y_labels}
+  {x_labels}
+  {cur_label}
+</svg>"""
+
+
+def hashrate_bar(pct, color=SUCCESS):
+    return (f'<div style="height:6px;background:{SURF_HI};border-radius:3px;overflow:hidden;">'
+            f'<div style="height:100%;width:{pct}%;background:{color};'
+            f'border-radius:3px;transition:width 0.3s;"></div></div>')
+
+
+MINE_HEADER = f"""
+<div style="padding:13px 24px;border-bottom:1px solid {BORDER};
+            display:flex;align-items:center;justify-content:space-between;">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Mining</div>
+    <div style="width:1px;height:16px;background:{BORDER};"></div>
+    <div style="font-size:12px;color:{TXT_MUT};">RandomX &middot; merge-mines XMR + NYX + TARI</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <div style="width:8px;height:8px;border-radius:50%;background:{SUCCESS};"></div>
+    {status_pill("MINING", SUCCESS, SUCCESS_RGBA)}
+  </div>
+</div>"""
+
+# Left column: controls + per-coin earnings
+MINE_LEFT = f"""
+<div style="flex:1;min-width:0;">
+
+  {section_label("HASHRATE")}
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              padding:14px 16px;margin-bottom:16px;">
+    <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;">
+      <div style="font-size:32px;font-weight:700;color:{TXT_PRI};">4,820</div>
+      <div style="font-size:14px;color:{TXT_MUT};">H/s</div>
+      <div style="margin-left:auto;font-size:12px;color:{TXT_MUT};">
+        Peak: <span style="color:{TXT_SEC};">5,140 H/s</span>
+      </div>
+    </div>
+    {hashrate_bar(94)}
+    <div style="display:flex;justify-content:space-between;margin-top:6px;
+                font-size:11px;color:{TXT_MUT};">
+      <span>0</span><span>CPU load: 94%</span><span>5,140 H/s max</span>
+    </div>
+  </div>
+
+  {section_label("EARNINGS")}
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              padding:0;margin-bottom:16px;overflow:hidden;">
+    {''.join(
+      f'<div style="display:flex;align-items:center;gap:14px;padding:13px 16px;'
+      f'border-bottom:1px solid {BORDER};">'
+      + coin_badge(sym, col)
+      + f'<div style="flex:1;">'
+      f'<div style="font-size:13px;font-weight:700;color:{TXT_PRI};">{sym}'
+      f'  <span style="font-size:11px;font-weight:400;color:{TXT_MUT};">{note}</span></div>'
+      f'<div style="font-size:11px;color:{TXT_MUT};margin-top:2px;">'
+      f'Total earned: {total}</div></div>'
+      f'<div style="text-align:right;">'
+      f'<div style="font-size:14px;font-weight:700;color:{TXT_PRI};">{today}</div>'
+      f'<div style="font-size:11px;color:{TXT_MUT};margin-top:2px;">today</div>'
+      f'</div></div>'
+      for sym, col, note, today, total in [
+          ("XMR",  XMR_COLOR,  "primary chain",       "+0.00041 XMR", "0.00312 XMR"),
+          ("NYX",  NYX_COLOR,  "merge-mined, free",   "+142 NYX",     "1,084 NYX"),
+          ("TARI", TARI_COLOR, "merge-mined, free",   "+38 TARI",     "291 TARI"),
+      ]
+    )}
+  </div>
+
+  {section_label("CONTROLS")}
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              padding:14px 16px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+      {input_field("CPU threads", "10 / 12", note="2 threads reserved for system")}
+      {input_field("Mining mode", "Pool")}
+    </div>
+    {input_field("Pool address",
+                 "pool.supportxmr.com:3333",
+                 mono=True,
+                 note="Connected &bull; 23 ms latency &bull; 38 miners in share")}
+    <div style="display:flex;gap:10px;">
+      {btn_outline("Stop Mining", color=DANGER, small=True)}
+      {btn("Benchmark", color=SURF_HI, text_color=TXT_SEC, small=True)}
+    </div>
+  </div>
+
+</div>"""
+
+# Right column: NYX emission curve + coin info
+MINE_RIGHT = f"""
+<div style="width:310px;flex-shrink:0;">
+
+  {section_label("NYX EMISSION SCHEDULE")}
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              padding:14px 16px;margin-bottom:14px;">
+    {emission_curve_svg(w=278, h=150)}
+    <div style="display:flex;justify-content:space-between;margin-top:8px;
+                font-size:11px;color:{TXT_MUT};">
+      <span>Total supply: <span style="color:{TXT_SEC};">10 trillion NYX</span></span>
+      <span>Over 100 years</span>
+    </div>
+    <div style="height:1px;background:{BORDER};margin:10px 0;"></div>
+    {''.join(
+      f'<div style="display:flex;justify-content:space-between;margin-bottom:6px;">'
+      f'<div style="font-size:12px;color:{TXT_MUT};">{l}</div>'
+      f'<div style="font-size:12px;color:{TXT_SEC};">{v}</div></div>'
+      for l, v in [
+          ("Schedule",       "Exponential decay"),
+          ("By year 20",     "~65% emitted"),
+          ("By year 50",     "~90% emitted"),
+          ("Tail emission",  "~10% over years 50-100"),
+          ("Current rate",   "142 NYX / block"),
+      ]
+    )}
+  </div>
+
+  {section_label("MERGE MINING")}
+  <div style="background:{ACCENT_RGBA};border:1px solid {ACCENT};border-radius:8px;
+              padding:12px 14px;font-size:12px;color:{TXT_SEC};line-height:1.6;">
+    NYX and TARI share XMR's RandomX proof-of-work via merge mining.
+    No extra computation. The same hash that earns XMR simultaneously
+    earns NYX and TARI at no additional CPU cost.
+  </div>
+
+</div>"""
+
+F5 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + wallet_header("Mine XMR &middot; NYX &middot; TARI")
+      + MINE_HEADER
+      + f'<div style="padding:18px 24px;display:flex;gap:20px;">'
+      + MINE_LEFT
+      + MINE_RIGHT
+      + f'</div></div>')
+
+# ---------------------------------------------------------------------------
+# Assemble HTML
+# ---------------------------------------------------------------------------
+
+FRAMES = [
+    ("Portfolio",       F1),
+    ("Coin Detail",     F2),
+    ("Receive",         F3),
+    ("Send",            F4),
+    ("Mining",          F5),
+]
+
+TABS_JS   = ",\n".join(f'"{t}"' for t, _ in FRAMES)
+def _js_template_escape(html):
+    """Escape a backtick and ${ for a JavaScript template literal."""
+    return html.replace("`", "\\`").replace("${", "\\${")
+
+
+FRAMES_JS = ",\n".join(
+    f'`{_js_template_escape(html)}`'
+    for _, html in FRAMES
+)
+
+HTML = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NyxForge Wallet</title>
+<style>
+* {{ box-sizing: border-box; margin: 0; padding: 0; }}
+body {{ background: #080a12; font-family: 'Inter', system-ui, sans-serif;
+       display: flex; flex-direction: column; align-items: center;
+       min-height: 100vh; padding: 24px 16px; }}
+.tab-bar {{ display: flex; gap: 4px; margin-bottom: 20px;
+           background: {SURF}; border: 1px solid {BORDER};
+           border-radius: 8px; padding: 4px; max-width: {FW}px; }}
+.tab {{ padding: 7px 18px; border-radius: 6px; cursor: pointer;
+       font-size: 12px; color: {TXT_MUT}; transition: all 0.15s; }}
+.tab.active {{ background: {ACCENT}; color: {TXT_PRI}; font-weight: 700; }}
+.tab:hover:not(.active) {{ color: {TXT_PRI}; }}
+.viewport {{ display: flex; align-items: flex-start; width: {FW}px; }}
+.nav {{ display: flex; gap: 12px; margin-top: 16px; align-items: center; }}
+.nav-btn {{ padding: 8px 20px; border-radius: 6px; cursor: pointer;
+           font-size: 13px; background: {SURF}; border: 1px solid {BORDER};
+           color: {TXT_SEC}; }}
+.nav-btn:hover {{ border-color: {ACCENT}; color: {TXT_PRI}; }}
+.frame-label {{ font-size: 12px; color: {TXT_MUT}; min-width: 140px; text-align: center; }}
+</style>
+</head>
+<body>
+<div class="tab-bar" id="tabBar"></div>
+<div class="viewport" id="viewport"></div>
+<div class="nav">
+  <div class="nav-btn" onclick="go(-1)">&larr; Prev</div>
+  <div class="frame-label" id="frameLabel"></div>
+  <div class="nav-btn" onclick="go(1)">Next &rarr;</div>
+</div>
+<script>
+const TABS   = [{TABS_JS}];
+const FRAMES = [{FRAMES_JS}];
+let cur = 0;
+function render() {{
+  const tb = document.getElementById('tabBar');
+  tb.innerHTML = TABS.map((t,i) =>
+    `<div class="tab${{i===cur?' active':''}}" onclick="jump(${{i}})">${{t}}</div>`
+  ).join('');
+  document.getElementById('viewport').innerHTML = FRAMES[cur];
+  document.getElementById('frameLabel').textContent =
+    (cur+1) + ' / ' + FRAMES.length + ' — ' + TABS[cur];
+}}
+function jump(i) {{ cur = i; render(); }}
+function go(d) {{ cur = (cur + d + FRAMES.length) % FRAMES.length; render(); }}
+render();
+</script>
+</body>
+</html>"""
+
+os.makedirs(OUTDIR, exist_ok=True)
+with open(OUTFILE, "w") as f:
+    f.write(HTML)
+print(f"Written: {OUTFILE}")
+if os.environ.get("NYX_OPEN") == "1":   # opt in; macOS only
+    subprocess.Popen(["open", "-a", "Brave Browser", OUTFILE])
+    print("Opened in Brave.")
