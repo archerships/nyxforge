@@ -26,6 +26,7 @@ takes precedence over every other design document.
 | Document | Role |
 | :--- | :--- |
 | [`docs/00_MVP.md`](docs/00_MVP.md) | Current build target: bearer files, DLEQ/PTLC collateral |
+| [`docs/architecture.md`](docs/architecture.md) | Current architecture: components, collateral rails, lifecycle |
 | [`docs/00_CORE.md`](docs/00_CORE.md) | v2.0 aspirational spec: ZK notes, order book, P2P network |
 | [`docs/archive/darkfi-era/`](docs/archive/darkfi-era/) | Superseded DarkFi L1 / DRK-token / ZK-note design (historical) |
 | `crates/nyxforge-zk`, `-contract`, `-node` | Preserved v2 code; **not** on the MVP critical path |
