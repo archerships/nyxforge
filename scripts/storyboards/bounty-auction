@@ -1,0 +1,757 @@
+#!/usr/bin/env python3
+"""
+NyxForge Reverse Dutch Auction mockup generator.
+Generates docs/storyboards/out/bounty-auction-mockup.html
+
+A reverse Dutch auction for identical .bounty files:
+  - Issuer lists N identical .bounty files (fixed collateral per file)
+  - Asking price starts HIGH and descends over time
+  - Backers commit at the current price; first to commit locks in that price
+  - Once all N files are committed the auction closes at that clearing price
+  - Discriminatory pricing: each backer pays what they committed at
+
+5 frames:
+  1. Auction Board     -- live auctions list, price + countdown + fill bar
+  2. Auction Detail    -- price curve SVG, live feed, place bid CTA
+  3. Confirm Bid       -- unit count, total cost, delivery address, confirm
+  4. Settlement        -- auction closed, clearing price, claim .bounty files
+  5. Create Auction    -- issuer setup: N files, start/floor price, decay, duration
+"""
+import os, subprocess, math
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTDIR     = os.path.join(os.environ.get("NYXFORGE_ROOT", os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "docs/storyboards/out")
+OUTFILE    = os.path.join(OUTDIR, "bounty-auction-mockup.html")
+
+# ---------------------------------------------------------------------------
+# Palette
+# ---------------------------------------------------------------------------
+BG           = "#0d0f1a"
+SURF         = "#131524"
+SURF_HI      = "#1a1d2e"
+ACCENT       = "#5e6ad2"
+ACC_GLO      = "#2d3068"
+TXT_PRI      = "#e8eaf0"
+TXT_SEC      = "#b8c0d8"
+TXT_MUT      = "#8b95b0"
+SUCCESS      = "#4ade80"
+DANGER       = "#f87171"
+WARN         = "#fbbf24"
+BORDER       = "#2a2d3e"
+INACT        = "#3a3d5c"
+SUCCESS_RGBA = "rgba(74,222,128,0.10)"
+WARN_RGBA    = "rgba(251,191,36,0.10)"
+ACCENT_RGBA  = "rgba(94,106,210,0.12)"
+DANGER_RGBA  = "rgba(248,113,113,0.10)"
+
+FW = 920
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def section_label(text):
+    return (f'<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;'
+            f'color:{ACCENT};margin-bottom:8px;">{text}</div>')
+
+def divider(mb=12):
+    return f'<div style="height:1px;background:{BORDER};margin:0 0 {mb}px;"></div>'
+
+def status_pill(text, color, bg):
+    return (f'<span style="font-size:10px;font-weight:700;letter-spacing:0.8px;'
+            f'padding:3px 9px;border-radius:4px;color:{color};background:{bg};">'
+            f'{text}</span>')
+
+def btn(label, color=SUCCESS, text_color=BG, small=False, full=False):
+    pad  = "7px 16px" if small else "13px 28px"
+    fs   = "12px"     if small else "14px"
+    wid  = "width:100%;display:block;text-align:center;" if full else "display:inline-block;"
+    return (f'<div style="{wid}padding:{pad};background:{color};'
+            f'border-radius:7px;font-size:{fs};font-weight:700;color:{text_color};'
+            f'cursor:pointer;letter-spacing:0.3px;">{label}</div>')
+
+def btn_outline(label, small=False, color=None, full=False):
+    pad  = "6px 14px"  if small else "12px 27px"
+    fs   = "12px"      if small else "14px"
+    col  = color or TXT_SEC
+    bord = color or BORDER
+    wid  = "width:100%;display:block;text-align:center;" if full else "display:inline-block;"
+    return (f'<div style="{wid}padding:{pad};background:transparent;'
+            f'border:1px solid {bord};border-radius:7px;font-size:{fs};'
+            f'color:{col};cursor:pointer;">{label}</div>')
+
+def input_field(label, value, mono=False, note=None):
+    font = "monospace" if mono else "inherit"
+    n = (f'<div style="font-size:11px;color:{TXT_MUT};margin-top:4px;">{note}</div>'
+         if note else "")
+    return (f'<div style="margin-bottom:12px;">'
+            f'<div style="font-size:12px;color:{TXT_MUT};margin-bottom:4px;">{label}</div>'
+            f'<div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;'
+            f'padding:9px 13px;font-size:13px;color:{TXT_MUT};font-family:{font};">{value}</div>'
+            f'{n}</div>')
+
+def dex_header():
+    return f"""
+  <div style="background:{SURF};border-bottom:1px solid {BORDER};padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:{ACC_GLO};
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:11px;font-weight:700;color:{ACCENT};">NYX</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Bounty Auctions</div>
+        <div style="font-size:11px;color:{TXT_MUT};">Reverse Dutch &middot; price descends until sold out</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="font-size:12px;font-family:monospace;color:{TXT_MUT};">4AB...f9c2</div>
+      {btn("+ Create Auction", color=ACCENT, text_color=TXT_PRI, small=True)}
+    </div>
+  </div>"""
+
+# ---------------------------------------------------------------------------
+# Price curve SVG
+# ---------------------------------------------------------------------------
+
+def price_curve_svg(w=580, h=180, pct_elapsed=0.38, pct_filled=0.61):
+    """
+    Render a descending exponential price curve.
+    pct_elapsed: how far along the time axis we are (0-1)
+    pct_filled:  what fraction of units are sold
+    """
+    pad_l, pad_r, pad_t, pad_b = 44, 16, 14, 36
+    cw = w - pad_l - pad_r
+    ch = h - pad_t - pad_b
+
+    # Curve: exponential decay  price = start * e^(-k*t), normalised 0..1
+    # start_price=200, floor_price=40, over t=1
+    p_start, p_floor = 200, 40
+    k = math.log(p_start / p_floor)   # so that at t=1, price = p_floor
+
+    def price_at(t):
+        return p_start * math.exp(-k * t)
+
+    def y_for_price(p):
+        return pad_t + ch * (1 - (p - p_floor) / (p_start - p_floor))
+
+    def x_for_t(t):
+        return pad_l + cw * t
+
+    # Build curve polyline
+    pts = []
+    for i in range(101):
+        t = i / 100
+        p = price_at(t)
+        pts.append(f"{x_for_t(t):.1f},{y_for_price(p):.1f}")
+    curve = " ".join(pts)
+
+    # Filled area under curve up to current time
+    fill_pts = [(pad_l, pad_t + ch)]
+    for i in range(int(pct_elapsed * 100) + 1):
+        t = i / 100
+        p = price_at(t)
+        fill_pts.append((x_for_t(t), y_for_price(p)))
+    fill_pts.append((x_for_t(pct_elapsed), pad_t + ch))
+    fill_poly = " ".join(f"{x:.1f},{y:.1f}" for x, y in fill_pts)
+
+    # Current price
+    cur_price = price_at(pct_elapsed)
+    cx = x_for_t(pct_elapsed)
+    cy = y_for_price(cur_price)
+
+    # Y-axis labels
+    y_labels = ""
+    for p_val in [200, 160, 120, 80, 40]:
+        yy = y_for_price(p_val)
+        y_labels += (f'<text x="{pad_l - 6}" y="{yy + 4}" '
+                     f'text-anchor="end" font-size="10" fill="{TXT_MUT}">${int(p_val)}</text>')
+
+    # X-axis labels
+    x_labels = ""
+    for label, t in [("0h", 0), ("18h", 0.25), ("36h", 0.5), ("54h", 0.75), ("72h", 1.0)]:
+        xx = x_for_t(t)
+        x_labels += (f'<text x="{xx}" y="{pad_t + ch + 18}" '
+                     f'text-anchor="middle" font-size="10" fill="{TXT_MUT}">{label}</text>')
+
+    # Grid lines
+    grid = ""
+    for p_val in [160, 120, 80]:
+        yy = y_for_price(p_val)
+        grid += (f'<line x1="{pad_l}" y1="{yy}" x2="{pad_l + cw}" y2="{yy}" '
+                 f'stroke="{BORDER}" stroke-width="1"/>')
+
+    # Floor price dashed line
+    yfloor = y_for_price(p_floor)
+    grid += (f'<line x1="{pad_l}" y1="{yfloor}" x2="{pad_l + cw}" y2="{yfloor}" '
+             f'stroke="{INACT}" stroke-width="1" stroke-dasharray="4,3"/>')
+
+    # Current time vertical line
+    grid += (f'<line x1="{cx}" y1="{pad_t}" x2="{cx}" y2="{pad_t + ch}" '
+             f'stroke="{ACCENT}" stroke-width="1" stroke-dasharray="3,3"/>')
+
+    # Current price label
+    cur_label = (f'<rect x="{cx + 6}" y="{cy - 12}" width="56" height="20" '
+                 f'rx="4" fill="{ACC_GLO}" stroke="{ACCENT}" stroke-width="1"/>'
+                 f'<text x="{cx + 34}" y="{cy + 2}" text-anchor="middle" '
+                 f'font-size="11" font-weight="700" fill="{ACCENT}">'
+                 f'${cur_price:.0f}</text>')
+
+    return f"""
+<svg width="{w}" height="{h}" xmlns="http://www.w3.org/2000/svg"
+     style="display:block;">
+  <!-- grid -->
+  {grid}
+  <!-- y-axis -->
+  <line x1="{pad_l}" y1="{pad_t}" x2="{pad_l}" y2="{pad_t+ch}"
+        stroke="{BORDER}" stroke-width="1"/>
+  <!-- x-axis -->
+  <line x1="{pad_l}" y1="{pad_t+ch}" x2="{pad_l+cw}" y2="{pad_t+ch}"
+        stroke="{BORDER}" stroke-width="1"/>
+  <!-- fill area -->
+  <polygon points="{fill_poly}" fill="{ACCENT}" opacity="0.12"/>
+  <!-- curve -->
+  <polyline points="{curve}" fill="none" stroke="{ACCENT}" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- current dot -->
+  <circle cx="{cx}" cy="{cy}" r="5" fill="{ACCENT}" stroke="{BG}" stroke-width="2"/>
+  <!-- labels -->
+  {y_labels}
+  {x_labels}
+  {cur_label}
+  <!-- floor label -->
+  <text x="{pad_l + cw + 4}" y="{yfloor + 4}"
+        font-size="9" fill="{INACT}">floor</text>
+</svg>"""
+
+# ---------------------------------------------------------------------------
+# Fill progress bar
+# ---------------------------------------------------------------------------
+
+def fill_bar(pct, label_left, label_right, height=10):
+    return (f'<div style="margin-bottom:6px;display:flex;justify-content:space-between;'
+            f'font-size:11px;color:{TXT_MUT};">'
+            f'<span>{label_left}</span><span>{label_right}</span></div>'
+            f'<div style="height:{height}px;background:{SURF_HI};border-radius:5px;'
+            f'overflow:hidden;margin-bottom:4px;">'
+            f'<div style="height:100%;width:{pct}%;background:{ACCENT};border-radius:5px;"></div>'
+            f'</div>')
+
+# ---------------------------------------------------------------------------
+# Frame 1 -- Auction Board
+# ---------------------------------------------------------------------------
+
+def auction_card(name, collateral, n_total, n_sold, price_now, price_start,
+                 time_left, status, status_color, status_bg):
+    pct = int(n_sold / n_total * 100)
+    return (f'<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;'
+            f'padding:16px 18px;cursor:pointer;" '
+            f'onmouseover="this.style.borderColor=\'{ACCENT}\'" '
+            f'onmouseout="this.style.borderColor=\'{BORDER}\'">'
+            f'<div style="display:flex;align-items:flex-start;justify-content:space-between;'
+            f'margin-bottom:12px;">'
+            f'<div>'
+            f'<div style="font-size:14px;font-weight:700;color:{TXT_PRI};margin-bottom:4px;">'
+            f'{name}</div>'
+            f'<div style="font-size:12px;color:{TXT_MUT};">'
+            f'{collateral} collateral per file &middot; {n_total} files</div>'
+            f'</div>'
+            f'{status_pill(status, status_color, status_bg)}'
+            f'</div>'
+            # Price + time
+            f'<div style="display:flex;gap:20px;margin-bottom:14px;">'
+            f'<div><div style="font-size:11px;color:{TXT_MUT};">CURRENT PRICE</div>'
+            f'<div style="font-size:22px;font-weight:700;color:{TXT_PRI};margin-top:2px;">'
+            f'{price_now}</div></div>'
+            f'<div><div style="font-size:11px;color:{TXT_MUT};">STARTED AT</div>'
+            f'<div style="font-size:14px;color:{TXT_MUT};margin-top:4px;'
+            f'text-decoration:line-through;">{price_start}</div></div>'
+            f'<div style="margin-left:auto;text-align:right;">'
+            f'<div style="font-size:11px;color:{TXT_MUT};">TIME LEFT</div>'
+            f'<div style="font-size:18px;font-weight:700;color:{WARN};margin-top:2px;">'
+            f'{time_left}</div></div>'
+            f'</div>'
+            # Fill bar
+            + fill_bar(pct, f"{n_sold} / {n_total} sold  ({pct}%)", "")
+            + f'<div style="display:flex;justify-content:flex-end;margin-top:10px;">'
+            f'{btn("Back Now", color=ACCENT, text_color=TXT_PRI, small=True)}</div>'
+            f'</div>')
+
+F1 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + dex_header()
+      + f'<div style="padding:18px 24px;display:flex;flex-direction:column;gap:14px;">'
+      + auction_card(
+            "Alzheimer HALE Bounty 2040 &mdash; Series A",
+            "0.45 XMR", 100, 61, "$112", "$200", "44h 12m",
+            "LIVE", SUCCESS, SUCCESS_RGBA)
+      + auction_card(
+            "Global TB Reduction Bounty 2038 &mdash; Series B",
+            "0.90 XMR", 50, 8, "$180", "$220", "61h 05m",
+            "LIVE", SUCCESS, SUCCESS_RGBA)
+      + auction_card(
+            "Clean Water Access 2030 &mdash; Series A",
+            "0.25 XMR", 200, 200, "$68", "$150", "ended",
+            "SOLD OUT", TXT_MUT, SURF_HI)
+      + f'</div></div>')
+
+# ---------------------------------------------------------------------------
+# Frame 2 -- Auction Detail
+# ---------------------------------------------------------------------------
+
+LIVE_FEED_ROWS = "".join(
+    f'<div style="display:flex;align-items:center;gap:10px;padding:7px 0;'
+    f'border-bottom:1px solid {BORDER};font-size:12px;">'
+    f'<div style="font-family:monospace;color:{TXT_MUT};font-size:10px;">{t}</div>'
+    f'<div style="flex:1;color:{TXT_SEC};">{ev}</div>'
+    f'<div style="color:{TXT_PRI};font-weight:700;">{price}</div>'
+    f'</div>'
+    for t, ev, price in [
+        ("2m ago",  "Backer 4A3...c1 &mdash; 2 files",   "$114"),
+        ("11m ago", "Backer 9F1...d8 &mdash; 1 file",    "$119"),
+        ("28m ago", "Backer 2B7...aa &mdash; 5 files",   "$124"),
+        ("45m ago", "Backer 6C9...f3 &mdash; 1 file",    "$129"),
+        ("1h ago",  "Backer 8E4...07 &mdash; 10 files",  "$134"),
+    ]
+)
+
+DETAIL_LEFT_F2 = f"""
+<div style="flex:1;min-width:0;">
+  {section_label("PRICE CURVE  &mdash;  72h descending auction")}
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              padding:14px 16px;margin-bottom:16px;">
+    {price_curve_svg(w=560, h=190)}
+    <div style="display:flex;justify-content:space-between;margin-top:10px;font-size:12px;">
+      <div style="color:{TXT_MUT};">
+        Start: <span style="color:{TXT_SEC};">$200</span>
+        &nbsp;&middot;&nbsp;
+        Floor: <span style="color:{TXT_SEC};">$40</span>
+        &nbsp;&middot;&nbsp;
+        Decay: <span style="color:{TXT_SEC};">exponential</span>
+      </div>
+      <div style="color:{TXT_MUT};">
+        Current: <span style="font-weight:700;color:{ACCENT};">$112</span>
+        &nbsp;&middot;&nbsp;
+        <span style="color:{WARN};">44h 12m left</span>
+      </div>
+    </div>
+  </div>
+
+  {section_label("RECENT COMMITMENTS")}
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              padding:12px 16px;">
+    {LIVE_FEED_ROWS}
+    <div style="font-size:11px;color:{TXT_MUT};padding-top:8px;">
+      61 of 100 files committed &middot; 39 remaining
+    </div>
+  </div>
+</div>"""
+
+DETAIL_RIGHT_F2 = f"""
+<div style="width:250px;flex-shrink:0;">
+  {section_label("BOUNTY DETAILS")}
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              padding:13px 16px;margin-bottom:14px;">
+    {''.join(
+      f'<div style="display:flex;justify-content:space-between;margin-bottom:8px;">'
+      f'<div style="font-size:12px;color:{TXT_MUT};">{l}</div>'
+      f'<div style="font-size:12px;color:{TXT_PRI};">{v}</div></div>'
+      for l, v in [
+          ("Collateral / file", "0.45 XMR"),
+          ("Payout",            "0.45 XMR"),
+          ("Deadline",          "Dec 31, 2040"),
+          ("Files remaining",   "39 of 100"),
+      ]
+    )}
+  </div>
+
+  {section_label("YOUR COST NOW")}
+  <div style="background:{ACC_GLO};border:1px solid {ACCENT};border-radius:8px;
+              padding:13px 16px;margin-bottom:14px;">
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+      <div style="font-size:12px;color:{TXT_MUT};">Price now</div>
+      <div style="font-size:16px;font-weight:700;color:{ACCENT};">$112</div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+      <div style="font-size:12px;color:{TXT_MUT};">Collateral locked</div>
+      <div style="font-size:13px;color:{TXT_SEC};">0.45 XMR</div>
+    </div>
+    <div style="height:1px;background:{ACCENT};opacity:0.3;margin:8px 0;"></div>
+    <div style="display:flex;justify-content:space-between;">
+      <div style="font-size:12px;color:{TXT_MUT};">Yield if resolved</div>
+      <div style="font-size:13px;font-weight:700;color:{SUCCESS};">+43%</div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    {btn("Back at $112", color=SUCCESS, text_color=BG, full=True)}
+    <div style="font-size:11px;color:{TXT_MUT};text-align:center;">
+      Price drops ~$1.40 / hour
+    </div>
+  </div>
+</div>"""
+
+DETAIL_HEADER_F2 = f"""
+<div style="padding:13px 24px;border-bottom:1px solid {BORDER};
+            display:flex;align-items:center;gap:12px;">
+  <div style="font-size:12px;color:{ACCENT};cursor:pointer;">&larr; Auctions</div>
+  <div style="width:1px;height:16px;background:{BORDER};"></div>
+  <div style="flex:1;">
+    <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">
+      Alzheimer HALE Bounty 2040 &mdash; Series A</div>
+    <div style="font-size:11px;color:{TXT_MUT};margin-top:2px;">
+      100 identical .bounty files &middot; reverse Dutch auction</div>
+  </div>
+  {status_pill("LIVE", SUCCESS, SUCCESS_RGBA)}
+</div>"""
+
+F2 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + dex_header()
+      + DETAIL_HEADER_F2
+      + f'<div style="padding:18px 24px;display:flex;gap:20px;">'
+      + DETAIL_LEFT_F2 + DETAIL_RIGHT_F2
+      + f'</div></div>')
+
+# ---------------------------------------------------------------------------
+# Frame 3 -- Confirm Bid
+# ---------------------------------------------------------------------------
+
+PRICE_LOCK_WARNING = f"""
+<div style="background:{WARN_RGBA};border:1px solid {WARN};border-radius:8px;
+            padding:12px 16px;margin-bottom:16px;display:flex;gap:10px;">
+  <div style="color:{WARN};font-size:18px;flex-shrink:0;">&#9888;</div>
+  <div style="font-size:13px;color:{TXT_SEC};line-height:1.5;">
+    Price locks at the moment you confirm. The auction price is currently
+    <strong style="color:{WARN};">$112</strong> and falling ~$1.40/hour.
+    Your commitment is final once confirmed.
+  </div>
+</div>"""
+
+ORDER_SUMMARY = f"""
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            padding:14px 16px;margin-bottom:16px;">
+  {section_label("ORDER SUMMARY")}
+  {''.join(
+    f'<div style="display:flex;justify-content:space-between;margin-bottom:9px;">'
+    f'<div style="font-size:13px;color:{TXT_MUT};">{l}</div>'
+    f'<div style="font-size:13px;color:{v_col};font-weight:{fw};">{v}</div></div>'
+    for l, v, v_col, fw in [
+        ("Unit price",        "$112 (locked at confirm)",  TXT_SEC,  "400"),
+        ("Quantity",          "2 files",                   TXT_PRI,  "700"),
+        ("Subtotal",          "$224",                      TXT_PRI,  "700"),
+        ("Collateral / file", "0.45 XMR",                  TXT_SEC,  "400"),
+        ("Total collateral",  "0.90 XMR (if resolved)",    SUCCESS,  "700"),
+    ]
+  )}
+  <div style="height:1px;background:{BORDER};margin:10px 0;"></div>
+  <div style="display:flex;justify-content:space-between;">
+    <div style="font-size:14px;font-weight:700;color:{TXT_PRI};">Total due</div>
+    <div style="font-size:18px;font-weight:700;color:{TXT_PRI};">$224</div>
+  </div>
+</div>"""
+
+DELIVERY = f"""
+<div style="margin-bottom:16px;">
+  {input_field("Deliver .bounty files to (XMR return address)",
+               "4Ac7bPzQnR...e91f", mono=True,
+               note="The .bounty files and your collateral return address are bound "
+                    "at issuance. Keep this address accessible.")}
+</div>"""
+
+PAYMENT_OPTS = f"""
+{section_label("PAYMENT METHOD")}
+<div style="display:flex;gap:8px;margin-bottom:16px;">
+  {''.join(
+    f'<div style="flex:1;padding:10px;border-radius:7px;text-align:center;font-size:13px;'
+    f'background:{"" + ACCENT if c == "Card" else SURF_HI};'
+    f'border:{"2px" if c == "Card" else "1px"} solid '
+    f'{"" + ACCENT if c == "Card" else BORDER};'
+    f'color:{"" + TXT_PRI if c == "Card" else TXT_MUT};cursor:pointer;">{c}</div>'
+    for c in ["Card", "XMR", "BTC", "ZEC"]
+  )}
+</div>"""
+
+CONFIRM_HEADER = f"""
+<div style="padding:13px 24px;border-bottom:1px solid {BORDER};
+            display:flex;align-items:center;gap:12px;">
+  <div style="font-size:12px;color:{ACCENT};cursor:pointer;">&larr; Auction</div>
+  <div style="width:1px;height:16px;background:{BORDER};"></div>
+  <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Confirm Commitment</div>
+</div>"""
+
+F3 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + dex_header()
+      + CONFIRM_HEADER
+      + f'<div style="padding:18px 24px;max-width:560px;">'
+      + PRICE_LOCK_WARNING
+      + ORDER_SUMMARY
+      + DELIVERY
+      + PAYMENT_OPTS
+      + f'<div style="display:flex;gap:10px;">'
+      + btn("Confirm &amp; Lock Price", color=SUCCESS, text_color=BG)
+      + f'&nbsp;&nbsp;'
+      + btn_outline("Cancel")
+      + f'</div></div></div>')
+
+# ---------------------------------------------------------------------------
+# Frame 4 -- Settlement
+# ---------------------------------------------------------------------------
+
+SETTLEMENT_HEADER = f"""
+<div style="padding:13px 24px;border-bottom:1px solid {BORDER};
+            display:flex;align-items:center;gap:12px;">
+  <div style="font-size:12px;color:{ACCENT};cursor:pointer;">&larr; Auctions</div>
+  <div style="width:1px;height:16px;background:{BORDER};"></div>
+  <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Auction Closed &mdash; Settled</div>
+  <div style="margin-left:auto;">{status_pill("SOLD OUT", TXT_MUT, SURF_HI)}</div>
+</div>"""
+
+FINAL_CHART = f"""
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            padding:14px 16px;margin-bottom:16px;">
+  {section_label("FINAL PRICE CURVE")}
+  {price_curve_svg(w=820, h=160, pct_elapsed=1.0, pct_filled=1.0)}
+  <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12px;">
+    <div style="color:{TXT_MUT};">Auction ran for <span style="color:{TXT_SEC};">72 hours</span></div>
+    <div style="color:{TXT_MUT};">
+      100 files sold &middot; clearing range
+      <span style="color:{TXT_PRI};font-weight:700;">$40 &mdash; $200</span>
+    </div>
+  </div>
+</div>"""
+
+YOUR_ALLOCATION = f"""
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+  <div style="background:{SUCCESS_RGBA};border:1px solid {SUCCESS};border-radius:8px;
+              padding:14px 16px;">
+    {section_label("YOUR ALLOCATION")}
+    {''.join(
+      f'<div style="display:flex;justify-content:space-between;margin-bottom:7px;">'
+      f'<div style="font-size:12px;color:{TXT_MUT};">{l}</div>'
+      f'<div style="font-size:13px;color:{v_col};font-weight:{fw};">{v}</div></div>'
+      for l, v, v_col, fw in [
+          ("Files purchased", "2",        TXT_PRI, "700"),
+          ("Price paid each", "$112",      TXT_PRI, "400"),
+          ("Total paid",      "$224",      TXT_PRI, "700"),
+          ("Collateral each", "0.45 XMR", TXT_SEC, "400"),
+          ("Max payout",      "0.45 XMR &times; 2", SUCCESS, "700"),
+      ]
+    )}
+  </div>
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              padding:14px 16px;">
+    {section_label("AUCTION STATISTICS")}
+    {''.join(
+      f'<div style="display:flex;justify-content:space-between;margin-bottom:7px;">'
+      f'<div style="font-size:12px;color:{TXT_MUT};">{l}</div>'
+      f'<div style="font-size:13px;color:{TXT_PRI};">{v}</div></div>'
+      for l, v in [
+          ("Files sold",      "100 / 100"),
+          ("Highest price",   "$200"),
+          ("Lowest price",    "$40"),
+          ("Median price",    "$89"),
+          ("Total raised",    "$11,240"),
+      ]
+    )}
+  </div>
+</div>"""
+
+CLAIM_FILES = f"""
+<div style="background:{ACC_GLO};border:1px solid {ACCENT};border-radius:8px;
+            padding:14px 16px;margin-bottom:16px;">
+  <div style="font-size:13px;color:{TXT_SEC};margin-bottom:12px;">
+    Your 2 .bounty files are ready. They will be delivered to the XMR address
+    you provided at commitment.
+  </div>
+  <div style="display:flex;gap:10px;">
+    {btn("Claim 2 .bounty Files", color=ACCENT, text_color=TXT_PRI)}
+    {btn_outline("View in Wallet")}
+  </div>
+</div>"""
+
+F4 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + dex_header()
+      + SETTLEMENT_HEADER
+      + f'<div style="padding:18px 24px;">'
+      + FINAL_CHART
+      + YOUR_ALLOCATION
+      + CLAIM_FILES
+      + f'</div></div>')
+
+# ---------------------------------------------------------------------------
+# Frame 5 -- Create Auction (issuer)
+# ---------------------------------------------------------------------------
+
+DECAY_OPTIONS = f"""
+{section_label("PRICE DECAY CURVE")}
+<div style="display:flex;gap:8px;margin-bottom:6px;">
+  {''.join(
+    f'<div style="flex:1;padding:10px 12px;border-radius:7px;'
+    f'background:{"" + ACC_GLO if c == "Exponential" else SURF_HI};'
+    f'border:{"2px" if c == "Exponential" else "1px"} solid '
+    f'{"" + ACCENT if c == "Exponential" else BORDER};cursor:pointer;">'
+    f'<div style="font-size:13px;font-weight:{"700" if c == "Exponential" else "400"};'
+    f'color:{"" + TXT_PRI if c == "Exponential" else TXT_MUT};margin-bottom:3px;">{c}</div>'
+    f'<div style="font-size:11px;color:{TXT_MUT};">{d}</div></div>'
+    for c, d in [
+        ("Exponential", "Fast initial drop, slow tail"),
+        ("Linear",      "Steady constant descent"),
+        ("Step",        "Fixed prices at intervals"),
+    ]
+  )}
+</div>
+<div style="margin-bottom:14px;">
+  {price_curve_svg(w=820, h=130, pct_elapsed=0.0, pct_filled=0.0)}
+</div>"""
+
+CREATE_LEFT_F5 = f"""
+<div style="flex:1;min-width:0;">
+  {input_field("Bounty series name",
+               "Alzheimer HALE Bounty 2040 &mdash; Series A")}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+    {input_field("Number of identical .bounty files", "100",
+                 note="All files lock identical collateral and terms")}
+    {input_field("Collateral per file", "0.45 XMR")}
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+    {input_field("Starting price", "$200")}
+    {input_field("Floor price", "$40")}
+    {input_field("Auction duration", "72 hours")}
+  </div>
+  {DECAY_OPTIONS}
+</div>"""
+
+CREATE_RIGHT_F5 = f"""
+<div style="width:250px;flex-shrink:0;">
+  {section_label("PROCEEDS")}
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              padding:13px 16px;margin-bottom:14px;">
+    <div style="font-size:12px;color:{TXT_MUT};margin-bottom:6px;">
+      If sold out at floor ($40)
+    </div>
+    <div style="font-size:18px;font-weight:700;color:{TXT_PRI};margin-bottom:10px;">
+      $4,000 min
+    </div>
+    <div style="font-size:12px;color:{TXT_MUT};margin-bottom:6px;">
+      If sold out at start ($200)
+    </div>
+    <div style="font-size:18px;font-weight:700;color:{TXT_PRI};">
+      $20,000 max
+    </div>
+  </div>
+
+  {section_label("COLLATERAL REQUIRED")}
+  <div style="background:{WARN_RGBA};border:1px solid {WARN};border-radius:8px;
+              padding:12px 14px;margin-bottom:14px;">
+    <div style="font-size:20px;font-weight:700;color:{TXT_PRI};margin-bottom:4px;">
+      45.0 XMR
+    </div>
+    <div style="font-size:11px;color:{TXT_MUT};line-height:1.5;">
+      100 files &times; 0.45 XMR. Must be locked before auction opens.
+      Returned if terms not met by deadline.
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    {btn("Lock Collateral &amp; Launch", color=SUCCESS, text_color=BG, full=True)}
+    {btn_outline("Save Draft", full=True)}
+  </div>
+</div>"""
+
+CREATE_HEADER_F5 = f"""
+<div style="padding:13px 24px;border-bottom:1px solid {BORDER};
+            display:flex;align-items:center;gap:12px;">
+  <div style="font-size:12px;color:{ACCENT};cursor:pointer;">&larr; Auctions</div>
+  <div style="width:1px;height:16px;background:{BORDER};"></div>
+  <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Create Auction</div>
+</div>"""
+
+F5 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + dex_header()
+      + CREATE_HEADER_F5
+      + f'<div style="padding:18px 24px;display:flex;gap:20px;">'
+      + CREATE_LEFT_F5 + CREATE_RIGHT_F5
+      + f'</div></div>')
+
+# ---------------------------------------------------------------------------
+# Assemble HTML
+# ---------------------------------------------------------------------------
+
+FRAMES = [
+    ("Auction Board",   F1),
+    ("Auction Detail",  F2),
+    ("Confirm Bid",     F3),
+    ("Settlement",      F4),
+    ("Create Auction",  F5),
+]
+
+TABS_JS   = ",\n".join(f'"{t}"' for t, _ in FRAMES)
+FRAMES_JS = ",\n".join(
+    f'`{html.replace("`", "\\`").replace("${", "\\${")}`'
+    for _, html in FRAMES
+)
+
+HTML = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NyxForge Bounty Auctions</title>
+<style>
+* {{ box-sizing: border-box; margin: 0; padding: 0; }}
+body {{ background: #080a12; font-family: 'Inter', system-ui, sans-serif;
+       display: flex; flex-direction: column; align-items: center;
+       min-height: 100vh; padding: 24px 16px; }}
+.tab-bar {{ display: flex; gap: 4px; margin-bottom: 20px;
+           background: {SURF}; border: 1px solid {BORDER};
+           border-radius: 8px; padding: 4px; max-width: {FW}px; }}
+.tab {{ padding: 7px 18px; border-radius: 6px; cursor: pointer;
+       font-size: 12px; color: {TXT_MUT}; transition: all 0.15s; }}
+.tab.active {{ background: {ACCENT}; color: {TXT_PRI}; font-weight: 700; }}
+.tab:hover:not(.active) {{ color: {TXT_PRI}; }}
+.viewport {{ display: flex; align-items: flex-start; width: {FW}px; }}
+.nav {{ display: flex; gap: 12px; margin-top: 16px; align-items: center; }}
+.nav-btn {{ padding: 8px 20px; border-radius: 6px; cursor: pointer;
+           font-size: 13px; background: {SURF}; border: 1px solid {BORDER};
+           color: {TXT_SEC}; }}
+.nav-btn:hover {{ border-color: {ACCENT}; color: {TXT_PRI}; }}
+.frame-label {{ font-size: 12px; color: {TXT_MUT}; min-width: 140px; text-align: center; }}
+</style>
+</head>
+<body>
+<div class="tab-bar" id="tabBar"></div>
+<div class="viewport" id="viewport"></div>
+<div class="nav">
+  <div class="nav-btn" onclick="go(-1)">&larr; Prev</div>
+  <div class="frame-label" id="frameLabel"></div>
+  <div class="nav-btn" onclick="go(1)">Next &rarr;</div>
+</div>
+<script>
+const TABS   = [{TABS_JS}];
+const FRAMES = [{FRAMES_JS}];
+let cur = 0;
+function render() {{
+  const tb = document.getElementById('tabBar');
+  tb.innerHTML = TABS.map((t,i) =>
+    `<div class="tab${{i===cur?' active':''}}" onclick="jump(${{i}})">${{t}}</div>`
+  ).join('');
+  document.getElementById('viewport').innerHTML = FRAMES[cur];
+  document.getElementById('frameLabel').textContent =
+    (cur+1) + ' / ' + FRAMES.length + ' — ' + TABS[cur];
+}}
+function jump(i) {{ cur = i; render(); }}
+function go(d) {{ cur = (cur + d + FRAMES.length) % FRAMES.length; render(); }}
+render();
+</script>
+</body>
+</html>"""
+
+os.makedirs(OUTDIR, exist_ok=True)
+with open(OUTFILE, "w") as f:
+    f.write(HTML)
+print(f"Written: {OUTFILE}")
+if os.environ.get("NYX_OPEN") == "1":   # opt in; macOS only
+    subprocess.Popen(["open", "-a", "Brave Browser", OUTFILE])
+    print("Opened in Brave.")

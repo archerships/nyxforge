@@ -1,0 +1,162 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+MOCK_DATA="$REPO_ROOT/mock/nyxforge.mockoon.json"
+STORYBOARDS_DIR="$REPO_ROOT/docs/storyboards"
+SVG_OUT="$REPO_ROOT/docs/storyboards/out"
+FLUTTER_DIR="$REPO_ROOT/ui"
+MOCK_PORT=8888
+
+MOCKOON_PID=""
+FLUTTER_PID=""
+
+cleanup() {
+  echo ""
+  echo "dev-hologram: shutting down..."
+  [[ -n "$MOCKOON_PID" ]] && kill "$MOCKOON_PID" 2>/dev/null && echo "  stopped mockoon (pid $MOCKOON_PID)"
+  [[ -n "$FLUTTER_PID" ]] && kill "$FLUTTER_PID" 2>/dev/null && echo "  stopped flutter (pid $FLUTTER_PID)"
+  exit 0
+}
+trap cleanup INT TERM
+
+check_prereqs() {
+  local missing=()
+  command -v mmdc >/dev/null 2>&1 || missing+=("mmdc (npm install -g @mermaid-js/mermaid-cli)")
+  command -v node >/dev/null 2>&1 || missing+=("node")
+  [[ $SKIP_FLUTTER -eq 0 ]] && {
+    command -v mockoon-cli >/dev/null 2>&1 || missing+=("mockoon-cli (npm install -g @mockoon/cli)")
+    command -v flutter    >/dev/null 2>&1 || missing+=("flutter (https://flutter.dev/docs/get-started/install)")
+  }
+
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    echo "dev-hologram: missing prerequisites:"
+    for m in "${missing[@]}"; do
+      echo "  - $m"
+    done
+    exit 1
+  fi
+}
+
+gen_diagrams() {
+  echo "dev-hologram: generating Mermaid SVGs..."
+  mkdir -p "$SVG_OUT"
+  for f in "$STORYBOARDS_DIR"/*.mmd; do
+    [[ -f "$f" ]] || continue
+    base="$(basename "$f" .mmd)"
+    out="$SVG_OUT/$base.svg"
+    if mmdc -i "$f" -o "$out" -b '#0d0f1a' 2>/dev/null; then
+      # trim canvas to drawing bounds (removes empty space from back-edge routing)
+      if command -v inkscape >/dev/null 2>&1; then
+        inkscape "$out" --export-area-drawing --export-plain-svg --export-filename="$out" 2>/dev/null
+        # restore width=100%, drop fixed height, re-inject background rect
+        python3 -c "
+import sys, re
+svg = open(sys.argv[1]).read()
+svg = re.sub(r'\bwidth=\"[^\"]*\"', 'width=\"100%\"', svg, count=1)
+svg = re.sub(r'\bheight=\"[^\"]*\"', '', svg, count=1)
+bg = '<rect x=\"-9999\" y=\"-9999\" width=\"99999\" height=\"99999\" fill=\"#0d0f1a\"/>'
+svg = re.sub(r'(<svg[^>]*>)', r'\1' + bg, svg, count=1)
+open(sys.argv[1], 'w').write(svg)
+" "$out"
+      fi
+      echo "  $base.svg"
+    else
+      echo "  WARN: mmdc failed for $base"
+    fi
+  done
+}
+
+start_mockoon() {
+  echo "dev-hologram: starting Mockoon on port $MOCK_PORT..."
+  mockoon-cli start \
+    --data "$MOCK_DATA" \
+    --port "$MOCK_PORT" \
+    --log-transaction \
+    &>/tmp/nyxforge-mockoon.log &
+  MOCKOON_PID=$!
+  # brief pause to let mockoon bind
+  sleep 1
+  if ! kill -0 "$MOCKOON_PID" 2>/dev/null; then
+    echo "dev-hologram: mockoon failed to start. check /tmp/nyxforge-mockoon.log"
+    exit 1
+  fi
+  echo "  mockoon running (pid $MOCKOON_PID) -- log: /tmp/nyxforge-mockoon.log"
+}
+
+probe_mockoon() {
+  echo "dev-hologram: probing mock API..."
+  local result
+  result=$(curl -s -X POST http://127.0.0.1:$MOCK_PORT/rpc \
+    -H "Content-Type: application/json" \
+    -d '{"jsonrpc":"2.0","id":1,"method":"bonds.list","params":{}}' 2>/dev/null | head -c 80)
+  if [[ "$result" == *"bonds"* ]]; then
+    echo "  mock API OK"
+  else
+    echo "  WARN: mock API probe unexpected response: $result"
+  fi
+}
+
+run_flutter() {
+  if [[ ! -d "$FLUTTER_DIR" ]]; then
+    echo "dev-hologram: flutter src not found at $FLUTTER_DIR -- skipping flutter"
+    echo "  (create $FLUTTER_DIR to enable)"
+    return
+  fi
+  echo "dev-hologram: starting Flutter app..."
+  (
+    cd "$FLUTTER_DIR"
+    flutter run -d macos \
+      --dart-define=MOCK_URL=http://127.0.0.1:$MOCK_PORT/rpc \
+      2>&1 | tee /tmp/nyxforge-flutter.log
+  ) &
+  FLUTTER_PID=$!
+  echo "  flutter running (pid $FLUTTER_PID) -- log: /tmp/nyxforge-flutter.log"
+}
+
+# parse flags
+SKIP_DIAGRAMS=0
+SKIP_FLUTTER=0
+for arg in "$@"; do
+  case "$arg" in
+    --no-diagrams) SKIP_DIAGRAMS=1 ;;
+    --no-flutter)  SKIP_FLUTTER=1  ;;
+    --help|-h)
+      echo "Usage: dev-hologram [--no-diagrams] [--no-flutter]"
+      echo ""
+      echo "  Starts the NyxForge sovereign UI dev environment:"
+      echo "    1. Generates Mermaid SVGs from docs/storyboards/*.mmd"
+      echo "    2. Starts Mockoon mock API on port $MOCK_PORT"
+      echo "    3. Starts Flutter desktop app (macOS) pointed at mock"
+      echo ""
+      echo "  Flags:"
+      echo "    --no-diagrams   Skip Mermaid SVG generation"
+      echo "    --no-flutter    Start mockoon only (no Flutter)"
+      exit 0
+      ;;
+  esac
+done
+
+echo "========================================"
+echo " NyxForge dev-hologram"
+echo "========================================"
+
+check_prereqs
+
+[[ $SKIP_DIAGRAMS -eq 0 ]] && gen_diagrams && "$REPO_ROOT/scripts/storyboards/story-view"
+
+if [[ $SKIP_FLUTTER -eq 0 ]]; then
+  start_mockoon
+  probe_mockoon
+  run_flutter
+fi
+
+echo ""
+echo "dev-hologram: environment ready."
+echo "  Mock API : http://127.0.0.1:$MOCK_PORT/rpc"
+echo "  SVG out  : $SVG_OUT/"
+echo "  Logs     : /tmp/nyxforge-mockoon.log  /tmp/nyxforge-flutter.log"
+echo ""
+echo "Press Ctrl+C to stop all processes."
+
+wait

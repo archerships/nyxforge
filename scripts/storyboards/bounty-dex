@@ -1,0 +1,700 @@
+#!/usr/bin/env python3
+"""
+NyxForge Bounty DEX mockup generator.
+Generates docs/storyboards/out/bounty-dex-mockup.html
+
+5 frames (P2P bounty exchange, Waku order book, Nym swap execution):
+  1. Market Overview   -- browsable listings, filter/sort, 24h stats
+  2. Listing Detail    -- bounty terms, judge status, price, implied yield, Make Offer
+  3. Create Listing    -- upload .bounty, set price, listing expiry, broadcast via Waku
+  4. Swap Execution    -- PTLC atomic swap steps, Nym routing indicator, countdown
+  5. My Trades         -- active listings, trade history
+"""
+import os, subprocess
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTDIR     = os.path.join(os.environ.get("NYXFORGE_ROOT", os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "docs/storyboards/out")
+OUTFILE    = os.path.join(OUTDIR, "bounty-dex-mockup.html")
+
+# ---------------------------------------------------------------------------
+# Palette
+# ---------------------------------------------------------------------------
+BG           = "#0d0f1a"
+SURF         = "#131524"
+SURF_HI      = "#1a1d2e"
+ACCENT       = "#5e6ad2"
+ACC_GLO      = "#2d3068"
+TXT_PRI      = "#e8eaf0"
+TXT_SEC      = "#b8c0d8"
+TXT_MUT      = "#8b95b0"
+SUCCESS      = "#4ade80"
+DANGER       = "#f87171"
+WARN         = "#fbbf24"
+BORDER       = "#2a2d3e"
+INACT        = "#3a3d5c"
+SUCCESS_RGBA = "rgba(74,222,128,0.10)"
+DANGER_RGBA  = "rgba(248,113,113,0.10)"
+WARN_RGBA    = "rgba(251,191,36,0.10)"
+ACCENT_RGBA  = "rgba(94,106,210,0.12)"
+
+FW = 1000
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def section_label(text):
+    return (f'<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;'
+            f'color:{ACCENT};margin-bottom:8px;">{text}</div>')
+
+def divider(mb=12):
+    return f'<div style="height:1px;background:{BORDER};margin:0 0 {mb}px;"></div>'
+
+def status_pill(text, color, bg):
+    return (f'<span style="font-size:10px;font-weight:700;letter-spacing:0.8px;'
+            f'padding:3px 9px;border-radius:4px;color:{color};background:{bg};">'
+            f'{text}</span>')
+
+def btn(label, color=SUCCESS, text_color=BG, small=False):
+    pad = "7px 16px" if small else "12px 26px"
+    fs  = "12px"     if small else "14px"
+    return (f'<div style="display:inline-block;padding:{pad};background:{color};'
+            f'border-radius:7px;font-size:{fs};font-weight:700;color:{text_color};'
+            f'cursor:pointer;letter-spacing:0.3px;">{label}</div>')
+
+def btn_outline(label, small=False, color=None):
+    pad  = "6px 14px" if small else "11px 25px"
+    fs   = "12px"     if small else "14px"
+    col  = color or TXT_SEC
+    bord = color or BORDER
+    return (f'<div style="display:inline-block;padding:{pad};background:transparent;'
+            f'border:1px solid {bord};border-radius:7px;font-size:{fs};'
+            f'color:{col};cursor:pointer;">{label}</div>')
+
+def input_field(label, value, mono=False):
+    font = "monospace" if mono else "inherit"
+    return (f'<div style="margin-bottom:12px;">'
+            f'<div style="font-size:12px;color:{TXT_MUT};margin-bottom:4px;">{label}</div>'
+            f'<div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;'
+            f'padding:9px 13px;font-size:13px;color:{TXT_MUT};font-family:{font};">{value}</div>'
+            f'</div>')
+
+def dex_header(subtitle=None):
+    sub = (f'<div style="font-size:11px;color:{TXT_MUT};margin-top:1px;">{subtitle}</div>'
+           if subtitle else "")
+    return f"""
+  <div style="background:{SURF};border-bottom:1px solid {BORDER};padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:{ACC_GLO};
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:11px;font-weight:700;color:{ACCENT};">NYX</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Bounty DEX</div>
+        {sub}
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="font-size:11px;color:{TXT_MUT};">
+        <span style="display:inline-block;width:7px;height:7px;border-radius:4px;
+          background:{SUCCESS};margin-right:5px;"></span>Waku P2P connected &middot; 34 peers
+      </div>
+      <div style="font-size:12px;font-family:monospace;color:{TXT_MUT};">4AB...f9c2</div>
+      {btn("+ List Bounty", color=ACCENT, text_color=TXT_PRI, small=True)}
+    </div>
+  </div>"""
+
+def filter_bar(active="All"):
+    filters = ["All", "Active", "Window Open", "Near Deadline"]
+    pills = ""
+    for f in filters:
+        if f == active:
+            pills += (f'<div style="padding:5px 14px;border-radius:5px;background:{ACCENT};'
+                      f'font-size:12px;font-weight:700;color:{TXT_PRI};cursor:pointer;">{f}</div>')
+        else:
+            pills += (f'<div style="padding:5px 14px;border-radius:5px;background:transparent;'
+                      f'font-size:12px;color:{TXT_MUT};cursor:pointer;">{f}</div>')
+    return (f'<div style="display:flex;align-items:center;gap:4px;padding:10px 24px;'
+            f'border-bottom:1px solid {BORDER};background:{SURF};">'
+            f'<div style="display:flex;gap:2px;background:{SURF_HI};border:1px solid {BORDER};'
+            f'border-radius:7px;padding:3px;">{pills}</div>'
+            f'<div style="flex:1;"></div>'
+            f'<div style="font-size:12px;color:{TXT_MUT};margin-right:8px;">Sort by:</div>'
+            f'<div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:5px;'
+            f'padding:5px 12px;font-size:12px;color:{TXT_SEC};display:flex;align-items:center;gap:6px;">'
+            f'Deadline &nbsp;&#9660;</div>'
+            f'</div>')
+
+def stat_card(label, value, sub=None, accent=False):
+    bg   = ACC_GLO      if accent else SURF
+    brd  = ACCENT       if accent else BORDER
+    vcol = ACCENT       if accent else TXT_PRI
+    scol = TXT_SEC      if accent else TXT_MUT
+    sub_html = (f'<div style="font-size:11px;color:{scol};margin-top:3px;">{sub}</div>'
+                if sub else "")
+    return (f'<div style="background:{bg};border:1px solid {brd};border-radius:8px;'
+            f'padding:13px 16px;">'
+            f'<div style="font-size:11px;color:{TXT_MUT};letter-spacing:0.8px;">{label}</div>'
+            f'<div style="font-size:22px;font-weight:700;color:{vcol};margin-top:3px;">{value}</div>'
+            f'{sub_html}</div>')
+
+def listing_row(bounty_id, name, collateral, deadline, ask, discount, judge_status,
+                status, status_color, status_bg):
+    disc_col = SUCCESS if not discount.startswith("+") else DANGER
+    return (f'<div style="display:grid;'
+            f'grid-template-columns:90px 2fr 90px 100px 90px 70px 110px 100px;'
+            f'gap:8px;align-items:center;padding:11px 16px;'
+            f'border-bottom:1px solid {BORDER};font-size:13px;cursor:pointer;"'
+            f' onmouseover="this.style.background=\'{SURF_HI}\'"'
+            f' onmouseout="this.style.background=\'transparent\'">'
+            f'<div style="font-family:monospace;font-size:10px;color:{TXT_MUT};">{bounty_id}</div>'
+            f'<div style="color:{TXT_PRI};">{name}</div>'
+            f'<div style="font-family:monospace;color:{TXT_SEC};text-align:right;">{collateral}</div>'
+            f'<div style="font-size:11px;color:{TXT_MUT};font-family:monospace;">{deadline}</div>'
+            f'<div style="font-family:monospace;font-weight:700;color:{TXT_PRI};text-align:right;">{ask}</div>'
+            f'<div style="font-size:11px;font-weight:700;color:{disc_col};text-align:right;">{discount}</div>'
+            f'<div>{status_pill(judge_status, ACCENT, ACCENT_RGBA)}</div>'
+            f'<div>{btn("Buy", color=ACCENT, text_color=TXT_PRI, small=True)}</div>'
+            f'</div>')
+
+def step_node(n, label, state):
+    if state == "done":
+        bg, brd, ncol, lcol = ACC_GLO, ACCENT, ACCENT, TXT_SEC
+        sym = "&#10003;"
+    elif state == "active":
+        bg, brd, ncol, lcol = ACCENT, ACCENT, BG, TXT_PRI
+        sym = str(n)
+    else:
+        bg, brd, ncol, lcol = SURF_HI, INACT, TXT_MUT, TXT_MUT
+        sym = str(n)
+    return (f'<div style="display:flex;flex-direction:column;align-items:center;gap:6px;">'
+            f'<div style="width:32px;height:32px;border-radius:16px;background:{bg};'
+            f'border:2px solid {brd};display:flex;align-items:center;justify-content:center;'
+            f'font-size:13px;font-weight:700;color:{ncol};">{sym}</div>'
+            f'<div style="font-size:11px;color:{lcol};white-space:nowrap;">{label}</div>'
+            f'</div>')
+
+def step_connector(done=False):
+    col = ACCENT if done else INACT
+    return (f'<div style="flex:1;height:2px;background:{col};'
+            f'align-self:flex-start;margin-top:15px;"></div>')
+
+# ---------------------------------------------------------------------------
+# Frame 1 -- Market Overview
+# ---------------------------------------------------------------------------
+
+STATS = f"""
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;
+            padding:14px 24px;border-bottom:1px solid {BORDER};">
+  {stat_card("LISTINGS", "23")}
+  {stat_card("TOTAL COLLATERAL", "18.4 XMR")}
+  {stat_card("24H VOLUME", "3.2 XMR", sub="6 trades")}
+  {stat_card("AVG DISCOUNT", "14%", sub="vs face value")}
+  {stat_card("PEERS", "34", sub="Waku P2P", accent=True)}
+</div>"""
+
+TABLE_HEAD = (
+    f'<div style="display:grid;'
+    f'grid-template-columns:90px 2fr 90px 100px 90px 70px 110px 100px;'
+    f'gap:8px;align-items:center;padding:8px 16px;'
+    f'background:{SURF_HI};border-bottom:1px solid {BORDER};">'
+    + "".join(
+        f'<div style="font-size:10px;font-weight:700;letter-spacing:0.8px;'
+        f'color:{TXT_MUT};{"text-align:right;" if h in ("COLLATERAL","ASK","DISC") else ""}">{h}</div>'
+        for h in ["ID", "BOUNTY", "COLLATERAL", "DEADLINE", "ASK (XMR)", "DISC", "JUDGES", ""]
+    )
+    + '</div>'
+)
+
+ROWS = (
+    listing_row("ALZ-2040", "Alzheimer HALE Bounty 2040",
+                "0.45 XMR", "Dec 2040", "0.38 XMR", "-16%", "MONITORING", "ACTIVE", ACCENT, ACCENT_RGBA) +
+    listing_row("MAL-2035", "Malaria Eradication Bounty 2035",
+                "0.22 XMR", "Jun 2035", "0.21 XMR", "-5%",  "WINDOW OPEN", "WINDOW OPEN", WARN, WARN_RGBA) +
+    listing_row("TB-2038",  "Global TB Reduction Bounty 2038",
+                "0.90 XMR", "Dec 2038", "0.72 XMR", "-20%", "MONITORING", "ACTIVE", ACCENT, ACCENT_RGBA) +
+    listing_row("WAT-2030", "Clean Water Access Bounty 2030",
+                "0.25 XMR", "Mar 2030", "0.22 XMR", "-12%", "MONITORING", "ACTIVE", ACCENT, ACCENT_RGBA) +
+    listing_row("POL-2032", "Global Poverty Index Bounty 2032",
+                "1.20 XMR", "Dec 2032", "0.95 XMR", "-21%", "MONITORING", "ACTIVE", ACCENT, ACCENT_RGBA) +
+    listing_row("VCN-2028", "Dengue Vaccine Approval Bounty",
+                "0.60 XMR", "Jan 2028", "0.58 XMR", "-3%",  "WINDOW OPEN", "WINDOW OPEN", WARN, WARN_RGBA)
+)
+
+F1 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + dex_header()
+      + filter_bar("All")
+      + STATS
+      + f'<div style="background:{SURF};border:1px solid {BORDER};'
+      f'border-radius:8px;overflow:hidden;margin:16px 24px;">'
+      + TABLE_HEAD + ROWS
+      + f'</div>'
+      + f'<div style="padding:10px 24px;font-size:11px;color:{TXT_MUT};">'
+      f'Order book broadcast via Waku P2P &middot; listings expire after 48h &middot; '
+      f'swap execution routed through Nym for metadata privacy</div>'
+      + '</div>')
+
+# ---------------------------------------------------------------------------
+# Frame 2 -- Listing Detail
+# ---------------------------------------------------------------------------
+
+YIELD_CALC = f"""
+<div style="background:{ACC_GLO};border:1px solid {ACCENT};border-radius:8px;
+            padding:14px 16px;margin-bottom:16px;">
+  {section_label("PRICE ANALYSIS")}
+  <div style="display:flex;justify-content:space-between;margin-bottom:7px;">
+    <div style="font-size:12px;color:{TXT_MUT};">Face value (collateral)</div>
+    <div style="font-size:13px;color:{TXT_SEC};font-family:monospace;">0.45 XMR</div>
+  </div>
+  <div style="display:flex;justify-content:space-between;margin-bottom:7px;">
+    <div style="font-size:12px;color:{TXT_MUT};">Max payout</div>
+    <div style="font-size:13px;color:{TXT_SEC};font-family:monospace;">0.45 XMR</div>
+  </div>
+  <div style="display:flex;justify-content:space-between;margin-bottom:7px;">
+    <div style="font-size:12px;color:{TXT_MUT};">Current ask</div>
+    <div style="font-size:13px;font-weight:700;color:{TXT_PRI};font-family:monospace;">0.38 XMR</div>
+  </div>
+  <div style="height:1px;background:{ACCENT};opacity:0.3;margin:8px 0;"></div>
+  <div style="display:flex;justify-content:space-between;margin-bottom:7px;">
+    <div style="font-size:12px;color:{TXT_MUT};">Discount to face</div>
+    <div style="font-size:13px;font-weight:700;color:{SUCCESS};">-16%</div>
+  </div>
+  <div style="display:flex;justify-content:space-between;">
+    <div style="font-size:12px;color:{TXT_MUT};">Implied yield if resolved</div>
+    <div style="font-size:13px;font-weight:700;color:{SUCCESS};">+79% &nbsp;(14yr hold)</div>
+  </div>
+</div>"""
+
+JUDGE_PANEL = f"""
+{section_label("JUDGE PANEL")}
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            overflow:hidden;margin-bottom:16px;">
+  {''.join(
+    f'<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;'
+    f'border-bottom:1px solid {BORDER};">'
+    f'<img src="https://i.pravatar.cc/28?img={img}" '
+    f'style="width:28px;height:28px;border-radius:14px;flex-shrink:0;">'
+    f'<div style="flex:1;font-size:12px;color:{TXT_PRI};">{name}</div>'
+    f'<div style="font-size:11px;color:{TXT_MUT};">{org}</div>'
+    f'</div>'
+    for name, org, img in [
+        ("Dr. Sarah Chen",       "WHO Geneva",        16),
+        ("Dr. Marcus Webb",      "FDA / NIH",         51),
+        ("Dr. Elena Marchetti",  "Cochrane Reviews",  47),
+    ]
+  )}
+</div>"""
+
+DETAIL_LEFT = f"""
+<div style="flex:1;min-width:0;">
+  {section_label("BOUNTY TERMS")}
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              padding:13px 16px;margin-bottom:16px;">
+    <div style="font-size:13px;color:{TXT_SEC};line-height:1.6;">
+      Resolves in favor of holders if WHO Global Healthy Life Expectancy (HALE)
+      reaches <strong style="color:{TXT_PRI};">&ge;80 years</strong> by Dec 31, 2040,
+      per the WHO World Health Statistics annual report.
+    </div>
+  </div>
+  {JUDGE_PANEL}
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              padding:13px 16px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      {''.join(
+        f'<div><div style="font-size:11px;color:{TXT_MUT};">{l}</div>'
+        f'<div style="font-size:13px;color:{TXT_PRI};margin-top:2px;font-family:monospace;">{v}</div></div>'
+        for l, v in [("Collateral", "0.45 XMR"), ("Payout", "0.45 XMR"),
+                     ("Deadline", "Dec 31, 2040"), ("Expiry", "Mar 31, 2041")]
+      )}
+    </div>
+  </div>
+</div>"""
+
+DETAIL_RIGHT = f"""
+<div style="width:260px;flex-shrink:0;">
+  {YIELD_CALC}
+  {section_label("LISTING INFO")}
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              padding:13px 16px;margin-bottom:16px;">
+    <div style="display:flex;justify-content:space-between;margin-bottom:7px;">
+      <div style="font-size:12px;color:{TXT_MUT};">Listed</div>
+      <div style="font-size:12px;color:{TXT_SEC};">2h ago</div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:7px;">
+      <div style="font-size:12px;color:{TXT_MUT};">Listing expires</div>
+      <div style="font-size:12px;color:{WARN};">in 46h</div>
+    </div>
+    <div style="display:flex;justify-content:space-between;">
+      <div style="font-size:12px;color:{TXT_MUT};">Network</div>
+      <div style="font-size:12px;color:{TXT_SEC};">Waku P2P</div>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    {btn("BUY &nbsp; 0.38 XMR", color=SUCCESS, text_color=BG)}
+    {btn_outline("Make Offer", color=ACCENT)}
+  </div>
+  <div style="font-size:11px;color:{TXT_MUT};margin-top:10px;line-height:1.6;">
+    Swap executed via PTLC atomic exchange.
+    Routed through Nym for metadata privacy.
+  </div>
+</div>"""
+
+DETAIL_HEADER = f"""
+<div style="padding:13px 24px;border-bottom:1px solid {BORDER};
+            display:flex;align-items:center;gap:12px;">
+  <div style="font-size:12px;color:{ACCENT};cursor:pointer;">&larr; Market</div>
+  <div style="width:1px;height:16px;background:{BORDER};"></div>
+  <div style="flex:1;display:flex;align-items:center;gap:10px;">
+    <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Alzheimer HALE Bounty 2040</div>
+    {status_pill("ACTIVE", ACCENT, ACCENT_RGBA)}
+  </div>
+  <div style="font-size:11px;font-family:monospace;color:{TXT_MUT};">ALZ-2040-0047</div>
+</div>"""
+
+F2 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + dex_header()
+      + DETAIL_HEADER
+      + f'<div style="padding:18px 24px;display:flex;gap:20px;">'
+      + DETAIL_LEFT + DETAIL_RIGHT
+      + f'</div></div>')
+
+# ---------------------------------------------------------------------------
+# Frame 3 -- Create Listing
+# ---------------------------------------------------------------------------
+
+UPLOAD_ZONE = f"""
+<div style="border:2px dashed {BORDER};border-radius:10px;padding:28px;
+            text-align:center;background:{SURF};margin-bottom:16px;">
+  <div style="font-size:26px;color:{TXT_MUT};margin-bottom:8px;">&#128194;</div>
+  <div style="font-size:14px;color:{TXT_PRI};margin-bottom:4px;">
+    Drop .bounty file here or click to browse
+  </div>
+  <div style="font-size:12px;color:{TXT_MUT};">.bounty files only</div>
+</div>"""
+
+AUTO_POPULATED = f"""
+<div style="background:{ACC_GLO};border:1px solid {ACCENT};border-radius:8px;
+            padding:13px 16px;margin-bottom:16px;">
+  {section_label("DETECTED FROM FILE")}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+    {''.join(
+      f'<div><div style="font-size:11px;color:{TXT_MUT};">{l}</div>'
+      f'<div style="font-size:13px;color:{TXT_PRI};margin-top:2px;">{v}</div></div>'
+      for l, v in [
+          ("Bounty", "Alzheimer HALE Bounty 2040"),
+          ("Collateral", "0.45 XMR"),
+          ("Deadline", "Dec 31, 2040"),
+          ("Bounty ID", "ALZ-2040-0047"),
+      ]
+    )}
+  </div>
+</div>"""
+
+BROADCAST_INFO = f"""
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            padding:13px 16px;margin-bottom:16px;">
+  {section_label("BROADCAST SETTINGS")}
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+    <div style="width:16px;height:16px;border-radius:3px;background:{ACC_GLO};
+                border:2px solid {ACCENT};display:flex;align-items:center;
+                justify-content:center;font-size:10px;color:{SUCCESS};">&#10003;</div>
+    <div style="font-size:13px;color:{TXT_SEC};">Broadcast via Waku P2P network</div>
+  </div>
+  <div style="font-size:12px;color:{TXT_MUT};line-height:1.6;">
+    Your listing will be gossiped to all connected peers on the
+    <code style="color:{ACCENT};">/nyxforge/dex-listings/1/proto</code> content topic.
+    No central server. Listing expires after the duration you set.
+  </div>
+</div>"""
+
+CREATE_LEFT = f"""
+<div style="flex:1;min-width:0;">
+  {UPLOAD_ZONE}
+  {AUTO_POPULATED}
+  {input_field("Asking price", "0.38 XMR")}
+  {input_field("Accept payment in", "XMR  (or: ZEC, BTC, TARI)")}
+</div>"""
+
+CREATE_RIGHT = f"""
+<div style="width:280px;flex-shrink:0;">
+  {input_field("Listing duration", "48 hours")}
+  {input_field("Your payment address (XMR)", "4Ac7bPzQ...e91f", mono=True)}
+  {BROADCAST_INFO}
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    {btn("Broadcast Listing", color=ACCENT, text_color=TXT_PRI)}
+    {btn_outline("Preview")}
+  </div>
+  <div style="margin-top:10px;font-size:11px;color:{TXT_MUT};line-height:1.6;">
+    Your .bounty file is not uploaded anywhere. Only the listing metadata
+    (bounty ID, collateral, ask price) is broadcast. The file transfers
+    directly to the buyer during the atomic swap.
+  </div>
+</div>"""
+
+CREATE_HEADER = f"""
+<div style="padding:13px 24px;border-bottom:1px solid {BORDER};
+            display:flex;align-items:center;gap:12px;">
+  <div style="font-size:12px;color:{ACCENT};cursor:pointer;">&larr; Market</div>
+  <div style="width:1px;height:16px;background:{BORDER};"></div>
+  <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">List a Bounty for Sale</div>
+</div>"""
+
+F3 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + dex_header()
+      + CREATE_HEADER
+      + f'<div style="padding:18px 24px;display:flex;gap:20px;">'
+      + CREATE_LEFT + CREATE_RIGHT
+      + f'</div></div>')
+
+# ---------------------------------------------------------------------------
+# Frame 4 -- Swap Execution
+# ---------------------------------------------------------------------------
+
+SWAP_STEPS = f"""
+<div style="display:flex;align-items:center;gap:0;margin-bottom:24px;">
+  {step_node(1, "Initiate", "done")}
+  {step_connector(done=True)}
+  {step_node(2, "Seller locks", "done")}
+  {step_connector(done=True)}
+  {step_node(3, "Buyer claims", "active")}
+  {step_connector()}
+  {step_node(4, "Complete", "pending")}
+</div>"""
+
+PTLC_DIAGRAM = f"""
+<div style="display:grid;grid-template-columns:1fr 60px 1fr;gap:0;
+            margin-bottom:20px;align-items:center;">
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:14px 16px;">
+    <div style="font-size:11px;color:{TXT_MUT};letter-spacing:0.8px;margin-bottom:8px;">SELLER</div>
+    <div style="font-size:13px;color:{TXT_PRI};margin-bottom:6px;">Locked: ALZ-2040-0047.bounty</div>
+    <div style="font-size:11px;color:{TXT_MUT};margin-bottom:10px;">
+      PTLC &middot; timelock 4h &middot; adaptor signature
+    </div>
+    {status_pill("LOCKED", SUCCESS, SUCCESS_RGBA)}
+  </div>
+  <div style="text-align:center;font-size:20px;color:{ACCENT};">&#8644;</div>
+  <div style="background:{SURF};border:1px solid {ACCENT};border-radius:8px;padding:14px 16px;">
+    <div style="font-size:11px;color:{TXT_MUT};letter-spacing:0.8px;margin-bottom:8px;">BUYER (YOU)</div>
+    <div style="font-size:13px;color:{TXT_PRI};margin-bottom:6px;">Locked: 0.38 XMR</div>
+    <div style="font-size:11px;color:{TXT_MUT};margin-bottom:10px;">
+      PTLC &middot; timelock 8h &middot; adaptor signature
+    </div>
+    {status_pill("ACTION NEEDED", WARN, WARN_RGBA)}
+  </div>
+</div>"""
+
+NYM_INDICATOR = f"""
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:14px;">
+  <div style="width:36px;height:36px;border-radius:18px;background:{ACC_GLO};
+              border:1px solid {ACCENT};display:flex;align-items:center;
+              justify-content:center;font-size:11px;font-weight:700;
+              color:{ACCENT};flex-shrink:0;">NYM</div>
+  <div>
+    <div style="font-size:13px;color:{TXT_SEC};margin-bottom:3px;">
+      Swap messages routed via Nym mixnet (anonymous mode)
+    </div>
+    <div style="font-size:11px;color:{TXT_MUT};">
+      5-hop routing &middot; cover traffic active &middot;
+      your IP is not visible to the counterparty
+    </div>
+  </div>
+  <div style="margin-left:auto;">
+    {status_pill("CONNECTED", SUCCESS, SUCCESS_RGBA)}
+  </div>
+</div>"""
+
+CLAIM_ACTION = f"""
+<div style="background:{WARN_RGBA};border:1px solid {WARN};border-radius:8px;
+            padding:14px 16px;margin-bottom:16px;">
+  <div style="font-size:13px;font-weight:700;color:{WARN};margin-bottom:6px;">
+    Your action required
+  </div>
+  <div style="font-size:13px;color:{TXT_SEC};line-height:1.6;margin-bottom:12px;">
+    The seller has locked the .bounty file. To complete the swap, reveal your
+    PTLC preimage to claim the file. This simultaneously releases your XMR to the seller.
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;">
+    {btn("Claim .bounty File", color=SUCCESS, text_color=BG)}
+    <div style="font-size:12px;color:{DANGER};">Swap expires in 3h 42m</div>
+  </div>
+</div>"""
+
+SWAP_HEADER = f"""
+<div style="padding:13px 24px;border-bottom:1px solid {BORDER};
+            display:flex;align-items:center;gap:12px;">
+  <div style="font-size:12px;color:{ACCENT};cursor:pointer;">&larr; Listing</div>
+  <div style="width:1px;height:16px;background:{BORDER};"></div>
+  <div style="flex:1;">
+    <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Atomic Swap in Progress</div>
+    <div style="font-size:11px;font-family:monospace;color:{TXT_MUT};margin-top:2px;">
+      ALZ-2040-0047 &middot; 0.38 XMR &middot; swap ID: 7f3a...c912</div>
+  </div>
+</div>"""
+
+F4 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + dex_header()
+      + SWAP_HEADER
+      + f'<div style="padding:20px 24px;">'
+      + SWAP_STEPS
+      + PTLC_DIAGRAM
+      + NYM_INDICATOR
+      + CLAIM_ACTION
+      + f'</div></div>')
+
+# ---------------------------------------------------------------------------
+# Frame 5 -- My Trades
+# ---------------------------------------------------------------------------
+
+def trade_row(date, bounty, price, side, status, status_color, status_bg):
+    return (f'<div style="display:grid;grid-template-columns:110px 2fr 100px 70px 110px;'
+            f'gap:8px;align-items:center;padding:10px 14px;'
+            f'border-bottom:1px solid {BORDER};font-size:13px;">'
+            f'<div style="font-size:11px;font-family:monospace;color:{TXT_MUT};">{date}</div>'
+            f'<div style="color:{TXT_PRI};">{bounty}</div>'
+            f'<div style="font-family:monospace;color:{TXT_SEC};text-align:right;">{price}</div>'
+            f'<div style="font-size:11px;color:{TXT_MUT};">{side}</div>'
+            f'<div>{status_pill(status, status_color, status_bg)}</div>'
+            f'</div>')
+
+def active_listing_row(bounty, ask, expiry, views):
+    return (f'<div style="display:grid;grid-template-columns:2fr 100px 100px 60px 140px;'
+            f'gap:8px;align-items:center;padding:10px 14px;'
+            f'border-bottom:1px solid {BORDER};font-size:13px;">'
+            f'<div style="color:{TXT_PRI};">{bounty}</div>'
+            f'<div style="font-family:monospace;color:{TXT_SEC};text-align:right;">{ask}</div>'
+            f'<div style="font-size:11px;color:{WARN};">expires {expiry}</div>'
+            f'<div style="font-size:11px;color:{TXT_MUT};">{views}</div>'
+            f'<div style="display:flex;gap:6px;">'
+            f'{btn_outline("Edit", small=True)}'
+            f'{btn_outline("Cancel", small=True, color=DANGER)}'
+            f'</div></div>')
+
+ACTIVE_LISTINGS_TABLE = f"""
+{section_label("ACTIVE LISTINGS")}
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            overflow:hidden;margin-bottom:20px;">
+  <div style="display:grid;grid-template-columns:2fr 100px 100px 60px 140px;
+              gap:8px;padding:8px 14px;background:{SURF_HI};
+              border-bottom:1px solid {BORDER};">
+    {''.join(
+      f'<div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:{TXT_MUT};">{h}</div>'
+      for h in ["BOUNTY", "ASK", "EXPIRES", "VIEWS", ""]
+    )}
+  </div>
+  {active_listing_row("Alzheimer HALE Bounty 2040", "0.38 XMR", "in 46h", "12")}
+  {active_listing_row("Global TB Reduction Bounty 2038", "0.72 XMR", "in 31h", "7")}
+</div>"""
+
+HISTORY_TABLE = f"""
+{section_label("TRADE HISTORY")}
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;overflow:hidden;">
+  <div style="display:grid;grid-template-columns:110px 2fr 100px 70px 110px;
+              gap:8px;padding:8px 14px;background:{SURF_HI};
+              border-bottom:1px solid {BORDER};">
+    {''.join(
+      f'<div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:{TXT_MUT};">{h}</div>'
+      for h in ["DATE", "BOUNTY", "PRICE", "SIDE", "STATUS"]
+    )}
+  </div>
+  {trade_row("2026-04-20", "Malaria Eradication Bounty 2035", "0.20 XMR", "BUY",
+             "COMPLETED", SUCCESS, SUCCESS_RGBA)}
+  {trade_row("2026-04-18", "Dengue Vaccine Approval", "0.58 XMR", "SELL",
+             "COMPLETED", SUCCESS, SUCCESS_RGBA)}
+  {trade_row("2026-04-15", "Clean Water Access 2030", "0.22 XMR", "BUY",
+             "EXPIRED", TXT_MUT, SURF_HI)}
+</div>"""
+
+F5 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + dex_header()
+      + f'<div style="padding:13px 24px;border-bottom:1px solid {BORDER};">'
+      f'<div style="font-size:15px;font-weight:700;color:{TXT_PRI};">My Trades</div></div>'
+      + f'<div style="padding:18px 24px;">'
+      + ACTIVE_LISTINGS_TABLE
+      + HISTORY_TABLE
+      + f'</div></div>')
+
+# ---------------------------------------------------------------------------
+# Assemble HTML
+# ---------------------------------------------------------------------------
+
+FRAMES = [
+    ("Market",        F1),
+    ("Listing Detail",F2),
+    ("Create Listing",F3),
+    ("Swap Execution",F4),
+    ("My Trades",     F5),
+]
+
+TABS_JS = ",\n".join(f'"{t}"' for t, _ in FRAMES)
+FRAMES_JS = ",\n".join(
+    f'`{html.replace("`", "\\`").replace("${", "\\${")}`'
+    for _, html in FRAMES
+)
+
+HTML = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NyxForge Bounty DEX</title>
+<style>
+* {{ box-sizing: border-box; margin: 0; padding: 0; }}
+body {{ background: #080a12; font-family: 'Inter', system-ui, sans-serif;
+       display: flex; flex-direction: column; align-items: center;
+       min-height: 100vh; padding: 24px 16px; }}
+.tab-bar {{ display: flex; gap: 4px; margin-bottom: 20px;
+           background: {SURF}; border: 1px solid {BORDER};
+           border-radius: 8px; padding: 4px; max-width: {FW}px; }}
+.tab {{ padding: 7px 18px; border-radius: 6px; cursor: pointer;
+       font-size: 12px; color: {TXT_MUT}; transition: all 0.15s; }}
+.tab.active {{ background: {ACCENT}; color: {TXT_PRI}; font-weight: 700; }}
+.tab:hover:not(.active) {{ color: {TXT_PRI}; }}
+.viewport {{ display: flex; align-items: flex-start; width: {FW}px; }}
+.nav {{ display: flex; gap: 12px; margin-top: 16px; align-items: center; }}
+.nav-btn {{ padding: 8px 20px; border-radius: 6px; cursor: pointer;
+           font-size: 13px; background: {SURF}; border: 1px solid {BORDER};
+           color: {TXT_SEC}; }}
+.nav-btn:hover {{ border-color: {ACCENT}; color: {TXT_PRI}; }}
+.frame-label {{ font-size: 12px; color: {TXT_MUT}; min-width: 140px; text-align: center; }}
+</style>
+</head>
+<body>
+<div class="tab-bar" id="tabBar"></div>
+<div class="viewport" id="viewport"></div>
+<div class="nav">
+  <div class="nav-btn" onclick="go(-1)">&larr; Prev</div>
+  <div class="frame-label" id="frameLabel"></div>
+  <div class="nav-btn" onclick="go(1)">Next &rarr;</div>
+</div>
+<script>
+const TABS   = [{TABS_JS}];
+const FRAMES = [{FRAMES_JS}];
+let cur = 0;
+function render() {{
+  const tb = document.getElementById('tabBar');
+  tb.innerHTML = TABS.map((t,i) =>
+    `<div class="tab${{i===cur?' active':''}}" onclick="jump(${{i}})">${{t}}</div>`
+  ).join('');
+  document.getElementById('viewport').innerHTML = FRAMES[cur];
+  document.getElementById('frameLabel').textContent =
+    (cur+1) + ' / ' + FRAMES.length + ' — ' + TABS[cur];
+}}
+function jump(i) {{ cur = i; render(); }}
+function go(d) {{ cur = (cur + d + FRAMES.length) % FRAMES.length; render(); }}
+render();
+</script>
+</body>
+</html>"""
+
+os.makedirs(OUTDIR, exist_ok=True)
+with open(OUTFILE, "w") as f:
+    f.write(HTML)
+print(f"Written: {OUTFILE}")
+if os.environ.get("NYX_OPEN") == "1":   # opt in; macOS only
+    subprocess.Popen(["open", "-a", "Brave Browser", OUTFILE])
+    print("Opened in Brave.")

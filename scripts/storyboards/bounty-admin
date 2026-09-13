@@ -1,0 +1,693 @@
+#!/usr/bin/env python3
+"""
+NyxForge NGO Admin mockup generator.
+Generates docs/storyboards/out/bounty-admin-mockup.html
+
+4 frames:
+  1. Dashboard        -- summary cards, campaign list
+  2. Campaign Detail  -- funding progress, backer list, judge verdicts
+  3. Create Campaign  -- form: title, terms, deadline, fee, judges
+  4. Judge Management -- judge roster, invite form
+"""
+import os, subprocess
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTDIR     = os.path.join(os.environ.get("NYXFORGE_ROOT", os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "docs/storyboards/out")
+OUTFILE    = os.path.join(OUTDIR, "bounty-admin-mockup.html")
+
+# ---------------------------------------------------------------------------
+# Palette (same as lifebond-landing)
+# ---------------------------------------------------------------------------
+BG           = "#0d0f1a"
+SURF         = "#131524"
+SURF_HI      = "#1a1d2e"
+ACCENT       = "#5e6ad2"
+ACC_GLO      = "#2d3068"
+TXT_PRI      = "#e8eaf0"
+TXT_SEC      = "#b8c0d8"
+TXT_MUT      = "#8b95b0"
+SUCCESS      = "#4ade80"
+DANGER       = "#f87171"
+WARN         = "#fbbf24"
+BORDER       = "#2a2d3e"
+INACT        = "#3a3d5c"
+SUCCESS_RGBA = "rgba(74,222,128,0.10)"
+DANGER_RGBA  = "rgba(248,113,113,0.10)"
+WARN_RGBA    = "rgba(251,191,36,0.10)"
+
+FW  = 1100
+SBW = 196   # sidebar width
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def section_label(text):
+    return (f'<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;'
+            f'color:{ACCENT};margin-bottom:8px;">{text}</div>')
+
+def divider(mb=12):
+    return f'<div style="height:1px;background:{BORDER};margin:0 0 {mb}px;"></div>'
+
+def stat_card(label, value, sub=None, color=None):
+    vc = color or TXT_PRI
+    sub_html = (f'<div style="font-size:11px;color:{TXT_MUT};margin-top:3px;">{sub}</div>'
+                if sub else "")
+    return (f'<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;'
+            f'padding:16px 20px;flex:1;">'
+            f'<div style="font-size:11px;color:{TXT_MUT};margin-bottom:6px;">{label}</div>'
+            f'<div style="font-size:26px;font-weight:700;color:{vc};">{value}</div>'
+            f'{sub_html}</div>')
+
+def badge(text, color, bg):
+    return (f'<span style="font-size:10px;font-weight:700;letter-spacing:0.8px;'
+            f'padding:3px 8px;border-radius:4px;color:{color};background:{bg};">'
+            f'{text}</span>')
+
+def status_badge(status):
+    mapping = {
+        "ACTIVE":   (SUCCESS, SUCCESS_RGBA),
+        "DRAFT":    (TXT_MUT, SURF_HI),
+        "EXPIRED":  (DANGER,  DANGER_RGBA),
+        "FUNDED":   (ACCENT,  ACC_GLO),
+        "PENDING":  (WARN,    WARN_RGBA),
+    }
+    color, bg = mapping.get(status, (TXT_MUT, SURF_HI))
+    return badge(status, color, bg)
+
+def input_field(label, value, mono=False, full=True):
+    font   = "monospace" if mono else "inherit"
+    width  = "100%" if full else "auto"
+    return (f'<div style="margin-bottom:12px;">'
+            f'<div style="font-size:12px;color:{TXT_MUT};margin-bottom:4px;">{label}</div>'
+            f'<div style="background:{SURF};border:1px solid {BORDER};border-radius:6px;'
+            f'padding:9px 13px;font-size:13px;color:{TXT_SEC};font-family:{font};'
+            f'width:{width};box-sizing:border-box;">{value}</div>'
+            f'</div>')
+
+def textarea_field(label, value, rows=3):
+    return (f'<div style="margin-bottom:12px;">'
+            f'<div style="font-size:12px;color:{TXT_MUT};margin-bottom:4px;">{label}</div>'
+            f'<div style="background:{SURF};border:1px solid {BORDER};border-radius:6px;'
+            f'padding:9px 13px;font-size:13px;color:{TXT_SEC};line-height:1.5;'
+            f'min-height:{rows*22}px;">{value}</div>'
+            f'</div>')
+
+def btn(label, color=ACCENT, text_color=TXT_PRI, small=False):
+    pad = "6px 14px" if small else "9px 20px"
+    fs  = "12px" if small else "13px"
+    return (f'<div style="display:inline-block;padding:{pad};background:{color};'
+            f'border-radius:6px;font-size:{fs};font-weight:700;color:{text_color};'
+            f'cursor:pointer;letter-spacing:0.3px;">{label}</div>')
+
+def btn_outline(label, small=False):
+    pad = "5px 13px" if small else "8px 19px"
+    fs  = "12px" if small else "13px"
+    return (f'<div style="display:inline-block;padding:{pad};background:transparent;'
+            f'border:1px solid {BORDER};border-radius:6px;font-size:{fs};'
+            f'color:{TXT_SEC};cursor:pointer;">{label}</div>')
+
+def sidebar(active):
+    nav_items = [
+        ("Dashboard",   "&#9632;"),
+        ("Campaigns",   "&#9670;"),
+        ("Judges",      "&#9650;"),
+        ("Settings",    "&#9711;"),
+    ]
+    items_html = ""
+    for name, icon in nav_items:
+        is_active = (name == active)
+        bg    = ACC_GLO if is_active else "transparent"
+        color = TXT_PRI if is_active else TXT_MUT
+        bdr   = f"border-left:2px solid {ACCENT};" if is_active else "border-left:2px solid transparent;"
+        items_html += (
+            f'<div style="display:flex;align-items:center;gap:10px;padding:9px 16px;'
+            f'background:{bg};{bdr}cursor:pointer;margin-bottom:2px;">'
+            f'<span style="font-size:10px;color:{ACCENT};">{icon}</span>'
+            f'<span style="font-size:13px;color:{color};">{name}</span>'
+            f'</div>'
+        )
+    return f"""
+    <div style="width:{SBW}px;flex-shrink:0;background:{SURF};border-right:1px solid {BORDER};
+                display:flex;flex-direction:column;height:100%;">
+      <div style="padding:16px 16px 12px;border-bottom:1px solid {BORDER};">
+        <div style="font-size:11px;font-weight:700;color:{ACCENT};letter-spacing:1px;margin-bottom:2px;">NGO ADMIN</div>
+        <div style="font-size:13px;font-weight:700;color:{TXT_PRI};">Alzheimer's Research Alliance</div>
+      </div>
+      <div style="padding:10px 0;flex:1;">
+        {items_html}
+      </div>
+      <div style="padding:12px 16px;border-top:1px solid {BORDER};">
+        <div style="font-size:12px;color:{TXT_MUT};">ara-admin@ara.org</div>
+        <div style="font-size:11px;color:{INACT};margin-top:2px;cursor:pointer;">Sign out</div>
+      </div>
+    </div>"""
+
+def page_shell(active, content_html, fh):
+    return f"""
+<div style="width:{FW}px;height:{fh}px;overflow:hidden;background:{BG};
+            font-family:Inter,system-ui,sans-serif;color:{TXT_PRI};
+            display:flex;flex-direction:row;">
+  {sidebar(active)}
+  <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+    {content_html}
+  </div>
+</div>"""
+
+# ---------------------------------------------------------------------------
+# Frame 1: Dashboard
+# ---------------------------------------------------------------------------
+
+FH1 = 800
+
+CAMPAIGNS = [
+    ("Alzheimer's Cure Bounty By 2045",   "ACTIVE",  "14.2 XMR", "100 XMR", 37,  "2045-12-31"),
+    ("Longevity Index 2040",              "ACTIVE",  "3.1 XMR",  "50 XMR",  12,  "2040-06-30"),
+    ("Clean Water Access 2030",           "DRAFT",   "--",        "200 XMR",  0,  "2030-12-31"),
+]
+
+def campaign_row(name, status, raised, goal, backers, deadline):
+    return f"""
+    <tr>
+      <td style="padding:11px 14px;font-size:13px;color:{TXT_PRI};">{name}</td>
+      <td style="padding:11px 14px;">{status_badge(status)}</td>
+      <td style="padding:11px 14px;font-size:13px;color:{TXT_SEC};font-family:monospace;">{raised}</td>
+      <td style="padding:11px 14px;font-size:13px;color:{TXT_MUT};font-family:monospace;">{goal}</td>
+      <td style="padding:11px 14px;font-size:13px;color:{TXT_MUT};">{backers}</td>
+      <td style="padding:11px 14px;font-size:13px;color:{TXT_MUT};">{deadline}</td>
+      <td style="padding:11px 14px;display:flex;gap:6px;">
+        {btn_outline("View", small=True)}
+        {btn_outline("Edit", small=True)}
+      </td>
+    </tr>"""
+
+campaign_rows = "".join(campaign_row(*c) for c in CAMPAIGNS)
+
+DASH_CONTENT = f"""
+  <!-- Top bar -->
+  <div style="background:{SURF};border-bottom:1px solid {BORDER};padding:0 24px;height:50px;
+              display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+    <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Dashboard</div>
+    {btn("+ New Campaign", color=SUCCESS, text_color=BG)}
+  </div>
+
+  <div style="padding:20px 24px;overflow:auto;flex:1;">
+
+    <!-- Stat cards -->
+    <div style="display:flex;gap:12px;margin-bottom:20px;">
+      {stat_card("TOTAL RAISED", "$1,394", "across all campaigns", SUCCESS)}
+      {stat_card("ACTIVE BOUNTIES", "2", "1 draft")}
+      {stat_card("TOTAL BACKERS", "49", "+5 this week")}
+      {stat_card("FEES EARNED", "$41.82", "processing fees collected")}
+    </div>
+
+    <!-- Campaign table -->
+    {section_label("CAMPAIGNS")}
+    <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead>
+          <tr style="border-bottom:1px solid {BORDER};">
+            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;
+                       letter-spacing:0.8px;color:{TXT_MUT};">CAMPAIGN</th>
+            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;
+                       letter-spacing:0.8px;color:{TXT_MUT};">STATUS</th>
+            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;
+                       letter-spacing:0.8px;color:{TXT_MUT};">RAISED</th>
+            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;
+                       letter-spacing:0.8px;color:{TXT_MUT};">GOAL</th>
+            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;
+                       letter-spacing:0.8px;color:{TXT_MUT};">BACKERS</th>
+            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;
+                       letter-spacing:0.8px;color:{TXT_MUT};">DEADLINE</th>
+            <th style="padding:9px 14px;text-align:left;font-size:11px;font-weight:700;
+                       letter-spacing:0.8px;color:{TXT_MUT};">ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody>
+          {campaign_rows}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Recent activity -->
+    <div style="margin-top:20px;">
+      {section_label("RECENT ACTIVITY")}
+      <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;overflow:hidden;">
+        {"".join(f'''<div style="padding:10px 16px;border-bottom:1px solid {BORDER};
+                    display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:13px;color:{TXT_SEC};">{desc}</span>
+          <span style="font-size:11px;color:{TXT_MUT};">{ts}</span>
+        </div>''' for desc, ts in [
+            ("New backer on Alzheimer's Cure Bounty (+$50)",          "2026-04-21 09:14"),
+            ("New backer on Alzheimer's Cure Bounty (+$100)",         "2026-04-20 17:32"),
+            ("New backer on Longevity Index 2040 (+$20)",             "2026-04-20 11:08"),
+            ("Clean Water Access 2030 saved as draft",                "2026-04-19 15:55"),
+            ("Judge Dr. Elena Marchetti confirmed for Alzheimer's",   "2026-04-18 10:22"),
+        ])}
+      </div>
+    </div>
+
+  </div>
+"""
+
+FRAME1 = page_shell("Dashboard", DASH_CONTENT, FH1)
+
+# ---------------------------------------------------------------------------
+# Frame 2: Campaign Detail
+# ---------------------------------------------------------------------------
+
+FH2 = 800
+
+DETAIL_CONTENT = f"""
+  <!-- Top bar -->
+  <div style="background:{SURF};border-bottom:1px solid {BORDER};padding:0 24px;height:50px;
+              display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span style="font-size:13px;color:{TXT_MUT};cursor:pointer;">&larr; Campaigns</span>
+      <span style="font-size:13px;color:{BORDER};">/</span>
+      <span style="font-size:13px;color:{TXT_PRI};">Alzheimer's Cure Bounty By 2045</span>
+      <span style="margin-left:6px;">{status_badge("ACTIVE")}</span>
+    </div>
+    <div style="display:flex;gap:8px;">
+      {btn_outline("Archive", small=True)}
+      {btn("Edit Campaign", small=True)}
+    </div>
+  </div>
+
+  <div style="padding:20px 24px;overflow:auto;flex:1;">
+
+    <!-- Stats row -->
+    <div style="display:flex;gap:12px;margin-bottom:20px;">
+      {stat_card("RAISED", "14.2 XMR", "$1,140 at current rate", SUCCESS)}
+      {stat_card("GOAL", "100 XMR", "14.2% funded")}
+      {stat_card("BACKERS", "37", "+3 this week")}
+      {stat_card("FEES EARNED", "$34.20", "3% processing fee")}
+    </div>
+
+    <!-- Progress bar -->
+    <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:16px 20px;margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:13px;color:{TXT_SEC};">Funding Progress</span>
+        <span style="font-size:13px;font-weight:700;color:{TXT_PRI};">14.2 / 100 XMR</span>
+      </div>
+      <div style="background:{SURF_HI};border-radius:4px;height:8px;overflow:hidden;">
+        <div style="background:{SUCCESS};width:14.2%;height:100%;border-radius:4px;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px;">
+        <span style="font-size:11px;color:{TXT_MUT};">Deadline: 2045-12-31</span>
+        <span style="font-size:11px;color:{TXT_MUT};">Judgment window: 90 days after deadline</span>
+      </div>
+    </div>
+
+    <!-- Two columns: backers + judges -->
+    <div style="display:flex;gap:16px;">
+
+      <!-- Backers -->
+      <div style="flex:1;">
+        {section_label("RECENT BACKERS")}
+        <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;overflow:hidden;">
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr style="border-bottom:1px solid {BORDER};">
+                <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;
+                           letter-spacing:0.8px;color:{TXT_MUT};">BACKER</th>
+                <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;
+                           letter-spacing:0.8px;color:{TXT_MUT};">AMOUNT</th>
+                <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;
+                           letter-spacing:0.8px;color:{TXT_MUT};">DATE</th>
+                <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;
+                           letter-spacing:0.8px;color:{TXT_MUT};">EXPIRY PREF</th>
+              </tr>
+            </thead>
+            <tbody>
+              {"".join(f'''<tr style="border-bottom:1px solid {BORDER};">
+                <td style="padding:9px 12px;font-size:12px;color:{TXT_MUT};font-family:monospace;">Backer #{n:03d}</td>
+                <td style="padding:9px 12px;font-size:12px;color:{TXT_PRI};font-weight:600;">{amt}</td>
+                <td style="padding:9px 12px;font-size:12px;color:{TXT_MUT};">{date}</td>
+                <td style="padding:9px 12px;font-size:12px;color:{TXT_MUT};">{pref}</td>
+              </tr>''' for n, amt, date, pref in [
+                  (37, "$100", "2026-04-21", "Return XMR"),
+                  (36, "$50",  "2026-04-20", "Return XMR"),
+                  (35, "$200", "2026-04-20", "Gift to NGO"),
+                  (34, "$20",  "2026-04-19", "Return XMR"),
+                  (33, "$100", "2026-04-18", "Auto-roll"),
+              ])}
+            </tbody>
+          </table>
+          <div style="padding:9px 14px;font-size:12px;color:{TXT_MUT};border-top:1px solid {BORDER};">
+            Showing 5 of 37 backers &nbsp;&mdash;&nbsp;
+            <span style="color:{ACCENT};cursor:pointer;text-decoration:underline;">Export CSV</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Judges -->
+      <div style="width:280px;flex-shrink:0;">
+        {section_label("JUDGES")}
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          {"".join(f'''<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:12px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+              <img src="https://i.pravatar.cc/88?img={img}" width="32" height="32"
+                   style="border-radius:16px;flex-shrink:0;object-fit:cover;">
+              <div>
+                <div style="font-size:13px;font-weight:700;color:{TXT_PRI};">{name}</div>
+                <div style="font-size:11px;color:{TXT_MUT};">{org}</div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:11px;color:{TXT_MUT};">Verdict</span>
+              {status_badge(verdict)}
+            </div>
+          </div>''' for img, name, org, verdict in [
+              (16, "Dr. Sarah Chen",     "WHO",      "PENDING"),
+              (51, "Dr. Marcus Webb",    "FDA",      "PENDING"),
+              (47, "Dr. Elena Marchetti","Cochrane", "PENDING"),
+          ])}
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:{TXT_MUT};line-height:1.5;">
+          Judgment window opens 2045-12-31.
+          2 of 3 verdicts required for resolution.
+        </div>
+      </div>
+
+    </div>
+  </div>
+"""
+
+FRAME2 = page_shell("Campaigns", DETAIL_CONTENT, FH2)
+
+# ---------------------------------------------------------------------------
+# Frame 3: Create / Edit Campaign
+# ---------------------------------------------------------------------------
+
+FH3 = 800
+
+CREATE_CONTENT = f"""
+  <!-- Top bar -->
+  <div style="background:{SURF};border-bottom:1px solid {BORDER};padding:0 24px;height:50px;
+              display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span style="font-size:13px;color:{TXT_MUT};cursor:pointer;">&larr; Campaigns</span>
+      <span style="font-size:13px;color:{BORDER};">/</span>
+      <span style="font-size:13px;color:{TXT_PRI};">New Campaign</span>
+    </div>
+    <div style="display:flex;gap:8px;">
+      {btn_outline("Save Draft")}
+      {btn("Publish", color=SUCCESS, text_color=BG)}
+    </div>
+  </div>
+
+  <div style="padding:20px 24px;overflow:auto;flex:1;display:flex;gap:20px;">
+
+    <!-- Left column: main form -->
+    <div style="flex:1;">
+
+      <!-- Campaign Info -->
+      <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:16px 20px;margin-bottom:14px;">
+        {section_label("CAMPAIGN INFO")}
+        {input_field("Title", "Alzheimer's Cure Bounty By 2045")}
+        {textarea_field("Description", "Fund the research that ends Alzheimer's disease. Your collateral is returned in full if the goal is not met by the deadline.", rows=3)}
+        {input_field("Public URL slug", "alzheimers-cure-2045", mono=True)}
+      </div>
+
+      <!-- Terms -->
+      <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:16px 20px;margin-bottom:14px;">
+        {section_label("TERMS (all must be met for payout)")}
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+          {"".join(f'''<div style="display:flex;gap:8px;align-items:center;">
+            <div style="flex:1;background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;
+                        padding:9px 13px;font-size:13px;color:{TXT_SEC};">{term}</div>
+            <span style="font-size:16px;color:{DANGER};cursor:pointer;flex-shrink:0;">&times;</span>
+          </div>''' for term in [
+              "FDA approves a treatment reducing new Alzheimer's diagnoses by 50% before the deadline.",
+              "Verified by at least 2 of 3 pre-approved independent bounty judges.",
+          ])}
+        </div>
+        {btn_outline("+ Add Term", small=True)}
+      </div>
+
+      <!-- Timeline & Financials -->
+      <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:16px 20px;">
+        {section_label("TIMELINE & FINANCIALS")}
+        <div style="display:flex;gap:12px;">
+          <div style="flex:1;">{input_field("Deadline", "2045-12-31")}</div>
+          <div style="flex:1;">{input_field("Judgment window (days)", "90")}</div>
+        </div>
+        <div style="display:flex;gap:12px;">
+          <div style="flex:1;">{input_field("Funding goal (XMR)", "100")}</div>
+          <div style="flex:1;">{input_field("Processing fee (%)", "3")}</div>
+          <div style="flex:1;">{input_field("Min contribution ($)", "1")}</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right column: judges -->
+    <div style="width:280px;flex-shrink:0;">
+      <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:16px;margin-bottom:14px;">
+        {section_label("JUDGES")}
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+          {"".join(f'''<div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:8px;padding:10px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <img src="https://i.pravatar.cc/88?img={img}" width="28" height="28"
+                   style="border-radius:14px;flex-shrink:0;object-fit:cover;">
+              <div>
+                <div style="font-size:12px;font-weight:700;color:{TXT_PRI};">{name}</div>
+                <div style="font-size:11px;color:{TXT_MUT};">{org}</div>
+              </div>
+              <span style="margin-left:auto;font-size:15px;color:{DANGER};cursor:pointer;">&times;</span>
+            </div>
+          </div>''' for img, name, org in [
+              (16, "Dr. Sarah Chen",      "WHO"),
+              (51, "Dr. Marcus Webb",     "FDA"),
+              (47, "Dr. Elena Marchetti", "Cochrane"),
+          ])}
+        </div>
+        {btn_outline("+ Add Judge", small=True)}
+        <div style="font-size:11px;color:{TXT_MUT};margin-top:8px;line-height:1.5;">
+          Minimum 3 judges required. Payout requires a majority verdict.
+        </div>
+      </div>
+
+      <!-- Preview link -->
+      <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:14px;">
+        {section_label("SHARE")}
+        <div style="font-size:12px;color:{TXT_MUT};margin-bottom:8px;">
+          Paste this link on your website or social media to start collecting backers.
+        </div>
+        <div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;
+                    padding:8px 12px;font-size:11px;font-family:monospace;color:{ACCENT};
+                    word-break:break-all;">
+          nyxforge.org/b/alzheimers-cure-2045
+        </div>
+        <div style="margin-top:8px;">
+          {btn_outline("Copy link", small=True)}
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+"""
+
+FRAME3 = page_shell("Campaigns", CREATE_CONTENT, FH3)
+
+# ---------------------------------------------------------------------------
+# Frame 4: Judge Management
+# ---------------------------------------------------------------------------
+
+FH4 = 800
+
+JUDGE_ROWS = [
+    ("https://i.pravatar.cc/88?img=16", "Dr. Sarah Chen",      "World Health Organization",    "Lead Epidemiologist",             2, "0/0",  "ACTIVE"),
+    ("https://i.pravatar.cc/88?img=51", "Dr. Marcus Webb",     "FDA Office of Neuroscience",   "Data Feed Administrator",         2, "0/2",  "ACTIVE"),
+    ("https://i.pravatar.cc/88?img=47", "Dr. Elena Marchetti", "Cochrane Collaboration",       "Systematic Review Coordinator",   2, "1/7",  "ACTIVE"),
+    ("https://i.pravatar.cc/88?img=33", "Dr. James Okafor",    "NIH National Institute",       "Senior Research Scientist",       0, "0/0",  "PENDING"),
+]
+
+def judge_row(img, name, org, role, campaigns, disputes, status):
+    return f"""
+    <tr style="border-bottom:1px solid {BORDER};">
+      <td style="padding:10px 14px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <img src="{img}" width="30" height="30"
+               style="border-radius:15px;flex-shrink:0;object-fit:cover;">
+          <div>
+            <div style="font-size:13px;color:{TXT_PRI};">{name}</div>
+            <div style="font-size:11px;color:{TXT_MUT};">{role}</div>
+          </div>
+        </div>
+      </td>
+      <td style="padding:10px 14px;font-size:12px;color:{TXT_MUT};">{org}</td>
+      <td style="padding:10px 14px;font-size:13px;color:{TXT_SEC};text-align:center;">{campaigns}</td>
+      <td style="padding:10px 14px;font-size:13px;color:{TXT_SEC};text-align:center;">{disputes}</td>
+      <td style="padding:10px 14px;">{status_badge(status)}</td>
+      <td style="padding:10px 14px;display:flex;gap:6px;">
+        {btn_outline("View", small=True)}
+        {btn_outline("Remove", small=True)}
+      </td>
+    </tr>"""
+
+judge_rows_html = "".join(judge_row(*j) for j in JUDGE_ROWS)
+
+JUDGES_CONTENT = f"""
+  <!-- Top bar -->
+  <div style="background:{SURF};border-bottom:1px solid {BORDER};padding:0 24px;height:50px;
+              display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+    <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Judge Management</div>
+    {btn("+ Invite Judge", color=SUCCESS, text_color=BG)}
+  </div>
+
+  <div style="padding:20px 24px;overflow:auto;flex:1;">
+
+    <!-- Judge table -->
+    {section_label("YOUR JUDGES")}
+    <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;overflow:hidden;margin-bottom:20px;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead>
+          <tr style="border-bottom:1px solid {BORDER};">
+            <th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:700;
+                       letter-spacing:0.8px;color:{TXT_MUT};">JUDGE</th>
+            <th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:700;
+                       letter-spacing:0.8px;color:{TXT_MUT};">ORGANIZATION</th>
+            <th style="padding:9px 14px;text-align:center;font-size:10px;font-weight:700;
+                       letter-spacing:0.8px;color:{TXT_MUT};">CAMPAIGNS</th>
+            <th style="padding:9px 14px;text-align:center;font-size:10px;font-weight:700;
+                       letter-spacing:0.8px;color:{TXT_MUT};">DISPUTES / VERDICTS</th>
+            <th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:700;
+                       letter-spacing:0.8px;color:{TXT_MUT};">STATUS</th>
+            <th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:700;
+                       letter-spacing:0.8px;color:{TXT_MUT};">ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody>
+          {judge_rows_html}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Invite panel -->
+    {section_label("INVITE A NEW JUDGE")}
+    <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:16px 20px;">
+      <div style="display:flex;gap:12px;align-items:flex-end;">
+        <div style="flex:1;">{input_field("Name", "Dr. Firstname Lastname")}</div>
+        <div style="flex:1;">{input_field("Organization", "Institution or Agency")}</div>
+        <div style="flex:1;">{input_field("Email or NyxForge ID", "judge@institution.org")}</div>
+        <div style="padding-bottom:12px;">{btn("Send Invite")}</div>
+      </div>
+      <div style="font-size:11px;color:{TXT_MUT};line-height:1.5;margin-top:4px;">
+        The judge will receive an invitation email with instructions for creating a
+        NyxForge judge account and verifying their identity. They must accept before
+        they can be assigned to a campaign.
+      </div>
+    </div>
+
+  </div>
+"""
+
+FRAME4 = page_shell("Judges", JUDGES_CONTENT, FH4)
+
+# ---------------------------------------------------------------------------
+# Viewer shell
+# ---------------------------------------------------------------------------
+
+FRAMES = [
+    {"label": "1 -- Dashboard",         "bg": BG, "w": FW, "h": FH1, "html": FRAME1},
+    {"label": "2 -- Campaign Detail",   "bg": BG, "w": FW, "h": FH2, "html": FRAME2},
+    {"label": "3 -- Create Campaign",   "bg": BG, "w": FW, "h": FH3, "html": FRAME3},
+    {"label": "4 -- Judge Management",  "bg": BG, "w": FW, "h": FH4, "html": FRAME4},
+]
+
+def esc(s):
+    return s.replace("\\", "\\\\").replace("`", "\\`").replace("${", "\\${")
+
+frames_js = []
+for f in FRAMES:
+    frames_js.append(
+        f'{{ label: `{f["label"]}`, bg: `{f["bg"]}`, w: {f["w"]}, h: {f["h"]}, '
+        f'html: `{esc(f["html"])}` }}'
+    )
+
+frames_array = "[\n  " + ",\n  ".join(frames_js) + "\n]"
+
+HTML = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>NyxForge NGO Admin Mockup</title>
+<style>
+  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  body {{ background: #080a12; font-family: Inter, system-ui, sans-serif;
+          display: flex; flex-direction: column; height: 100vh; overflow: hidden; }}
+  #tabs {{ display: flex; gap: 2px; background: #0d0f1a; padding: 8px 16px 0;
+           border-bottom: 1px solid #2a2d3e; flex-shrink: 0; overflow-x: auto; }}
+  .tab {{ padding: 8px 16px; font-size: 12px; color: #6b7280; cursor: pointer;
+          border-radius: 6px 6px 0 0; border: 1px solid transparent;
+          border-bottom: none; user-select: none; white-space: nowrap; }}
+  .tab:hover {{ color: #e8eaf0; background: #131524; }}
+  .tab.active {{ color: #e8eaf0; background: #131524; border-color: #2a2d3e; }}
+  #viewport {{ flex: 1; display: flex; align-items: flex-start; justify-content: center;
+               overflow: auto; padding: 32px; }}
+  #frame-wrap {{ position: relative; flex-shrink: 0; }}
+  #frame {{ position: relative; overflow: hidden; border: 1px solid #2a2d3e; }}
+  #nav {{ display: flex; align-items: center; justify-content: space-between;
+          padding: 10px 16px; background: #0d0f1a; border-top: 1px solid #2a2d3e;
+          flex-shrink: 0; }}
+  #nav button {{ background: #1a1d2e; color: #e8eaf0; border: 1px solid #3a3d5c;
+                 padding: 6px 20px; border-radius: 6px; font-size: 12px;
+                 cursor: pointer; font-family: inherit; }}
+  #nav button:hover {{ background: #2a2d3e; }}
+  #nav button:disabled {{ opacity: 0.3; cursor: default; }}
+  #counter {{ font-size: 12px; color: #6b7280; }}
+</style>
+</head><body>
+
+<div id="tabs"></div>
+<div id="viewport"><div id="frame-wrap"><div id="frame"></div></div></div>
+<div id="nav">
+  <button id="btn-prev" onclick="go(-1)">&#8592; Prev</button>
+  <span id="counter"></span>
+  <button id="btn-next" onclick="go(1)">Next &#8594;</button>
+</div>
+
+<script>
+const FRAMES = {frames_array};
+let cur = 0;
+
+function render(i) {{
+  cur = i;
+  const f = FRAMES[i];
+  const frame = document.getElementById('frame');
+  frame.style.width  = f.w + 'px';
+  frame.style.height = f.h + 'px';
+  frame.style.background = f.bg;
+  frame.innerHTML = f.html;
+  document.getElementById('counter').textContent = (i+1) + ' / ' + FRAMES.length + '  --  ' + f.label;
+  document.getElementById('btn-prev').disabled = (i === 0);
+  document.getElementById('btn-next').disabled = (i === FRAMES.length - 1);
+  document.querySelectorAll('.tab').forEach((t, ti) =>
+    t.classList.toggle('active', ti === i));
+}}
+
+function go(d) {{ render(Math.max(0, Math.min(FRAMES.length-1, cur+d))); }}
+
+const tabs = document.getElementById('tabs');
+FRAMES.forEach((f, i) => {{
+  const t = document.createElement('div');
+  t.className = 'tab';
+  t.textContent = f.label;
+  t.onclick = () => render(i);
+  tabs.appendChild(t);
+}});
+
+render(0);
+</script>
+</body></html>
+"""
+
+os.makedirs(OUTDIR, exist_ok=True)
+with open(OUTFILE, "w") as fh:
+    fh.write(HTML)
+
+print(f"Written: {OUTFILE}")
+if os.environ.get("NYX_OPEN") == "1":   # opt in; macOS only
+    subprocess.Popen(["open", "-a", "Brave Browser", OUTFILE])
+    print("Opened in Brave.")

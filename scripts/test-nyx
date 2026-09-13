@@ -1,0 +1,292 @@
+#!/usr/bin/env python3
+"""
+NyxForge CLI test runner.
+Discovers and runs all test/test_*.py files; prints red/green output.
+
+Usage:
+  bin/test-nyx                     run all tests
+  bin/test-nyx bounty wallet       run only named modules
+  bin/test-nyx --failfast          stop on first failure
+  bin/test-nyx --json              machine-readable JSON summary
+  NYX_BIN=/path/to/nyx bin/test-nyx
+"""
+import argparse
+import importlib.util
+import io
+import json
+import os
+import sys
+import time
+import traceback
+import unittest
+
+# ---------------------------------------------------------------------------
+# ANSI colors
+# ---------------------------------------------------------------------------
+USE_COLOR = sys.stdout.isatty()
+
+def _c(code, text):
+    return f"\033[{code}m{text}\033[0m" if USE_COLOR else text
+
+def green(t):  return _c("32", t)
+def red(t):    return _c("31", t)
+def yellow(t): return _c("33", t)
+def cyan(t):   return _c("36", t)
+def bold(t):   return _c("1",  t)
+def dim(t):    return _c("2",  t)
+
+PASS  = green("PASS")
+FAIL  = red("FAIL")
+ERROR = yellow("ERROR")
+SKIP  = dim("SKIP")
+
+# ---------------------------------------------------------------------------
+# Test discovery
+# ---------------------------------------------------------------------------
+
+TESTDIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../tests")
+
+MODULE_ORDER = [
+    "test_bounty",
+    "test_auction",
+    "test_judge",
+    "test_dex",
+    "test_wallet",
+    "test_swap",
+    "test_ngo",
+    "test_tax",
+    "test_claim",
+    "test_key",
+    "test_node",
+    "test_config",
+    "test_oracle",
+]
+
+SECTION_LABELS = {
+    "test_bounty":  "nyx bounty   -- bearer instruments",
+    "test_auction": "nyx auction  -- reverse Dutch auctions",
+    "test_judge":   "nyx judge    -- claim review & verdicts",
+    "test_dex":     "nyx dex      -- decentralized exchange",
+    "test_wallet":  "nyx wallet   -- crypto wallet & miner",
+    "test_swap":    "nyx swap     -- fiat-to-XMR P2P exchange",
+    "test_ngo":     "nyx ngo      -- NGO donation processing",
+    "test_tax":     "nyx tax      -- IRS tax reporting",
+    "test_claim":   "nyx claim    -- file & track claims",
+    "test_key":     "nyx key      -- Ed25519 keypair management",
+    "test_node":    "nyx node     -- P2P node & sync",
+    "test_config":  "nyx config   -- configuration & profiles",
+    "test_oracle":  "nyx oracle   -- oracle registry & ratings",
+}
+
+def load_module(name):
+    path = os.path.join(TESTDIR, f"{name}.py")
+    spec = importlib.util.spec_from_file_location(name, path)
+    mod  = importlib.util.module_from_spec(spec)
+    # Add test dir to sys.path so conftest imports work
+    if TESTDIR not in sys.path:
+        sys.path.insert(0, TESTDIR)
+    spec.loader.exec_module(mod)
+    return mod
+
+def get_test_suite(modules):
+    suite = unittest.TestSuite()
+    for name in modules:
+        try:
+            mod = load_module(name)
+            suite.addTests(unittest.TestLoader().loadTestsFromModule(mod))
+        except Exception as exc:
+            print(red(f"  ERROR loading {name}: {exc}"), file=sys.stderr)
+    return suite
+
+# ---------------------------------------------------------------------------
+# Custom result collector
+# ---------------------------------------------------------------------------
+
+class NyxResult(unittest.TestResult):
+
+    def __init__(self, verbosity=1):
+        super().__init__()
+        self.verbosity = verbosity
+        self._outcomes = []   # list of (test, status, message)
+        self._current_module = None
+
+    def _module_of(self, test):
+        return test.__class__.__module__
+
+    def _label_of(self, test):
+        return test._testMethodName.replace("test_", "").replace("_", " ")
+
+    def startTest(self, test):
+        super().startTest(test)
+        mod = self._module_of(test)
+        if mod != self._current_module:
+            self._current_module = mod
+            label = SECTION_LABELS.get(mod, mod)
+            print()
+            print(f"  {bold(cyan(label))}")
+            print(f"  {dim('-' * 60)}")
+
+    def addSuccess(self, test):
+        self._outcomes.append((test, "pass", None))
+        label = self._label_of(test)
+        print(f"    [{PASS}]  {label}")
+
+    def addFailure(self, test, err):
+        super().addFailure(test, err)
+        msg = self._fmt_err(err)
+        self._outcomes.append((test, "fail", msg))
+        label = self._label_of(test)
+        print(f"    [{FAIL}]  {label}")
+        if self.verbosity >= 2:
+            for line in msg.splitlines():
+                print(f"             {dim(line)}")
+
+    def addError(self, test, err):
+        super().addError(test, err)
+        msg = self._fmt_err(err)
+        self._outcomes.append((test, "error", msg))
+        label = self._label_of(test)
+        print(f"    [{ERROR}]  {label}")
+        if self.verbosity >= 2:
+            for line in msg.splitlines():
+                print(f"             {dim(line)}")
+
+    def addSkip(self, test, reason):
+        super().addSkip(test, reason)
+        self._outcomes.append((test, "skip", reason))
+        label = self._label_of(test)
+        print(f"    [{SKIP}]  {label}  {dim(reason)}")
+
+    def _fmt_err(self, err):
+        exc_type, exc_val, exc_tb = err
+        lines = traceback.format_exception(exc_type, exc_val, exc_tb)
+        # Keep only the last two lines (assertion + location)
+        relevant = [l.rstrip() for l in lines if l.strip()]
+        return "\n".join(relevant[-3:]) if len(relevant) > 3 else "\n".join(relevant)
+
+    # Summary accessors
+    def n_pass(self):  return sum(1 for _, s, _ in self._outcomes if s == "pass")
+    def n_fail(self):  return sum(1 for _, s, _ in self._outcomes if s == "fail")
+    def n_error(self): return sum(1 for _, s, _ in self._outcomes if s == "error")
+    def n_skip(self):  return sum(1 for _, s, _ in self._outcomes if s == "skip")
+    def n_total(self): return len(self._outcomes)
+
+# ---------------------------------------------------------------------------
+# Runner
+# ---------------------------------------------------------------------------
+
+def run_suite(modules, failfast=False, verbosity=1, json_out=False):
+    suite  = get_test_suite(modules)
+    result = NyxResult(verbosity=verbosity)
+    result.failfast = failfast
+
+    print()
+    print(bold("NyxForge CLI Test Suite"))
+    print(dim("=" * 64))
+    if os.environ.get("NYX_BIN"):
+        print(f"  nyx binary: {cyan(os.environ['NYX_BIN'])}")
+    else:
+        print(f"  nyx binary: {yellow('nyx')}  (set NYX_BIN to override)")
+    print(dim("=" * 64))
+
+    t0 = time.monotonic()
+    suite.run(result)
+    elapsed = time.monotonic() - t0
+
+    # Summary
+    total  = result.n_total()
+    passed = result.n_pass()
+    failed = result.n_fail()
+    errors = result.n_error()
+    skipped = result.n_skip()
+
+    print()
+    print(dim("=" * 64))
+
+    if failed == 0 and errors == 0:
+        verdict = green("ALL PASS")
+    else:
+        verdict = red(f"{failed + errors} FAILURE{'S' if failed + errors != 1 else ''}")
+
+    pass_str  = green(f"{passed} passed")
+    fail_str  = (red(f"{failed} failed")   if failed  else dim(f"{failed} failed"))
+    error_str = (yellow(f"{errors} errors") if errors  else dim(f"{errors} errors"))
+    skip_str  = dim(f"{skipped} skipped")
+
+    print(f"  {verdict}  --  {pass_str}  {fail_str}  {error_str}  {skip_str}"
+          f"  {dim(f'in {elapsed:.2f}s')}")
+    print()
+
+    # Failure detail
+    if (failed or errors) and verbosity >= 1:
+        print(bold("Failures:"))
+        for test, status, msg in result._outcomes:
+            if status in ("fail", "error"):
+                label = f"{test.__class__.__name__}.{test._testMethodName}"
+                tag   = red("FAIL") if status == "fail" else yellow("ERROR")
+                print(f"  [{tag}] {label}")
+                if msg:
+                    for line in msg.splitlines():
+                        print(f"         {dim(line)}")
+                print()
+
+    if json_out:
+        summary = {
+            "total":   total,
+            "passed":  passed,
+            "failed":  failed,
+            "errors":  errors,
+            "skipped": skipped,
+            "elapsed": round(elapsed, 3),
+            "results": [
+                {
+                    "test": f"{t.__class__.__name__}.{t._testMethodName}",
+                    "module": t.__class__.__module__,
+                    "status": s,
+                    "message": m,
+                }
+                for t, s, m in result._outcomes
+            ],
+        }
+        print(json.dumps(summary, indent=2))
+
+    return 0 if (failed == 0 and errors == 0) else 1
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="NyxForge CLI red/green test runner",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "modules", nargs="*",
+        help="Test modules to run (e.g. bounty wallet). Default: all.",
+    )
+    parser.add_argument("--failfast", "-f", action="store_true",
+                        help="Stop on first failure")
+    parser.add_argument("--verbose", "-v", action="store_true",
+                        help="Show failure details inline")
+    parser.add_argument("--json", action="store_true",
+                        help="Append JSON summary to output")
+    args = parser.parse_args()
+
+    if args.modules:
+        # Accept bare names like 'bounty' or full names like 'test_bounty'
+        modules = [
+            m if m.startswith("test_") else f"test_{m}"
+            for m in args.modules
+        ]
+    else:
+        modules = MODULE_ORDER
+
+    verbosity = 2 if args.verbose else 1
+    rc = run_suite(modules, failfast=args.failfast,
+                   verbosity=verbosity, json_out=args.json)
+    sys.exit(rc)
+
+
+if __name__ == "__main__":
+    main()

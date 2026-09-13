@@ -1,0 +1,778 @@
+#!/usr/bin/env python3
+"""
+NyxForge XMR Swap mockup generator.
+Generates docs/storyboards/out/xmr-swap-mockup.html
+
+Haveno/Retoswap-style decentralized fiat-to-XMR exchange.
+Buy XMR with PayPal, Zelle, cash by mail, bank transfer, etc.
+2-of-3 multisig security deposits, no custodian, P2P.
+
+5 frames:
+  1. Offer Book    -- buy-XMR offers, filter by payment method, offer table
+  2. Take Offer    -- enter trade amount, review terms and security deposit
+  3. Active Trade  -- funds locked, payment instructions, confirm sent
+  4. Complete      -- XMR released, trade closed
+  5. Create Offer  -- maker form: payment method, price, amount, deposit
+"""
+import os, subprocess
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTDIR     = os.path.join(os.environ.get("NYXFORGE_ROOT", os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "docs/storyboards/out")
+OUTFILE    = os.path.join(OUTDIR, "xmr-swap-mockup.html")
+
+# ---------------------------------------------------------------------------
+# Palette
+# ---------------------------------------------------------------------------
+BG           = "#0d0f1a"
+SURF         = "#131524"
+SURF_HI      = "#1a1d2e"
+ACCENT       = "#5e6ad2"
+ACC_GLO      = "#2d3068"
+TXT_PRI      = "#e8eaf0"
+TXT_SEC      = "#b8c0d8"
+TXT_MUT      = "#8b95b0"
+SUCCESS      = "#4ade80"
+DANGER       = "#f87171"
+WARN         = "#fbbf24"
+BORDER       = "#2a2d3e"
+INACT        = "#3a3d5c"
+SUCCESS_RGBA = "rgba(74,222,128,0.10)"
+WARN_RGBA    = "rgba(251,191,36,0.10)"
+ACCENT_RGBA  = "rgba(94,106,210,0.12)"
+DANGER_RGBA  = "rgba(248,113,113,0.10)"
+
+XMR_COLOR = "#ff6600"
+FW = 960
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def section_label(text):
+    return (f'<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;'
+            f'color:{ACCENT};margin-bottom:8px;">{text}</div>')
+
+def status_pill(text, color, bg):
+    return (f'<span style="font-size:10px;font-weight:700;letter-spacing:0.8px;'
+            f'padding:3px 9px;border-radius:4px;color:{color};background:{bg};">'
+            f'{text}</span>')
+
+def btn(label, color=SUCCESS, text_color=BG, small=False, full=False):
+    pad = "7px 14px" if small else "13px 28px"
+    fs  = "12px"    if small else "14px"
+    wid = "width:100%;display:block;text-align:center;" if full else "display:inline-block;"
+    return (f'<div style="{wid}padding:{pad};background:{color};'
+            f'border-radius:7px;font-size:{fs};font-weight:700;color:{text_color};'
+            f'cursor:pointer;letter-spacing:0.3px;">{label}</div>')
+
+def btn_outline(label, small=False, color=None, full=False):
+    pad  = "6px 13px" if small else "12px 27px"
+    fs   = "12px"     if small else "14px"
+    col  = color or TXT_SEC
+    bord = color or BORDER
+    wid  = "width:100%;display:block;text-align:center;" if full else "display:inline-block;"
+    return (f'<div style="{wid}padding:{pad};background:transparent;'
+            f'border:1px solid {bord};border-radius:7px;font-size:{fs};'
+            f'color:{col};cursor:pointer;">{label}</div>')
+
+def input_field(label, value, mono=False, note=None):
+    font = "monospace" if mono else "inherit"
+    n = (f'<div style="font-size:11px;color:{TXT_MUT};margin-top:4px;">{note}</div>'
+         if note else "")
+    return (f'<div style="margin-bottom:12px;">'
+            f'<div style="font-size:12px;color:{TXT_MUT};margin-bottom:4px;">{label}</div>'
+            f'<div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;'
+            f'padding:9px 13px;font-size:13px;color:{TXT_MUT};font-family:{font};">{value}</div>'
+            f'{n}</div>')
+
+def pm_badge(method):
+    """Payment method tag."""
+    colors = {
+        "PayPal":        ("#003087", "#0070e0"),
+        "Zelle":         ("#4b0082", "#6c37d4"),
+        "Cash by Mail":  ("#1a3320", "#4ade80"),
+        "Bank Transfer": ("#0d2233", "#3b82f6"),
+        "Venmo":         ("#00487c", "#008cff"),
+        "Strike":        ("#1a1a1a", "#f59e0b"),
+        "Revolut":       ("#1a0533", "#9333ea"),
+        "Cash in Person":("#0d1f0d", "#4ade80"),
+    }
+    bg, col = colors.get(method, (SURF_HI, TXT_MUT))
+    return (f'<span style="font-size:11px;font-weight:600;padding:3px 9px;'
+            f'border-radius:4px;color:{col};background:{bg};white-space:nowrap;">'
+            f'{method}</span>')
+
+def xmr_badge():
+    return (f'<div style="width:30px;height:30px;border-radius:50%;'
+            f'background:{XMR_COLOR}22;border:2px solid {XMR_COLOR};'
+            f'display:flex;align-items:center;justify-content:center;'
+            f'font-size:9px;font-weight:700;color:{XMR_COLOR};">XMR</div>')
+
+def page_header(title, subtitle=""):
+    return f"""
+  <div style="background:{SURF};border-bottom:1px solid {BORDER};padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      {xmr_badge()}
+      <div>
+        <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Retoswap</div>
+        <div style="font-size:11px;color:{TXT_MUT};">{subtitle if subtitle else "Decentralized XMR exchange"}</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="font-size:12px;color:{TXT_MUT};">
+        <span style="color:{SUCCESS};">&#9679;</span>&nbsp; P2P network: 142 peers
+      </div>
+      <div style="font-size:12px;font-family:monospace;color:{TXT_MUT};">4AB...f9c2</div>
+    </div>
+  </div>"""
+
+def step_node(n, label, state):
+    if state == "done":
+        bg, brd, ncol, lcol = ACC_GLO, ACCENT, ACCENT, TXT_SEC
+        sym = "&#10003;"
+    elif state == "active":
+        bg, brd, ncol, lcol = ACC_GLO, ACCENT, TXT_PRI, TXT_PRI
+        sym = str(n)
+    else:
+        bg, brd, ncol, lcol = SURF_HI, INACT, TXT_MUT, TXT_MUT
+        sym = str(n)
+    return (f'<div style="display:flex;flex-direction:column;align-items:center;gap:6px;">'
+            f'<div style="width:30px;height:30px;border-radius:50%;background:{bg};'
+            f'border:2px solid {brd};display:flex;align-items:center;justify-content:center;'
+            f'font-size:12px;font-weight:700;color:{ncol};">{sym}</div>'
+            f'<div style="font-size:11px;color:{lcol};white-space:nowrap;">{label}</div>'
+            f'</div>')
+
+def step_connector(done=False):
+    col = ACCENT if done else INACT
+    return (f'<div style="flex:1;height:2px;background:{col};'
+            f'align-self:flex-start;margin-top:14px;"></div>')
+
+# ---------------------------------------------------------------------------
+# Frame 1 -- Offer Book
+# ---------------------------------------------------------------------------
+
+BUY_SELL_TABS = f"""
+<div style="display:flex;border-bottom:1px solid {BORDER};">
+  <div style="padding:12px 28px;font-size:14px;font-weight:700;color:{SUCCESS};
+              border-bottom:2px solid {SUCCESS};cursor:pointer;">Buy XMR</div>
+  <div style="padding:12px 28px;font-size:14px;color:{TXT_MUT};cursor:pointer;">Sell XMR</div>
+</div>"""
+
+PM_FILTER = f"""
+<div style="padding:12px 16px;border-bottom:1px solid {BORDER};
+            display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+  <div style="font-size:12px;color:{TXT_MUT};margin-right:4px;">Filter:</div>
+  {''.join(
+    f'<div style="padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer;'
+    f'background:{"" + ACC_GLO if m == "All" else SURF_HI};'
+    f'border:{"1px" if m != "All" else "1px"} solid '
+    f'{"" + ACCENT if m == "All" else BORDER};'
+    f'color:{"" + TXT_PRI if m == "All" else TXT_MUT};">{m}</div>'
+    for m in ["All", "PayPal", "Zelle", "Cash by Mail", "Bank Transfer", "Venmo", "Strike"]
+  )}
+</div>"""
+
+TABLE_HEADER = f"""
+<div style="display:grid;grid-template-columns:160px 110px 130px 130px 80px 110px;
+            gap:0;padding:8px 16px;border-bottom:1px solid {BORDER};
+            background:{SURF_HI};">
+  {''.join(
+    f'<div style="font-size:10px;font-weight:700;letter-spacing:0.8px;'
+    f'color:{TXT_MUT};">{h}</div>'
+    for h in ["PAYMENT METHOD", "PRICE (USD)", "AMOUNT", "LIMITS (USD)", "TRADES", ""]
+  )}
+</div>"""
+
+def offer_row(method, price, pct, xmr_max, min_usd, max_usd, trades, highlight=False):
+    bg = SURF_HI if highlight else "transparent"
+    return (f'<div style="display:grid;grid-template-columns:160px 110px 130px 130px 80px 110px;'
+            f'gap:0;padding:11px 16px;border-bottom:1px solid {BORDER};'
+            f'background:{bg};cursor:pointer;"'
+            f' onmouseover="this.style.background=\'{SURF_HI}\'"'
+            f' onmouseout="this.style.background=\'{bg}\'">'
+            f'<div style="display:flex;align-items:center;">'
+            + pm_badge(method)
+            + f'</div>'
+            f'<div>'
+            f'<div style="font-size:13px;font-weight:700;color:{TXT_PRI};">${price}</div>'
+            f'<div style="font-size:10px;color:{"" + SUCCESS if "+" not in pct else DANGER};">'
+            f'{pct} market</div>'
+            f'</div>'
+            f'<div style="font-size:13px;color:{TXT_PRI};">{xmr_max} XMR max</div>'
+            f'<div style="font-size:13px;color:{TXT_MUT};">${min_usd} &ndash; ${max_usd}</div>'
+            f'<div style="font-size:12px;color:{TXT_MUT};">{trades}</div>'
+            f'<div style="display:flex;align-items:center;">'
+            + btn("Take Offer", color=ACCENT, text_color=TXT_PRI, small=True)
+            + f'</div></div>')
+
+OFFER_ROWS = (
+    offer_row("PayPal",        "301.20", "+1.2%", "3.30", "50",  "300",   "84",   highlight=True)
+  + offer_row("Zelle",         "299.80", "+0.7%", "6.64", "100", "500",   "231")
+  + offer_row("Cash by Mail",  "295.00", "-0.9%", "1.68", "25",  "150",   "12")
+  + offer_row("Bank Transfer", "303.40", "+1.9%", "33.2", "500", "3,000", "410")
+  + offer_row("Venmo",         "300.10", "+0.7%", "3.32", "50",  "300",   "57")
+  + offer_row("Strike",        "298.50", "+0.2%", "6.64", "100", "600",   "143")
+  + offer_row("Cash by Mail",  "288.00", "-3.4%", "0.84", "20",  "100",   "5")
+  + offer_row("PayPal",        "302.60", "+1.6%", "9.96", "200", "1,000", "318")
+)
+
+MARKET_STRIP = f"""
+<div style="padding:10px 16px;border-bottom:1px solid {BORDER};
+            display:flex;gap:24px;align-items:center;
+            background:{SURF};font-size:12px;">
+  <div style="color:{TXT_MUT};">XMR/USD market: <span style="color:{TXT_PRI};font-weight:700;">$297.60</span></div>
+  <div style="color:{TXT_MUT};">Offers listed: <span style="color:{TXT_PRI};">47</span></div>
+  <div style="color:{TXT_MUT};">Active trades: <span style="color:{TXT_PRI};">8</span></div>
+  <div style="margin-left:auto;">
+    {btn("+ Create Offer", color=SURF_HI, text_color=TXT_SEC, small=True)}
+  </div>
+</div>"""
+
+F1 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + page_header("Retoswap", "Buy XMR &mdash; 47 offers")
+      + BUY_SELL_TABS
+      + MARKET_STRIP
+      + PM_FILTER
+      + TABLE_HEADER
+      + OFFER_ROWS
+      + f'</div>')
+
+# ---------------------------------------------------------------------------
+# Frame 2 -- Take Offer
+# ---------------------------------------------------------------------------
+
+TAKE_HEADER = f"""
+<div style="padding:13px 24px;border-bottom:1px solid {BORDER};
+            display:flex;align-items:center;gap:12px;">
+  <div style="font-size:12px;color:{ACCENT};cursor:pointer;">&larr; Offers</div>
+  <div style="width:1px;height:16px;background:{BORDER};"></div>
+  <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Take Offer</div>
+</div>"""
+
+OFFER_TERMS = f"""
+{section_label("OFFER TERMS")}
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            padding:14px 16px;margin-bottom:16px;">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+    {pm_badge("PayPal")}
+    <div style="font-size:13px;color:{TXT_SEC};">Peer: <span style="font-family:monospace;">9F1...d8</span>
+      &nbsp;&middot;&nbsp; 84 completed trades &nbsp;&middot;&nbsp;
+      <span style="color:{SUCCESS};">100% completion</span></div>
+    <div style="margin-left:auto;">{status_pill("ONLINE", SUCCESS, SUCCESS_RGBA)}</div>
+  </div>
+  {''.join(
+    f'<div style="display:flex;justify-content:space-between;margin-bottom:8px;">'
+    f'<div style="font-size:13px;color:{TXT_MUT};">{l}</div>'
+    f'<div style="font-size:13px;color:{TXT_PRI};">{v}</div></div>'
+    for l, v in [
+        ("Payment method",  "PayPal"),
+        ("Price",           "$301.20 / XMR (+1.2% above market)"),
+        ("Trade limits",    "$50 &ndash; $300"),
+        ("Payment window",  "60 minutes after trade opens"),
+        ("Maker account",   "PayPal account verified >6 months"),
+    ]
+  )}
+</div>"""
+
+AMOUNT_INPUT = f"""
+{section_label("TRADE AMOUNT")}
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            padding:14px 16px;margin-bottom:16px;">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px;">
+    {input_field("You send (USD)", "$150.00", note="Min $50 &bull; Max $300")}
+    {input_field("You receive (XMR)", "0.4982 XMR", note="At $301.20 / XMR")}
+  </div>
+  <div style="display:flex;gap:8px;">
+    {''.join(
+      f'<div style="padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer;'
+      f'background:{SURF_HI};border:1px solid {BORDER};color:{TXT_MUT};">{a}</div>'
+      for a in ["$50", "$100", "$150", "$200", "$300 MAX"]
+    )}
+  </div>
+</div>"""
+
+DEPOSIT_BOX = f"""
+{section_label("SECURITY DEPOSITS")}
+<div style="background:{WARN_RGBA};border:1px solid {WARN};border-radius:8px;
+            padding:13px 16px;margin-bottom:16px;">
+  <div style="font-size:13px;color:{TXT_SEC};margin-bottom:10px;line-height:1.6;">
+    Both parties lock XMR deposits into a 2-of-3 multisig before trade begins.
+    Deposits are returned when the trade completes. They are only at risk if
+    you fail to follow through.
+  </div>
+  {''.join(
+    f'<div style="display:flex;justify-content:space-between;margin-bottom:7px;">'
+    f'<div style="font-size:13px;color:{TXT_MUT};">{l}</div>'
+    f'<div style="font-size:13px;color:{WARN};font-weight:700;">{v}</div></div>'
+    for l, v in [
+        ("Your security deposit (15%)", "0.0747 XMR  (&asymp; $22.50)"),
+        ("Maker security deposit",       "0.0747 XMR  (&asymp; $22.50)"),
+        ("Trade amount (held in escrow)","0.4982 XMR  (&asymp; $150.00)"),
+        ("Total XMR you must have ready","0.5729 XMR"),
+    ]
+  )}
+</div>"""
+
+ARBITRATION_NOTE = f"""
+<div style="background:{ACCENT_RGBA};border:1px solid {ACCENT};border-radius:8px;
+            padding:11px 14px;margin-bottom:16px;font-size:12px;
+            color:{TXT_SEC};line-height:1.5;">
+  If the trade stalls or either party misbehaves, either side can open a
+  dispute. A Retoswap arbitrator holds the third multisig key and can
+  release funds to the honest party after reviewing evidence.
+</div>"""
+
+F2 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + page_header("Retoswap")
+      + TAKE_HEADER
+      + f'<div style="padding:18px 24px;display:flex;gap:20px;">'
+      + f'<div style="flex:1;min-width:0;">'
+      + OFFER_TERMS
+      + AMOUNT_INPUT
+      + DEPOSIT_BOX
+      + ARBITRATION_NOTE
+      + f'<div style="display:flex;gap:10px;">'
+      + btn("Confirm &amp; Lock Deposits", color=SUCCESS, text_color=BG)
+      + f'&nbsp;&nbsp;'
+      + btn_outline("Cancel")
+      + f'</div>'
+      + f'</div>'
+      # Right: how it works
+      + f'<div style="width:250px;flex-shrink:0;">'
+      + section_label("TRADE STEPS")
+      + f'<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;'
+      f'padding:13px 14px;">'
+      + "".join(
+          f'<div style="display:flex;gap:10px;margin-bottom:12px;">'
+          f'<div style="width:22px;height:22px;border-radius:50%;background:{ACC_GLO};'
+          f'border:1px solid {ACCENT};display:flex;align-items:center;justify-content:center;'
+          f'font-size:10px;font-weight:700;color:{ACCENT};flex-shrink:0;">{n}</div>'
+          f'<div style="font-size:12px;color:{TXT_SEC};line-height:1.5;">{text}</div></div>'
+          for n, text in [
+              (1, "Both parties lock XMR deposits and the trade amount into 2-of-3 multisig."),
+              (2, "You send $150 to the maker via PayPal within 60 minutes."),
+              (3, "You click \"Payment Sent.\""),
+              (4, "Maker confirms receipt and releases XMR from multisig."),
+              (5, "XMR arrives in your wallet. Deposits returned to both."),
+          ]
+      )
+      + f'</div>'
+      + f'</div>'
+      + f'</div></div>')
+
+# ---------------------------------------------------------------------------
+# Frame 3 -- Active Trade
+# ---------------------------------------------------------------------------
+
+ACTIVE_HEADER = f"""
+<div style="padding:13px 24px;border-bottom:1px solid {BORDER};
+            display:flex;align-items:center;justify-content:space-between;">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Active Trade</div>
+    <div style="font-size:12px;font-family:monospace;color:{TXT_MUT};">
+      #trade-4a3f...c12e</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div style="font-size:13px;color:{WARN};">Payment window: 47:12 remaining</div>
+    {btn_outline("Open Dispute", small=True, color=DANGER)}
+  </div>
+</div>"""
+
+TRADE_STEPS_F3 = f"""
+<div style="display:flex;align-items:center;gap:0;margin-bottom:24px;">
+  {step_node(1, "Deposits locked", "done")}
+  {step_connector(done=True)}
+  {step_node(2, "Send payment",    "active")}
+  {step_connector()}
+  {step_node(3, "Confirm sent",    "pending")}
+  {step_connector()}
+  {step_node(4, "Maker confirms",  "pending")}
+  {step_connector()}
+  {step_node(5, "XMR released",    "pending")}
+</div>"""
+
+ESCROW_STATUS = f"""
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
+  <div style="background:{SUCCESS_RGBA};border:1px solid {SUCCESS};border-radius:8px;
+              padding:13px 16px;">
+    <div style="font-size:11px;color:{TXT_MUT};margin-bottom:6px;">IN MULTISIG ESCROW</div>
+    <div style="font-size:20px;font-weight:700;color:{TXT_PRI};">0.5729 XMR</div>
+    <div style="font-size:12px;color:{TXT_MUT};margin-top:4px;">
+      0.4982 trade + 0.0747 your deposit</div>
+    {status_pill("LOCKED", SUCCESS, SUCCESS_RGBA)}
+  </div>
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              padding:13px 16px;">
+    <div style="font-size:11px;color:{TXT_MUT};margin-bottom:6px;">TRADE SUMMARY</div>
+    {''.join(
+      f'<div style="display:flex;justify-content:space-between;margin-bottom:6px;">'
+      f'<div style="font-size:12px;color:{TXT_MUT};">{l}</div>'
+      f'<div style="font-size:12px;color:{TXT_PRI};">{v}</div></div>'
+      for l, v in [
+          ("You send",     "$150.00 USD"),
+          ("You receive",  "0.4982 XMR"),
+          ("Rate",         "$301.20 / XMR"),
+          ("Via",          "PayPal"),
+          ("Peer",         "9F1...d8"),
+      ]
+    )}
+  </div>
+</div>"""
+
+PAYMENT_INSTRUCTIONS = f"""
+{section_label("PAYMENT INSTRUCTIONS")}
+<div style="background:{ACC_GLO};border:1px solid {ACCENT};border-radius:8px;
+            padding:16px 18px;margin-bottom:16px;">
+  <div style="font-size:14px;font-weight:700;color:{TXT_PRI};margin-bottom:12px;">
+    Send $150.00 via PayPal</div>
+  {''.join(
+    '<div style="display:flex;justify-content:space-between;margin-bottom:10px;">'
+    + f'<div style="font-size:13px;color:{TXT_MUT};">{l}</div>'
+    + '<div style="display:flex;align-items:center;gap:8px;">'
+    + f'<div style="font-size:13px;color:{TXT_PRI};font-family:{"monospace" if mono else "inherit"};">{v}</div>'
+    + (f'<div style="font-size:11px;color:{ACCENT};cursor:pointer;">copy</div>' if copy else '')
+    + '</div></div>'
+    for l, v, mono, copy in [
+        ("PayPal account", "trader@example.com",     True,  True),
+        ("Amount",         "$150.00",                False, False),
+        ("Reference",      "XMR-4a3f",               True,  True),
+        ("Note",           "Goods and services only",False, False),
+    ]
+  )}
+  <div style="background:{WARN_RGBA};border:1px solid {WARN};border-radius:6px;
+              padding:10px 12px;margin-top:4px;font-size:12px;
+              color:{TXT_SEC};line-height:1.5;">
+    Do NOT include any reference to cryptocurrency, XMR, or Retoswap
+    in the PayPal note. Send as goods and services &mdash; not friends &amp; family.
+  </div>
+</div>"""
+
+CONFIRM_SENT = f"""
+<div style="display:flex;gap:10px;align-items:center;">
+  {btn("I Have Sent the Payment", color=SUCCESS, text_color=BG)}
+  <div style="font-size:12px;color:{TXT_MUT};line-height:1.4;">
+    Only click after you have actually sent $150.00 via PayPal.
+    This starts the confirmation timer for the maker.
+  </div>
+</div>"""
+
+F3 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + page_header("Retoswap")
+      + ACTIVE_HEADER
+      + f'<div style="padding:18px 24px;">'
+      + TRADE_STEPS_F3
+      + ESCROW_STATUS
+      + PAYMENT_INSTRUCTIONS
+      + CONFIRM_SENT
+      + f'</div></div>')
+
+# ---------------------------------------------------------------------------
+# Frame 4 -- Complete
+# ---------------------------------------------------------------------------
+
+COMPLETE_HEADER = f"""
+<div style="padding:13px 24px;border-bottom:1px solid {BORDER};
+            display:flex;align-items:center;gap:12px;">
+  <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Trade Complete</div>
+  <div style="margin-left:auto;">{status_pill("SUCCESS", SUCCESS, SUCCESS_RGBA)}</div>
+</div>"""
+
+SUCCESS_BANNER = f"""
+<div style="background:{SUCCESS_RGBA};border:1px solid {SUCCESS};border-radius:10px;
+            padding:22px 24px;margin-bottom:18px;display:flex;align-items:center;gap:20px;">
+  <div style="width:52px;height:52px;border-radius:50%;background:{SUCCESS};
+              display:flex;align-items:center;justify-content:center;
+              font-size:24px;color:{BG};flex-shrink:0;">&#10003;</div>
+  <div>
+    <div style="font-size:28px;font-weight:700;color:{TXT_PRI};margin-bottom:4px;">
+      +0.4982 XMR received</div>
+    <div style="font-size:13px;color:{TXT_MUT};">
+      Maker confirmed your PayPal payment and released the XMR from escrow.</div>
+  </div>
+</div>"""
+
+TRADE_RECEIPT = f"""
+{section_label("TRADE RECEIPT")}
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            padding:14px 16px;margin-bottom:16px;">
+  {''.join(
+    f'<div style="display:flex;justify-content:space-between;margin-bottom:9px;">'
+    f'<div style="font-size:13px;color:{TXT_MUT};">{l}</div>'
+    f'<div style="font-size:13px;color:{c};font-family:{"monospace" if mono else "inherit"};">'
+    f'{v}</div></div>'
+    for l, v, c, mono in [
+        ("Paid",              "$150.00 USD via PayPal",     TXT_PRI,  False),
+        ("Received",          "0.4982 XMR",                 SUCCESS,  False),
+        ("Rate",              "$301.20 / XMR",              TXT_SEC,  False),
+        ("Your deposit back", "0.0747 XMR returned",        TXT_SEC,  False),
+        ("Trade ID",          "#trade-4a3f...c12e",         TXT_MUT,  True),
+        ("Peer",              "9F1...d8",                   TXT_MUT,  True),
+        ("Duration",          "18 min 34 sec",              TXT_SEC,  False),
+    ]
+  )}
+</div>"""
+
+DEPOSIT_RETURN = f"""
+<div style="background:{ACCENT_RGBA};border:1px solid {ACCENT};border-radius:8px;
+            padding:12px 14px;margin-bottom:16px;display:flex;justify-content:space-between;
+            align-items:center;">
+  <div style="font-size:13px;color:{TXT_SEC};">Security deposit returned</div>
+  <div style="font-size:14px;font-weight:700;color:{ACCENT};">+0.0747 XMR</div>
+</div>"""
+
+F4 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + page_header("Retoswap")
+      + COMPLETE_HEADER
+      + f'<div style="padding:18px 24px;display:flex;gap:20px;">'
+      + f'<div style="flex:1;min-width:0;">'
+      + SUCCESS_BANNER
+      + TRADE_RECEIPT
+      + DEPOSIT_RETURN
+      + f'<div style="display:flex;gap:10px;">'
+      + btn("Buy More XMR", color=ACCENT, text_color=TXT_PRI)
+      + f'&nbsp;&nbsp;'
+      + btn_outline("Back to Offers")
+      + f'</div>'
+      + f'</div>'
+      + f'<div style="width:240px;flex-shrink:0;">'
+      + section_label("WALLET BALANCE")
+      + f'<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;'
+      f'padding:13px 16px;margin-bottom:14px;">'
+      + "".join(
+          f'<div style="display:flex;justify-content:space-between;margin-bottom:8px;">'
+          f'<div style="font-size:13px;color:{TXT_MUT};">{l}</div>'
+          f'<div style="font-size:13px;color:{c};font-weight:{fw};">{v}</div></div>'
+          for l, v, c, fw in [
+              ("XMR available",  "13.696 XMR",  SUCCESS, "700"),
+              ("  Previous",     "13.198 XMR",  TXT_MUT, "400"),
+              ("  + received",   "+0.4982 XMR", SUCCESS, "400"),
+              ("  + deposit",    "+0.0747 XMR", SUCCESS, "400"),
+          ]
+      )
+      + f'</div>'
+      + section_label("RATE YOUR PEER")
+      + f'<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;'
+      f'padding:13px 14px;">'
+      + f'<div style="font-size:12px;color:{TXT_MUT};margin-bottom:10px;">'
+      + f'How did the trade go with 9F1...d8?</div>'
+      + f'<div style="display:flex;gap:8px;">'
+      + btn("Positive", color=SUCCESS, text_color=BG, small=True)
+      + btn("Negative", color=DANGER,  text_color=TXT_PRI, small=True)
+      + f'</div></div>'
+      + f'</div>'
+      + f'</div></div>')
+
+# ---------------------------------------------------------------------------
+# Frame 5 -- Create Offer (maker)
+# ---------------------------------------------------------------------------
+
+CREATE_HEADER = f"""
+<div style="padding:13px 24px;border-bottom:1px solid {BORDER};
+            display:flex;align-items:center;gap:12px;">
+  <div style="font-size:12px;color:{ACCENT};cursor:pointer;">&larr; Offers</div>
+  <div style="width:1px;height:16px;background:{BORDER};"></div>
+  <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Create Offer</div>
+</div>"""
+
+PM_GRID = f"""
+{section_label("PAYMENT METHOD")}
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
+  {''.join(
+    f'<div style="padding:10px 12px;border-radius:7px;cursor:pointer;text-align:center;'
+    f'background:{"" + ACC_GLO if m == "PayPal" else SURF_HI};'
+    f'border:{"2px" if m == "PayPal" else "1px"} solid '
+    f'{"" + ACCENT if m == "PayPal" else BORDER};">'
+    f'<div style="font-size:12px;font-weight:{"700" if m == "PayPal" else "400"};'
+    f'color:{"" + TXT_PRI if m == "PayPal" else TXT_MUT};">{m}</div>'
+    f'</div>'
+    for m in [
+        "PayPal", "Zelle", "Cash by Mail", "Bank Transfer",
+        "Venmo", "Strike", "Revolut", "Cash in Person",
+    ]
+  )}
+</div>"""
+
+PRICE_TYPE = f"""
+{section_label("PRICE TYPE")}
+<div style="display:flex;gap:8px;margin-bottom:16px;">
+  {''.join(
+    f'<div style="flex:1;padding:10px 14px;border-radius:7px;cursor:pointer;'
+    f'background:{"" + ACC_GLO if p == "Market %" else SURF_HI};'
+    f'border:{"2px" if p == "Market %" else "1px"} solid '
+    f'{"" + ACCENT if p == "Market %" else BORDER};">'
+    f'<div style="font-size:13px;font-weight:700;'
+    f'color:{"" + TXT_PRI if p == "Market %" else TXT_MUT};">{p}</div>'
+    f'<div style="font-size:11px;color:{TXT_MUT};margin-top:2px;">{d}</div></div>'
+    for p, d in [
+        ("Market %",   "Tracks live price + offset"),
+        ("Fixed",      "Set a fixed USD price"),
+    ]
+  )}
+</div>"""
+
+OFFER_FORM = (
+    f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">'
+  + input_field("Price offset (%)", "+1.5%",
+                note="You will receive $1.50 above market per $100 traded")
+  + input_field("Trade currency",   "USD")
+  + f'</div>'
+  + f'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">'
+  + input_field("Min trade amount", "$50")
+  + input_field("Max trade amount", "$500")
+  + input_field("Payment window",   "60 min")
+  + f'</div>'
+  + input_field("PayPal account (shown to taker after deposit)",
+                "trader@example.com", mono=True,
+                note="Only revealed to the taker once both deposits are locked")
+)
+
+OFFER_DEPOSIT = f"""
+{section_label("REQUIRED DEPOSIT")}
+<div style="background:{WARN_RGBA};border:1px solid {WARN};border-radius:8px;
+            padding:12px 14px;margin-bottom:16px;">
+  <div style="font-size:13px;color:{TXT_SEC};margin-bottom:8px;line-height:1.5;">
+    You must lock a security deposit equal to 15% of your max trade amount
+    plus the max XMR trade amount into multisig before your offer goes live.
+  </div>
+  {''.join(
+    f'<div style="display:flex;justify-content:space-between;margin-bottom:6px;">'
+    f'<div style="font-size:12px;color:{TXT_MUT};">{l}</div>'
+    f'<div style="font-size:12px;color:{WARN};font-weight:700;">{v}</div></div>'
+    for l, v in [
+        ("Max trade amount",  "1.662 XMR  (&asymp; $500)"),
+        ("Security deposit (15%)", "0.2493 XMR  (&asymp; $75)"),
+        ("Total XMR to lock", "1.9113 XMR"),
+    ]
+  )}
+</div>"""
+
+F5 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + page_header("Retoswap")
+      + CREATE_HEADER
+      + f'<div style="padding:18px 24px;display:flex;gap:20px;">'
+      + f'<div style="flex:1;min-width:0;">'
+      + PM_GRID
+      + PRICE_TYPE
+      + OFFER_FORM
+      + OFFER_DEPOSIT
+      + f'<div style="display:flex;gap:10px;">'
+      + btn("Lock Deposit &amp; Publish Offer", color=SUCCESS, text_color=BG)
+      + f'&nbsp;&nbsp;'
+      + btn_outline("Cancel")
+      + f'</div>'
+      + f'</div>'
+      + f'<div style="width:240px;flex-shrink:0;">'
+      + section_label("OFFER PREVIEW")
+      + f'<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;'
+      f'padding:13px 14px;margin-bottom:14px;">'
+      + "".join(
+          f'<div style="display:flex;justify-content:space-between;margin-bottom:8px;">'
+          f'<div style="font-size:12px;color:{TXT_MUT};">{l}</div>'
+          f'<div style="font-size:12px;color:{TXT_PRI};">{v}</div></div>'
+          for l, v in [
+              ("Method",      "PayPal"),
+              ("Price",       "+1.5% market  (~$301.96)"),
+              ("Min",         "$50  (0.166 XMR)"),
+              ("Max",         "$500  (1.662 XMR)"),
+              ("Window",      "60 min"),
+              ("Your deposit","0.2493 XMR"),
+          ]
+      )
+      + f'</div>'
+      + section_label("TIPS FOR MAKERS")
+      + f'<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;'
+      f'padding:12px 14px;font-size:12px;color:{TXT_MUT};line-height:1.7;">'
+      + f'<div style="margin-bottom:6px;">&bull; Respond promptly when a taker takes your offer.</div>'
+      + f'<div style="margin-bottom:6px;">&bull; Check PayPal before releasing XMR.</div>'
+      + f'<div style="margin-bottom:6px;">&bull; Use goods &amp; services, not friends &amp; family.</div>'
+      + f'<div>&bull; More completed trades = higher ranking in the offer book.</div>'
+      + f'</div>'
+      + f'</div>'
+      + f'</div></div>')
+
+# ---------------------------------------------------------------------------
+# Assemble HTML
+# ---------------------------------------------------------------------------
+
+FRAMES = [
+    ("Offer Book",    F1),
+    ("Take Offer",    F2),
+    ("Active Trade",  F3),
+    ("Complete",      F4),
+    ("Create Offer",  F5),
+]
+
+TABS_JS   = ",\n".join(f'"{t}"' for t, _ in FRAMES)
+FRAMES_JS = ",\n".join(
+    f'`{html.replace("`", "\\`").replace("${", "\\${")}`'
+    for _, html in FRAMES
+)
+
+HTML = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Retoswap &mdash; Buy XMR</title>
+<style>
+* {{ box-sizing: border-box; margin: 0; padding: 0; }}
+body {{ background: #080a12; font-family: 'Inter', system-ui, sans-serif;
+       display: flex; flex-direction: column; align-items: center;
+       min-height: 100vh; padding: 24px 16px; }}
+.tab-bar {{ display: flex; gap: 4px; margin-bottom: 20px;
+           background: {SURF}; border: 1px solid {BORDER};
+           border-radius: 8px; padding: 4px; max-width: {FW}px; }}
+.tab {{ padding: 7px 18px; border-radius: 6px; cursor: pointer;
+       font-size: 12px; color: {TXT_MUT}; transition: all 0.15s; }}
+.tab.active {{ background: {ACCENT}; color: {TXT_PRI}; font-weight: 700; }}
+.tab:hover:not(.active) {{ color: {TXT_PRI}; }}
+.viewport {{ display: flex; align-items: flex-start; width: {FW}px; }}
+.nav {{ display: flex; gap: 12px; margin-top: 16px; align-items: center; }}
+.nav-btn {{ padding: 8px 20px; border-radius: 6px; cursor: pointer;
+           font-size: 13px; background: {SURF}; border: 1px solid {BORDER};
+           color: {TXT_SEC}; }}
+.nav-btn:hover {{ border-color: {ACCENT}; color: {TXT_PRI}; }}
+.frame-label {{ font-size: 12px; color: {TXT_MUT}; min-width: 140px; text-align: center; }}
+</style>
+</head>
+<body>
+<div class="tab-bar" id="tabBar"></div>
+<div class="viewport" id="viewport"></div>
+<div class="nav">
+  <div class="nav-btn" onclick="go(-1)">&larr; Prev</div>
+  <div class="frame-label" id="frameLabel"></div>
+  <div class="nav-btn" onclick="go(1)">Next &rarr;</div>
+</div>
+<script>
+const TABS   = [{TABS_JS}];
+const FRAMES = [{FRAMES_JS}];
+let cur = 0;
+function render() {{
+  const tb = document.getElementById('tabBar');
+  tb.innerHTML = TABS.map((t,i) =>
+    `<div class="tab${{i===cur?' active':''}}" onclick="jump(${{i}})">${{t}}</div>`
+  ).join('');
+  document.getElementById('viewport').innerHTML = FRAMES[cur];
+  document.getElementById('frameLabel').textContent =
+    (cur+1) + ' / ' + FRAMES.length + ' — ' + TABS[cur];
+}}
+function jump(i) {{ cur = i; render(); }}
+function go(d) {{ cur = (cur + d + FRAMES.length) % FRAMES.length; render(); }}
+render();
+</script>
+</body>
+</html>"""
+
+os.makedirs(OUTDIR, exist_ok=True)
+with open(OUTFILE, "w") as f:
+    f.write(HTML)
+print(f"Written: {OUTFILE}")
+if os.environ.get("NYX_OPEN") == "1":   # opt in; macOS only
+    subprocess.Popen(["open", "-a", "Brave Browser", OUTFILE])
+    print("Opened in Brave.")

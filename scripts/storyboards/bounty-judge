@@ -1,0 +1,904 @@
+#!/usr/bin/env python3
+"""
+NyxForge Judge Onboarding mockup generator.
+Generates docs/storyboards/out/bounty-judge-mockup.html
+
+6 frames:
+  1. Invitation Landing    -- bounty summary, proposed role, Accept / Decline
+  2. Create Judge Profile  -- name/org/bio pre-filled, photo, keypair generation
+  3. Review Bounty & Terms   -- full terms, timeline, responsibility agreement, sign
+  4. Setup Complete        -- confirmation, judge card preview, dashboard link
+  5. Judge Dashboard       -- assigned bounties, status per bounty
+  6. Verdict Submission    -- evidence review, data feed / expert verdict, sign & submit
+"""
+import os, subprocess
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTDIR     = os.path.join(os.environ.get("NYXFORGE_ROOT", os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "docs/storyboards/out")
+OUTFILE    = os.path.join(OUTDIR, "bounty-judge-mockup.html")
+
+# ---------------------------------------------------------------------------
+# Palette
+# ---------------------------------------------------------------------------
+BG           = "#0d0f1a"
+SURF         = "#131524"
+SURF_HI      = "#1a1d2e"
+ACCENT       = "#5e6ad2"
+ACC_GLO      = "#2d3068"
+TXT_PRI      = "#e8eaf0"
+TXT_SEC      = "#b8c0d8"
+TXT_MUT      = "#8b95b0"
+SUCCESS      = "#4ade80"
+DANGER       = "#f87171"
+WARN         = "#fbbf24"
+BORDER       = "#2a2d3e"
+INACT        = "#3a3d5c"
+SUCCESS_RGBA = "rgba(74,222,128,0.10)"
+WARN_RGBA    = "rgba(251,191,36,0.10)"
+
+FW = 900
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def section_label(text):
+    return (f'<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;'
+            f'color:{ACCENT};margin-bottom:8px;">{text}</div>')
+
+def divider(mb=12):
+    return f'<div style="height:1px;background:{BORDER};margin:0 0 {mb}px;"></div>'
+
+def step_circle(n, active=True):
+    bg    = ACC_GLO if active else SURF_HI
+    color = ACCENT  if active else TXT_MUT
+    return (f'<div style="width:28px;height:28px;border-radius:14px;background:{bg};'
+            f'flex-shrink:0;display:flex;align-items:center;justify-content:center;'
+            f'font-size:12px;font-weight:700;color:{color};">{n}</div>')
+
+def check_row(label, checked=False):
+    box = (f'<div style="width:16px;height:16px;border-radius:3px;background:{ACC_GLO};'
+           f'border:2px solid {ACCENT};flex-shrink:0;display:flex;align-items:center;'
+           f'justify-content:center;font-size:10px;color:{SUCCESS};">&#10003;</div>')  if checked else \
+          (f'<div style="width:16px;height:16px;border-radius:3px;background:{SURF};'
+           f'border:2px solid {INACT};flex-shrink:0;"></div>')
+    return (f'<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">'
+            f'{box}'
+            f'<span style="font-size:13px;color:{TXT_SEC};line-height:1.5;">{label}</span>'
+            f'</div>')
+
+def input_field(label, value, mono=False):
+    font = "monospace" if mono else "inherit"
+    return (f'<div style="margin-bottom:10px;">'
+            f'<div style="font-size:12px;color:{TXT_MUT};margin-bottom:4px;">{label}</div>'
+            f'<div style="background:{SURF};border:1px solid {BORDER};border-radius:6px;'
+            f'padding:9px 13px;font-size:13px;color:{TXT_SEC};font-family:{font};">{value}</div>'
+            f'</div>')
+
+def btn(label, color=SUCCESS, text_color=BG, small=False):
+    pad = "8px 18px" if small else "13px 28px"
+    fs  = "12px"     if small else "14px"
+    return (f'<div style="display:inline-block;padding:{pad};background:{color};'
+            f'border-radius:8px;font-size:{fs};font-weight:700;color:{text_color};'
+            f'cursor:pointer;letter-spacing:0.3px;">{label}</div>')
+
+def btn_outline(label, small=False):
+    pad = "7px 17px" if small else "12px 27px"
+    fs  = "12px"     if small else "14px"
+    return (f'<div style="display:inline-block;padding:{pad};background:transparent;'
+            f'border:1px solid {BORDER};border-radius:8px;font-size:{fs};'
+            f'color:{TXT_SEC};cursor:pointer;">{label}</div>')
+
+def status_pill(text, color, bg):
+    return (f'<span style="font-size:10px;font-weight:700;letter-spacing:0.8px;'
+            f'padding:3px 8px;border-radius:4px;color:{color};background:{bg};">'
+            f'{text}</span>')
+
+def nyx_header(title, subtitle=None):
+    sub = (f'<div style="font-size:11px;color:{TXT_MUT};margin-top:2px;">{subtitle}</div>'
+           if subtitle else "")
+    return f"""
+  <div style="background:{SURF};border-bottom:1px solid {BORDER};padding:14px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:{ACC_GLO};
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:11px;font-weight:700;color:{ACCENT};">NYX</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">{title}</div>
+        {sub}
+      </div>
+    </div>
+    <div style="font-size:11px;color:{INACT};">NyxForge Judge Portal</div>
+  </div>"""
+
+def progress_bar(steps, current):
+    items = []
+    for i, label in enumerate(steps):
+        n     = i + 1
+        done  = n < current
+        active= n == current
+        dot_bg    = SUCCESS if done else (ACCENT if active else INACT)
+        dot_border= SUCCESS if done else (ACCENT if active else INACT)
+        dot_inner = f'<div style="width:8px;height:8px;border-radius:4px;background:{BG};"></div>' if done else ""
+        lbl_color = TXT_PRI if active else (TXT_SEC if done else TXT_MUT)
+        line_color= SUCCESS if done else BORDER
+        line = (f'<div style="flex:1;height:2px;background:{line_color};margin-top:11px;"></div>'
+                if i < len(steps)-1 else "")
+        items.append(
+            f'<div style="display:flex;flex-direction:column;align-items:center;gap:4px;">'
+            f'<div style="width:22px;height:22px;border-radius:11px;background:{dot_bg};'
+            f'border:2px solid {dot_border};display:flex;align-items:center;'
+            f'justify-content:center;">{dot_inner}</div>'
+            f'<div style="font-size:10px;color:{lbl_color};white-space:nowrap;">{label}</div>'
+            f'</div>{line}'
+        )
+    return (f'<div style="display:flex;align-items:flex-start;padding:14px 24px 6px;">'
+            + "".join(items) + '</div>')
+
+STEPS = ["Invitation", "Profile", "Review", "Complete"]
+
+# ---------------------------------------------------------------------------
+# Frame 1: Invitation Landing
+# ---------------------------------------------------------------------------
+
+FH1 = 820
+
+FRAME1 = f"""
+<div style="width:{FW}px;height:{FH1}px;overflow:hidden;background:{BG};font-family:Inter,system-ui,sans-serif;color:{TXT_PRI};">
+
+  {nyx_header("Judge Invitation")}
+
+  <!-- Invitation banner -->
+  <div style="margin:18px 24px 0;background:{SURF_HI};border:1px solid {ACCENT};border-radius:8px;
+              padding:16px 20px;display:flex;gap:16px;align-items:flex-start;">
+    <div style="width:42px;height:42px;border-radius:21px;background:{ACC_GLO};flex-shrink:0;
+                display:flex;align-items:center;justify-content:center;
+                font-size:16px;font-weight:700;color:{ACCENT};">ARA</div>
+    <div>
+      <div style="font-size:13px;color:{TXT_MUT};margin-bottom:3px;">
+        Alzheimer's Research Alliance has invited you to serve as a bounty judge.
+      </div>
+      <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Alzheimer's Cure Bounty By 2045</div>
+      <div style="font-size:12px;color:{TXT_MUT};margin-top:2px;">Invited by: Maria Santos, ARA Program Director</div>
+    </div>
+  </div>
+
+  <!-- Role & bounty summary -->
+  <div style="display:flex;gap:14px;margin:14px 24px 0;">
+
+    <!-- Proposed role -->
+    <div style="flex:1;background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:14px;">
+      {section_label("YOUR PROPOSED ROLE")}
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <img src="https://i.pravatar.cc/88?img=16" width="40" height="40"
+             style="border-radius:20px;object-fit:cover;flex-shrink:0;">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:{TXT_PRI};">Dr. Sarah Chen</div>
+          <div style="font-size:12px;color:{TXT_MUT};">World Health Organization</div>
+          <div style="font-size:12px;color:{TXT_MUT};">Lead Epidemiologist, Neurological Diseases</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:{TXT_SEC};line-height:1.55;">
+        You will independently evaluate whether the bounty's outcome conditions were
+        satisfied. Your verdict, combined with those of 2 other judges, determines
+        whether the bounty collateral is paid out to ARA or returned to backers.
+      </div>
+    </div>
+
+    <!-- Bounty summary -->
+    <div style="flex:1;background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:14px;">
+      {section_label("BOUNTY SUMMARY")}
+      <div style="display:flex;flex-direction:column;gap:7px;">
+        <div style="display:flex;justify-content:space-between;">
+          <span style="font-size:12px;color:{TXT_MUT};">Deadline</span>
+          <span style="font-size:12px;color:{TXT_PRI};font-weight:600;">2045-12-31</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span style="font-size:12px;color:{TXT_MUT};">Judgment window</span>
+          <span style="font-size:12px;color:{TXT_PRI};">90 days after deadline</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span style="font-size:12px;color:{TXT_MUT};">Quorum required</span>
+          <span style="font-size:12px;color:{TXT_PRI};">2 of 3 judges</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span style="font-size:12px;color:{TXT_MUT};">Collateral at stake</span>
+          <span style="font-size:12px;color:{SUCCESS};font-weight:600;">14.2 XMR (growing)</span>
+        </div>
+        <div style="height:1px;background:{BORDER};margin:4px 0;"></div>
+        <div style="font-size:12px;color:{TXT_MUT};">Term</div>
+        <div style="font-size:12px;color:{TXT_SEC};line-height:1.5;">
+          FDA approves a treatment reducing new Alzheimer's diagnoses by 50%
+          before 2045-12-31, verified by at least 2 of 3 bounty judges.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- What judges do -->
+  <div style="margin:14px 24px 0;background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:14px;">
+    {section_label("WHAT'S EXPECTED OF YOU")}
+    <div style="display:flex;gap:20px;">
+      {"".join(f'''<div style="flex:1;display:flex;gap:10px;align-items:flex-start;">
+        {step_circle(n)}
+        <div>
+          <div style="font-size:13px;font-weight:600;color:{TXT_PRI};margin-bottom:2px;">{title}</div>
+          <div style="font-size:12px;color:{TXT_MUT};line-height:1.5;">{body}</div>
+        </div>
+      </div>''' for n, title, body in [
+          (1, "Monitor the outcome", "Track relevant FDA approvals and Cochrane reviews through the judgment period."),
+          (2, "Submit your verdict", "After the deadline, submit a signed verdict with supporting evidence within the 90-day window."),
+          (3, "Stand behind it", "Your name and judgment record are publicly visible. Disputed verdicts are reviewed by a neutral panel."),
+      ])}
+    </div>
+  </div>
+
+  <!-- CTAs -->
+  <div style="padding:18px 24px 0;display:flex;gap:12px;align-items:center;">
+    {btn("Accept Invitation")}
+    {btn_outline("Decline")}
+    <span style="font-size:12px;color:{TXT_MUT};margin-left:8px;">
+      Questions? Contact Maria Santos at ara.org
+    </span>
+  </div>
+
+</div>
+"""
+
+# ---------------------------------------------------------------------------
+# Frame 2: Create Judge Profile
+# ---------------------------------------------------------------------------
+
+FH2 = 820
+
+FRAME2 = f"""
+<div style="width:{FW}px;height:{FH2}px;overflow:hidden;background:{BG};font-family:Inter,system-ui,sans-serif;color:{TXT_PRI};">
+
+  {nyx_header("Judge Invitation", "Alzheimer's Research Alliance")}
+  {progress_bar(STEPS, 2)}
+
+  <div style="padding:0 24px;display:flex;gap:16px;">
+
+    <!-- Left: profile form -->
+    <div style="flex:1;">
+      <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:16px;margin-bottom:12px;">
+        {section_label("YOUR PROFILE")}
+        <div style="display:flex;gap:14px;margin-bottom:12px;">
+          <!-- Photo -->
+          <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:8px;">
+            <img src="https://i.pravatar.cc/88?img=16" width="72" height="72"
+                 style="border-radius:36px;object-fit:cover;border:2px solid {BORDER};">
+            <span style="font-size:11px;color:{ACCENT};cursor:pointer;text-decoration:underline;">Upload photo</span>
+          </div>
+          <!-- Name / org -->
+          <div style="flex:1;">
+            {input_field("Full name", "Dr. Sarah Chen")}
+            {input_field("Organization", "World Health Organization")}
+          </div>
+        </div>
+        {input_field("Role / title", "Lead Epidemiologist, Neurological Diseases")}
+        <div style="margin-bottom:10px;">
+          <div style="font-size:12px;color:{TXT_MUT};margin-bottom:4px;">Bio (shown to backers)</div>
+          <div style="background:{SURF};border:1px solid {ACCENT};border-radius:6px;
+                      padding:9px 13px;font-size:13px;color:{TXT_SEC};line-height:1.5;min-height:60px;">
+            20+ years in Alzheimer's epidemiology. Leads the WHO Global Dementia Observatory
+            and previously served as a consultant to the NIH National Institute on Aging.
+          </div>
+        </div>
+        {input_field("Website", "who.int/dementia")}
+      </div>
+
+      <!-- Judgment type -->
+      <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:16px;">
+        {section_label("JUDGMENT METHOD")}
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+            <div style="width:16px;height:16px;border-radius:8px;border:2px solid {ACCENT};
+                        background:{ACC_GLO};flex-shrink:0;margin-top:2px;display:flex;
+                        align-items:center;justify-content:center;">
+              <div style="width:7px;height:7px;border-radius:4px;background:{ACCENT};"></div>
+            </div>
+            <div>
+              <div style="font-size:13px;color:{TXT_PRI};margin-bottom:2px;">Expert review</div>
+              <div style="font-size:12px;color:{TXT_MUT};line-height:1.5;">
+                I will personally review the evidence and submit a written verdict with supporting citations.
+              </div>
+            </div>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+            <div style="width:16px;height:16px;border-radius:8px;border:2px solid {INACT};
+                        background:{SURF};flex-shrink:0;margin-top:2px;"></div>
+            <div>
+              <div style="font-size:13px;color:{TXT_MUT};margin-bottom:2px;">Automated data feed</div>
+              <div style="font-size:12px;color:{TXT_MUT};line-height:1.5;">
+                My verdict is generated from an official data source I administer.
+                I am personally responsible for feed integrity and audit.
+              </div>
+            </div>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: keypair -->
+    <div style="width:260px;flex-shrink:0;">
+      <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:16px;margin-bottom:12px;">
+        {section_label("YOUR SIGNING KEY")}
+        <div style="font-size:12px;color:{TXT_MUT};margin-bottom:10px;line-height:1.5;">
+          A cryptographic keypair uniquely identifies you as a judge. Your verdicts
+          are signed with this key -- it cannot be forged by anyone else.
+        </div>
+        <div style="background:{SURF_HI};border:1px solid {SUCCESS};border-radius:6px;padding:10px 12px;margin-bottom:8px;">
+          <div style="font-size:10px;color:{SUCCESS};margin-bottom:4px;font-weight:700;">PUBLIC KEY (shared)</div>
+          <div style="font-family:monospace;font-size:10px;color:{TXT_SEC};word-break:break-all;line-height:1.5;">
+            ed25519:4AdUndXHHZ9pfQ<br>pHMDqE5ZLqmJMEpF<br>nsMC7oJnzRPqPGEG
+          </div>
+        </div>
+        <div style="background:{SURF_HI};border:1px solid {DANGER};border-radius:6px;padding:10px 12px;margin-bottom:10px;">
+          <div style="font-size:10px;color:{DANGER};margin-bottom:4px;font-weight:700;">PRIVATE KEY (keep secret)</div>
+          <div style="font-family:monospace;font-size:10px;color:{TXT_MUT};word-break:break-all;line-height:1.5;">
+            &bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;
+            &bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          {btn("Download keyfile", color=ACCENT, text_color=TXT_PRI, small=True)}
+          <div style="font-size:11px;color:{WARN};line-height:1.5;">
+            Save this file somewhere safe. You will need it to sign verdicts.
+            NyxForge cannot recover it.
+          </div>
+        </div>
+      </div>
+
+      <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:16px;">
+        {section_label("OR IMPORT EXISTING KEY")}
+        <div style="font-size:12px;color:{TXT_MUT};margin-bottom:8px;line-height:1.5;">
+          Already have a NyxForge judge key from another bounty?
+        </div>
+        {btn_outline("Import keyfile", small=True)}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Next -->
+  <div style="padding:16px 24px 0;display:flex;align-items:center;justify-content:flex-end;gap:12px;">
+    {btn_outline("Back")}
+    {btn("Continue")}
+  </div>
+
+</div>
+"""
+
+# ---------------------------------------------------------------------------
+# Frame 3: Review Bounty & Responsibilities
+# ---------------------------------------------------------------------------
+
+FH3 = 820
+
+FRAME3 = f"""
+<div style="width:{FW}px;height:{FH3}px;overflow:hidden;background:{BG};font-family:Inter,system-ui,sans-serif;color:{TXT_PRI};">
+
+  {nyx_header("Judge Invitation", "Alzheimer's Research Alliance")}
+  {progress_bar(STEPS, 3)}
+
+  <div style="padding:0 24px;display:flex;gap:16px;">
+
+    <!-- Left: bounty details -->
+    <div style="flex:1;">
+      <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:16px;margin-bottom:12px;">
+        {section_label("BOUNTY TERMS (you are agreeing to judge these)")}
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+          {"".join(f'''<div style="display:flex;gap:10px;align-items:flex-start;">
+            <div style="width:18px;height:18px;border-radius:9px;border:1px solid {BORDER};
+                        background:{SURF_HI};flex-shrink:0;display:flex;align-items:center;
+                        justify-content:center;font-size:10px;color:{ACCENT};">{n}</div>
+            <span style="font-size:13px;color:{TXT_SEC};line-height:1.5;">{term}</span>
+          </div>''' for n, term in [
+              (1, "FDA approves a treatment reducing new Alzheimer's diagnoses by 50% before 2045-12-31."),
+              (2, "Verified by at least 2 of 3 pre-approved independent bounty judges."),
+          ])}
+        </div>
+        <div style="display:flex;gap:20px;">
+          <div>
+            <div style="font-size:11px;color:{TXT_MUT};">Deadline</div>
+            <div style="font-size:13px;font-weight:600;color:{TXT_PRI};">2045-12-31</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:{TXT_MUT};">Judgment window</div>
+            <div style="font-size:13px;font-weight:600;color:{TXT_PRI};">90 days (closes 2046-03-31)</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:{TXT_MUT};">Fellow judges</div>
+            <div style="font-size:13px;font-weight:600;color:{TXT_PRI};">Dr. Marcus Webb, Dr. Elena Marchetti</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Responsibilities -->
+      <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:16px;margin-bottom:12px;">
+        {section_label("JUDGE RESPONSIBILITIES")}
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          {"".join(f'''<div style="display:flex;gap:12px;align-items:flex-start;">
+            {step_circle(n)}
+            <div>
+              <div style="font-size:13px;font-weight:600;color:{TXT_PRI};margin-bottom:2px;">{title}</div>
+              <div style="font-size:12px;color:{TXT_MUT};line-height:1.5;">{body}</div>
+            </div>
+          </div>''' for n, title, body in [
+              (1, "Monitor and stay informed",
+               "Track FDA drug approval announcements and Cochrane reviews relevant to Alzheimer's treatment from now until the 2045 deadline."),
+              (2, "Submit your verdict within the window",
+               "After 2045-12-31, you have 90 days to submit a signed verdict. Missing the window without notice may result in removal from future bounty panels."),
+              (3, "Provide evidence with your verdict",
+               "Your verdict must reference specific, verifiable sources (FDA approval number, DOI, etc.). Verdicts without evidence may be disputed."),
+              (4, "Respond to disputes if escalated",
+               "If your verdict is challenged, you may be asked to provide additional evidence or clarification within 30 days of the dispute notice."),
+          ])}
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: agreement -->
+    <div style="width:268px;flex-shrink:0;">
+      <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:16px;margin-bottom:12px;">
+        {section_label("JUDGE AGREEMENT")}
+        <div style="font-size:12px;color:{TXT_MUT};margin-bottom:12px;line-height:1.5;">
+          By accepting you agree to the following:
+        </div>
+        {check_row("I will submit my verdict within the 90-day judgment window.", checked=True)}
+        {check_row("My verdict will reference verifiable, publicly accessible evidence.", checked=True)}
+        {check_row("I have no undisclosed conflicts of interest with ARA, the bounty's backers, or any drug manufacturer whose products may be evaluated.", checked=True)}
+        {check_row("I understand my name, organization, and judgment record will be publicly visible to backers.", checked=True)}
+        {check_row("I have saved my private key and understand NyxForge cannot recover it.", checked=False)}
+      </div>
+
+      <div style="background:{WARN_RGBA};border:1px solid {WARN};border-radius:8px;padding:12px 14px;">
+        <div style="font-size:12px;color:{WARN};font-weight:700;margin-bottom:4px;">Before you sign</div>
+        <div style="font-size:11px;color:{TXT_MUT};line-height:1.5;">
+          Signing commits your judge key to this bounty on-chain.
+          This action cannot be undone. Make sure you have downloaded
+          your keyfile before continuing.
+        </div>
+      </div>
+
+      <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;">
+        {btn("Sign & Accept")}
+        {btn_outline("Back")}
+      </div>
+    </div>
+
+  </div>
+
+</div>
+"""
+
+# ---------------------------------------------------------------------------
+# Frame 4: Setup Complete
+# ---------------------------------------------------------------------------
+
+FH4 = 760
+
+FRAME4 = f"""
+<div style="width:{FW}px;height:{FH4}px;overflow:hidden;background:{BG};font-family:Inter,system-ui,sans-serif;color:{TXT_PRI};">
+
+  {nyx_header("Judge Invitation", "Alzheimer's Research Alliance")}
+  {progress_bar(STEPS, 4)}
+
+  <div style="padding:10px 24px 0;display:flex;gap:16px;align-items:flex-start;">
+
+    <!-- Left: confirmation -->
+    <div style="flex:1;">
+      <div style="display:flex;flex-direction:column;align-items:center;text-align:center;
+                  padding:20px 0 16px;">
+        <div style="width:64px;height:64px;border-radius:32px;border:2px solid {SUCCESS};
+                    background:{SUCCESS_RGBA};display:flex;align-items:center;
+                    justify-content:center;margin-bottom:12px;">
+          <span style="font-size:28px;font-weight:700;color:{SUCCESS};">&#10003;</span>
+        </div>
+        <div style="font-size:22px;font-weight:700;color:{SUCCESS};margin-bottom:6px;">
+          You're now a registered judge.
+        </div>
+        <div style="font-size:13px;color:{TXT_MUT};max-width:420px;line-height:1.6;">
+          Your commitment has been signed and recorded. Alzheimer's Research Alliance
+          has been notified. You'll receive an email when the judgment window opens
+          on 2046-01-01.
+        </div>
+      </div>
+
+      <!-- Next steps -->
+      <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:16px;">
+        {section_label("WHAT HAPPENS NEXT")}
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          {"".join(f'''<div style="display:flex;gap:12px;align-items:flex-start;">
+            {step_circle(n)}
+            <span style="font-size:13px;color:{TXT_SEC};line-height:1.5;">{body}</span>
+          </div>''' for n, body in [
+              (1, "Monitor FDA approvals and Cochrane reviews related to Alzheimer's treatment through 2045."),
+              (2, "On 2046-01-01, your judgment window opens. You'll receive an email with a direct link to the verdict submission form."),
+              (3, "Submit your signed verdict with evidence before 2046-03-31. The NyxForge resolution engine tallies the quorum."),
+              (4, "If 2-of-3 judges confirm the terms were met, ARA receives the collateral. If not, collateral is returned to backers."),
+          ])}
+        </div>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:8px;">
+        {btn("Go to My Judge Dashboard")}
+        {btn_outline("View Bounty Public Page")}
+      </div>
+    </div>
+
+    <!-- Right: judge card preview -->
+    <div style="width:260px;flex-shrink:0;">
+      <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:16px;">
+        {section_label("YOUR PUBLIC JUDGE CARD")}
+        <div style="font-size:11px;color:{TXT_MUT};margin-bottom:10px;line-height:1.5;">
+          This is how you appear to backers on the bounty landing page.
+        </div>
+        <div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:8px;padding:12px;">
+          <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:8px;">
+            <img src="https://i.pravatar.cc/88?img=16" width="40" height="40"
+                 style="border-radius:20px;flex-shrink:0;object-fit:cover;">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:{TXT_PRI};">Dr. Sarah Chen</div>
+              <div style="font-size:11px;color:{TXT_SEC};">World Health Organization</div>
+              <div style="font-size:11px;color:{TXT_MUT};">Lead Epidemiologist, Neurological Diseases</div>
+            </div>
+          </div>
+          <div style="font-size:11px;color:{TXT_MUT};line-height:1.5;margin-bottom:8px;">
+            20+ years in Alzheimer's epidemiology. Leads the WHO Global Dementia
+            Observatory and previously served as a consultant to the NIH National
+            Institute on Aging.
+          </div>
+          <div style="display:flex;gap:14px;">
+            <span style="font-size:11px;color:{ACCENT};text-decoration:underline;cursor:pointer;">who.int/dementia</span>
+            <span style="font-size:11px;color:{ACCENT};text-decoration:underline;cursor:pointer;">Judgment Record: 1 bounty</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+"""
+
+# ---------------------------------------------------------------------------
+# Frame 5: Judge Dashboard
+# ---------------------------------------------------------------------------
+
+FH5 = 760
+
+BOUNTY_ROWS = [
+    ("Alzheimer's Cure Bounty By 2045",    "Alzheimer's Research Alliance", "2045-12-31", "Expert review",    "MONITORING",  "2046-01-01"),
+    ("Longevity Index 2040",               "LifeSpan Foundation",           "2040-06-30", "Expert review",    "MONITORING",  "2040-07-01"),
+    ("WHO HALE > 80 by 2038",              "Global Health Collective",      "2038-12-31", "Automated feed",   "WINDOW OPEN", "Closes 2039-03-31"),
+]
+
+def bounty_row(name, ngo, deadline, method, status, window):
+    status_colors = {
+        "MONITORING":  (TXT_MUT, SURF_HI),
+        "WINDOW OPEN": (WARN,    WARN_RGBA),
+        "SUBMITTED":   (SUCCESS, SUCCESS_RGBA),
+    }
+    sc, sb = status_colors.get(status, (TXT_MUT, SURF_HI))
+    action = btn("Submit Verdict", color=WARN, text_color=BG, small=True) if status == "WINDOW OPEN" \
+        else f'<span style="font-size:12px;color:{TXT_MUT};">Waiting for window</span>'
+    return f"""
+    <tr style="border-bottom:1px solid {BORDER};">
+      <td style="padding:11px 14px;">
+        <div style="font-size:13px;color:{TXT_PRI};margin-bottom:2px;">{name}</div>
+        <div style="font-size:11px;color:{TXT_MUT};">{ngo}</div>
+      </td>
+      <td style="padding:11px 14px;font-size:12px;color:{TXT_MUT};">{deadline}</td>
+      <td style="padding:11px 14px;font-size:12px;color:{TXT_MUT};">{method}</td>
+      <td style="padding:11px 14px;">{status_pill(status, sc, sb)}</td>
+      <td style="padding:11px 14px;font-size:11px;color:{TXT_MUT};">{window}</td>
+      <td style="padding:11px 14px;">{action}</td>
+    </tr>"""
+
+bounty_rows_html = "".join(bounty_row(*r) for r in BOUNTY_ROWS)
+
+FRAME5 = f"""
+<div style="width:{FW}px;height:{FH5}px;overflow:hidden;background:{BG};font-family:Inter,system-ui,sans-serif;color:{TXT_PRI};">
+
+  {nyx_header("Judge Dashboard", "Dr. Sarah Chen")}
+
+  <div style="padding:16px 24px 0;">
+
+    <!-- Stat row -->
+    <div style="display:flex;gap:12px;margin-bottom:16px;">
+      {"".join(f'''<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:12px 18px;flex:1;">
+        <div style="font-size:11px;color:{TXT_MUT};margin-bottom:4px;">{label}</div>
+        <div style="font-size:22px;font-weight:700;color:{vc};">{val}</div>
+      </div>''' for label, val, vc in [
+          ("ASSIGNED BOUNTIES", "3", TXT_PRI),
+          ("WINDOW OPEN", "1", WARN),
+          ("VERDICTS SUBMITTED", "0", TXT_MUT),
+          ("DISPUTES", "0", TXT_MUT),
+      ])}
+    </div>
+
+    <!-- Bounty table -->
+    {section_label("YOUR ASSIGNED BOUNTIES")}
+    <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead>
+          <tr style="border-bottom:1px solid {BORDER};">
+            {''.join(f'<th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:700;letter-spacing:0.8px;color:{TXT_MUT};">{h}</th>' for h in ["BOUNTY", "DEADLINE", "METHOD", "STATUS", "JUDGMENT WINDOW", "ACTION"])}
+          </tr>
+        </thead>
+        <tbody>
+          {bounty_rows_html}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Alert for open window -->
+    <div style="margin-top:14px;background:{WARN_RGBA};border:1px solid {WARN};border-radius:8px;
+                padding:12px 16px;display:flex;gap:12px;align-items:flex-start;">
+      <span style="font-size:16px;color:{WARN};flex-shrink:0;">&#9888;</span>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:{WARN};margin-bottom:3px;">
+          Judgment window open: WHO HALE > 80 by 2038
+        </div>
+        <div style="font-size:12px;color:{TXT_MUT};line-height:1.5;">
+          The judgment window for this bounty closes on 2039-03-31. Submit your verdict
+          before the deadline or the bounty will be resolved without your input.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+"""
+
+# ---------------------------------------------------------------------------
+# Frame 6: Verdict Submission
+# ---------------------------------------------------------------------------
+
+FH6 = 820
+
+FRAME6 = f"""
+<div style="width:{FW}px;height:{FH6}px;overflow:hidden;background:{BG};font-family:Inter,system-ui,sans-serif;color:{TXT_PRI};">
+
+  {nyx_header("Submit Verdict", "WHO HALE > 80 by 2038 -- Global Health Collective")}
+
+  <div style="padding:14px 24px 0;display:flex;gap:16px;">
+
+    <!-- Left: evidence + verdict -->
+    <div style="flex:1;">
+
+      <!-- Bounty reminder -->
+      <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:14px;margin-bottom:12px;">
+        {section_label("BOUNTY TERM")}
+        <div style="font-size:13px;color:{TXT_SEC};line-height:1.5;margin-bottom:8px;">
+          Global average healthy life expectancy (HALE) exceeds 80 years according to
+          WHO GHO data before 2038-12-31.
+        </div>
+        <div style="display:flex;gap:20px;">
+          <div>
+            <div style="font-size:11px;color:{TXT_MUT};">Data source</div>
+            <div style="font-size:12px;color:{TXT_PRI};font-family:monospace;">WHO GHO: WHOSIS_000015</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:{TXT_MUT};">Window closes</div>
+            <div style="font-size:12px;color:{WARN};font-weight:600;">2039-03-31 (62 days remaining)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data feed result (automated judge) -->
+      <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:14px;margin-bottom:12px;">
+        {section_label("AUTOMATED DATA FEED RESULT")}
+        <div style="background:{SURF_HI};border:1px solid {SUCCESS};border-radius:8px;
+                    padding:14px;margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span style="font-size:13px;color:{TXT_SEC};">WHO GHO WHOSIS_000015 (Global, 2038)</span>
+            {status_pill("FETCHED", SUCCESS, SUCCESS_RGBA)}
+          </div>
+          <div style="display:flex;align-items:baseline;gap:8px;">
+            <span style="font-size:32px;font-weight:700;color:{SUCCESS};">81.4</span>
+            <span style="font-size:16px;color:{TXT_MUT};">years HALE</span>
+          </div>
+          <div style="font-size:12px;color:{TXT_MUT};margin-top:4px;">
+            Fetched 2039-01-14 via TLS-Notary proof &nbsp;&mdash;&nbsp;
+            <span style="color:{ACCENT};cursor:pointer;text-decoration:underline;">View proof</span>
+          </div>
+        </div>
+        <div style="font-size:12px;color:{TXT_MUT};line-height:1.5;">
+          The data feed result confirms HALE = 81.4 years, which exceeds the 80-year
+          threshold. As the automated feed administrator, you are attesting to the
+          integrity of this data retrieval.
+        </div>
+      </div>
+
+      <!-- Expert addendum (optional) -->
+      <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:14px;margin-bottom:12px;">
+        {section_label("ADDITIONAL NOTES (optional)")}
+        <div style="background:{SURF};border:1px solid {BORDER};border-radius:6px;
+                    padding:9px 13px;font-size:13px;color:{TXT_MUT};min-height:50px;">
+          Note any caveats, methodology changes, or alternative data sources reviewed&hellip;
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right: verdict + sign -->
+    <div style="width:260px;flex-shrink:0;">
+
+      <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:16px;margin-bottom:12px;">
+        {section_label("YOUR VERDICT")}
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;
+                        background:{SUCCESS_RGBA};border:1px solid {SUCCESS};
+                        border-radius:6px;padding:10px 12px;">
+            <div style="width:16px;height:16px;border-radius:8px;border:2px solid {SUCCESS};
+                        background:{SUCCESS};flex-shrink:0;display:flex;align-items:center;
+                        justify-content:center;">
+              <div style="width:7px;height:7px;border-radius:4px;background:{BG};"></div>
+            </div>
+            <span style="font-size:14px;font-weight:700;color:{SUCCESS};">Terms met</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;
+                        background:{SURF_HI};border:1px solid {BORDER};
+                        border-radius:6px;padding:10px 12px;">
+            <div style="width:16px;height:16px;border-radius:8px;border:2px solid {INACT};
+                        background:{SURF};flex-shrink:0;"></div>
+            <span style="font-size:14px;color:{TXT_MUT};">Terms not met</span>
+          </label>
+        </div>
+
+        {divider(10)}
+
+        <div style="font-size:11px;color:{TXT_MUT};margin-bottom:8px;">
+          Your verdict will be signed with:
+        </div>
+        <div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;
+                    padding:8px 10px;font-family:monospace;font-size:10px;color:{ACCENT};
+                    word-break:break-all;margin-bottom:12px;">
+          ed25519:4AdUndXHHZ9pfQpHMDqE5ZL...
+        </div>
+
+        {btn("Sign & Submit Verdict")}
+
+        <div style="font-size:11px;color:{TXT_MUT};margin-top:8px;line-height:1.5;">
+          Your verdict is final once submitted. It will be visible to all backers
+          and may be disputed within 30 days.
+        </div>
+      </div>
+
+      <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:14px;">
+        {section_label("OTHER JUDGES")}
+        {"".join(f'''<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <img src="https://i.pravatar.cc/88?img={img}" width="26" height="26"
+               style="border-radius:13px;object-fit:cover;flex-shrink:0;">
+          <div style="flex:1;">
+            <div style="font-size:12px;color:{TXT_PRI};">{name}</div>
+          </div>
+          {status_pill(vstatus, vc, vb)}
+        </div>''' for img, name, vstatus, vc, vb in [
+            (51, "Dr. Marcus Webb",    "SUBMITTED", SUCCESS, SUCCESS_RGBA),
+            (47, "Dr. Elena Marchetti","PENDING",   TXT_MUT, SURF_HI),
+        ])}
+        <div style="font-size:11px;color:{TXT_MUT};margin-top:4px;line-height:1.5;">
+          1 of 3 verdicts submitted. 2 required for resolution.
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+"""
+
+# ---------------------------------------------------------------------------
+# Viewer shell
+# ---------------------------------------------------------------------------
+
+FRAMES = [
+    {"label": "1 -- Invitation Landing",    "bg": BG, "w": FW, "h": FH1, "html": FRAME1},
+    {"label": "2 -- Create Judge Profile",  "bg": BG, "w": FW, "h": FH2, "html": FRAME2},
+    {"label": "3 -- Review & Sign",         "bg": BG, "w": FW, "h": FH3, "html": FRAME3},
+    {"label": "4 -- Setup Complete",        "bg": BG, "w": FW, "h": FH4, "html": FRAME4},
+    {"label": "5 -- Judge Dashboard",       "bg": BG, "w": FW, "h": FH5, "html": FRAME5},
+    {"label": "6 -- Verdict Submission",    "bg": BG, "w": FW, "h": FH6, "html": FRAME6},
+]
+
+def esc(s):
+    return s.replace("\\", "\\\\").replace("`", "\\`").replace("${", "\\${")
+
+frames_js = []
+for f in FRAMES:
+    frames_js.append(
+        f'{{ label: `{f["label"]}`, bg: `{f["bg"]}`, w: {f["w"]}, h: {f["h"]}, '
+        f'html: `{esc(f["html"])}` }}'
+    )
+
+frames_array = "[\n  " + ",\n  ".join(frames_js) + "\n]"
+
+HTML = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>NyxForge Judge Onboarding Mockup</title>
+<style>
+  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  body {{ background: #080a12; font-family: Inter, system-ui, sans-serif;
+          display: flex; flex-direction: column; height: 100vh; overflow: hidden; }}
+  #tabs {{ display: flex; gap: 2px; background: #0d0f1a; padding: 8px 16px 0;
+           border-bottom: 1px solid #2a2d3e; flex-shrink: 0; overflow-x: auto; }}
+  .tab {{ padding: 8px 16px; font-size: 12px; color: #6b7280; cursor: pointer;
+          border-radius: 6px 6px 0 0; border: 1px solid transparent;
+          border-bottom: none; user-select: none; white-space: nowrap; }}
+  .tab:hover {{ color: #e8eaf0; background: #131524; }}
+  .tab.active {{ color: #e8eaf0; background: #131524; border-color: #2a2d3e; }}
+  #viewport {{ flex: 1; display: flex; align-items: flex-start; justify-content: center;
+               overflow: auto; padding: 32px; }}
+  #frame-wrap {{ position: relative; flex-shrink: 0; }}
+  #frame {{ position: relative; overflow: hidden; border: 1px solid #2a2d3e; }}
+  #nav {{ display: flex; align-items: center; justify-content: space-between;
+          padding: 10px 16px; background: #0d0f1a; border-top: 1px solid #2a2d3e;
+          flex-shrink: 0; }}
+  #nav button {{ background: #1a1d2e; color: #e8eaf0; border: 1px solid #3a3d5c;
+                 padding: 6px 20px; border-radius: 6px; font-size: 12px;
+                 cursor: pointer; font-family: inherit; }}
+  #nav button:hover {{ background: #2a2d3e; }}
+  #nav button:disabled {{ opacity: 0.3; cursor: default; }}
+  #counter {{ font-size: 12px; color: #6b7280; }}
+</style>
+</head><body>
+
+<div id="tabs"></div>
+<div id="viewport"><div id="frame-wrap"><div id="frame"></div></div></div>
+<div id="nav">
+  <button id="btn-prev" onclick="go(-1)">&#8592; Prev</button>
+  <span id="counter"></span>
+  <button id="btn-next" onclick="go(1)">Next &#8594;</button>
+</div>
+
+<script>
+const FRAMES = {frames_array};
+let cur = 0;
+
+function render(i) {{
+  cur = i;
+  const f = FRAMES[i];
+  const frame = document.getElementById('frame');
+  frame.style.width  = f.w + 'px';
+  frame.style.height = f.h + 'px';
+  frame.style.background = f.bg;
+  frame.innerHTML = f.html;
+  document.getElementById('counter').textContent = (i+1) + ' / ' + FRAMES.length + '  --  ' + f.label;
+  document.getElementById('btn-prev').disabled = (i === 0);
+  document.getElementById('btn-next').disabled = (i === FRAMES.length - 1);
+  document.querySelectorAll('.tab').forEach((t, ti) =>
+    t.classList.toggle('active', ti === i));
+}}
+
+function go(d) {{ render(Math.max(0, Math.min(FRAMES.length-1, cur+d))); }}
+
+const tabs = document.getElementById('tabs');
+FRAMES.forEach((f, i) => {{
+  const t = document.createElement('div');
+  t.className = 'tab';
+  t.textContent = f.label;
+  t.onclick = () => render(i);
+  tabs.appendChild(t);
+}});
+
+render(0);
+</script>
+</body></html>
+"""
+
+os.makedirs(OUTDIR, exist_ok=True)
+with open(OUTFILE, "w") as fh:
+    fh.write(HTML)
+
+print(f"Written: {OUTFILE}")
+if os.environ.get("NYX_OPEN") == "1":   # opt in; macOS only
+    subprocess.Popen(["open", "-a", "Brave Browser", OUTFILE])
+    print("Opened in Brave.")

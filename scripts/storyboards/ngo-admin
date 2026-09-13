@@ -1,0 +1,740 @@
+#!/usr/bin/env python3
+"""
+NyxForge NGO Admin mockup generator.
+Generates docs/storyboards/out/ngo-admin-mockup.html
+
+Back-office UI for NGOs to:
+  1. Accept donations via Stripe, Square, Authorize.net
+  2. Auto-purchase XMR via Onramper or Kraken from collected funds
+
+5 frames:
+  1. Dashboard         -- totals, processor health, recent activity
+  2. Payment Processors-- connect/configure Stripe, Square, Authorize.net
+  3. Auto-Convert      -- Onramper/Kraken config, threshold, XMR address
+  4. Donations Feed    -- incoming donations, conversion status per row
+  5. XMR Treasury      -- XMR balance, acquisition log, export
+"""
+import os, subprocess
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTDIR     = os.path.join(os.environ.get("NYXFORGE_ROOT", os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "docs/storyboards/out")
+OUTFILE    = os.path.join(OUTDIR, "ngo-admin-mockup.html")
+
+# ---------------------------------------------------------------------------
+# Palette
+# ---------------------------------------------------------------------------
+BG           = "#0d0f1a"
+SURF         = "#131524"
+SURF_HI      = "#1a1d2e"
+ACCENT       = "#5e6ad2"
+ACC_GLO      = "#2d3068"
+TXT_PRI      = "#e8eaf0"
+TXT_SEC      = "#b8c0d8"
+TXT_MUT      = "#8b95b0"
+SUCCESS      = "#4ade80"
+DANGER       = "#f87171"
+WARN         = "#fbbf24"
+BORDER       = "#2a2d3e"
+INACT        = "#3a3d5c"
+SUCCESS_RGBA = "rgba(74,222,128,0.10)"
+WARN_RGBA    = "rgba(251,191,36,0.10)"
+ACCENT_RGBA  = "rgba(94,106,210,0.12)"
+DANGER_RGBA  = "rgba(248,113,113,0.10)"
+
+XMR_COLOR    = "#ff6600"
+STRIPE_COLOR = "#635bff"
+SQUARE_COLOR = "#3e4348"
+AUTHNET_COLOR= "#c8102e"
+
+FW = 1020
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def section_label(text):
+    return (f'<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;'
+            f'color:{ACCENT};margin-bottom:8px;">{text}</div>')
+
+def divider(mb=12):
+    return f'<div style="height:1px;background:{BORDER};margin:0 0 {mb}px;"></div>'
+
+def status_pill(text, color, bg):
+    return (f'<span style="font-size:10px;font-weight:700;letter-spacing:0.8px;'
+            f'padding:3px 9px;border-radius:4px;color:{color};background:{bg};">'
+            f'{text}</span>')
+
+def btn(label, color=SUCCESS, text_color=BG, small=False, full=False):
+    pad = "7px 14px" if small else "13px 28px"
+    fs  = "12px"    if small else "14px"
+    wid = "width:100%;display:block;text-align:center;" if full else "display:inline-block;"
+    return (f'<div style="{wid}padding:{pad};background:{color};'
+            f'border-radius:7px;font-size:{fs};font-weight:700;color:{text_color};'
+            f'cursor:pointer;letter-spacing:0.3px;">{label}</div>')
+
+def btn_outline(label, small=False, color=None, full=False):
+    pad  = "6px 13px" if small else "12px 27px"
+    fs   = "12px"     if small else "14px"
+    col  = color or TXT_SEC
+    bord = color or BORDER
+    wid  = "width:100%;display:block;text-align:center;" if full else "display:inline-block;"
+    return (f'<div style="{wid}padding:{pad};background:transparent;'
+            f'border:1px solid {bord};border-radius:7px;font-size:{fs};'
+            f'color:{col};cursor:pointer;">{label}</div>')
+
+def input_field(label, value, mono=False, note=None, password=False):
+    font = "monospace" if mono else "inherit"
+    disp = "password" if password else value
+    color = TXT_MUT
+    n = (f'<div style="font-size:11px;color:{TXT_MUT};margin-top:4px;">{note}</div>'
+         if note else "")
+    return (f'<div style="margin-bottom:12px;">'
+            f'<div style="font-size:12px;color:{TXT_MUT};margin-bottom:4px;">{label}</div>'
+            f'<div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;'
+            f'padding:9px 13px;font-size:13px;color:{color};font-family:{font};">'
+            + ("&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" if password else value)
+            + f'</div>{n}</div>')
+
+def toggle(on=True, label="", note=""):
+    col   = ACCENT if on else INACT
+    knob  = "margin-left:auto;" if on else ""
+    n = (f'<div style="font-size:11px;color:{TXT_MUT};margin-top:2px;">{note}</div>'
+         if note else "")
+    return (f'<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;">'
+            f'<div style="width:36px;height:20px;border-radius:10px;background:{col};'
+            f'display:flex;align-items:center;padding:2px;cursor:pointer;flex-shrink:0;'
+            f'margin-top:2px;">'
+            f'<div style="width:16px;height:16px;border-radius:50%;background:{BG};{knob}">'
+            f'</div></div>'
+            f'<div>'
+            f'<div style="font-size:13px;color:{TXT_PRI};">{label}</div>{n}'
+            f'</div></div>')
+
+def stat_card(label, value, sub, value_color=TXT_PRI, trend=None):
+    trend_html = ""
+    if trend:
+        col = SUCCESS if trend[0] == "+" else DANGER
+        trend_html = f'<div style="font-size:12px;color:{col};margin-top:2px;">{trend}</div>'
+    return (f'<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;'
+            f'padding:14px 16px;flex:1;">'
+            f'<div style="font-size:11px;color:{TXT_MUT};margin-bottom:6px;">{label}</div>'
+            f'<div style="font-size:24px;font-weight:700;color:{value_color};">{value}</div>'
+            f'<div style="font-size:12px;color:{TXT_MUT};margin-top:3px;">{sub}</div>'
+            f'{trend_html}</div>')
+
+def page_header(subtitle="NGO Admin"):
+    return f"""
+  <div style="background:{SURF};border-bottom:1px solid {BORDER};padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:32px;height:32px;border-radius:8px;background:{ACC_GLO};
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:11px;font-weight:700;color:{ACCENT};">NGO</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">
+          NyxForge Foundation</div>
+        <div style="font-size:11px;color:{TXT_MUT};">{subtitle}</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="font-size:12px;color:{TXT_MUT};">
+        <span style="color:{SUCCESS};">&#9679;</span>&nbsp; All processors live
+      </div>
+      <div style="font-size:12px;font-family:monospace;color:{TXT_MUT};">admin@lifebond.org</div>
+    </div>
+  </div>"""
+
+def nav_tabs(active):
+    tabs = [
+        ("Dashboard",    "1"),
+        ("Processors",   "2"),
+        ("Auto-Convert", "3"),
+        ("Donations",    "4"),
+        ("Treasury",     "5"),
+    ]
+    items = "".join(
+        f'<div style="padding:10px 20px;font-size:13px;cursor:pointer;'
+        f'color:{"" + TXT_PRI if t == active else TXT_MUT};'
+        f'border-bottom:{"2px solid " + ACCENT if t == active else "2px solid transparent"};'
+        f'font-weight:{"700" if t == active else "400"};">{t}</div>'
+        for t, _ in tabs
+    )
+    return (f'<div style="display:flex;border-bottom:1px solid {BORDER};'
+            f'background:{SURF};padding:0 24px;">{items}</div>')
+
+# ---------------------------------------------------------------------------
+# Frame 1 -- Dashboard
+# ---------------------------------------------------------------------------
+
+STATS_ROW = f"""
+<div style="display:flex;gap:12px;margin-bottom:18px;">
+  {stat_card("DONATIONS THIS MONTH", "$12,480", "143 transactions", trend="+18% vs last month")}
+  {stat_card("PENDING CONVERSION",   "$3,240",  "Queued for XMR purchase", TXT_PRI, None)}
+  {stat_card("XMR ACQUIRED (30d)",   "41.82 XMR","&asymp; $12,462 at cost", XMR_COLOR, "+22% vs last month")}
+  {stat_card("XMR TREASURY",         "218.4 XMR","&asymp; $65,083 current", XMR_COLOR, None)}
+</div>"""
+
+PROCESSOR_STATUS = f"""
+{section_label("PAYMENT PROCESSOR STATUS")}
+<div style="display:flex;gap:12px;margin-bottom:18px;">
+  {''.join(
+    f'<div style="flex:1;background:{SURF};border:1px solid {BORDER};border-radius:8px;'
+    f'padding:13px 16px;display:flex;align-items:center;gap:12px;">'
+    f'<div style="width:36px;height:36px;border-radius:8px;background:{bg};'
+    f'display:flex;align-items:center;justify-content:center;'
+    f'font-size:10px;font-weight:700;color:{col};flex-shrink:0;">{sym}</div>'
+    f'<div style="flex:1;">'
+    f'<div style="font-size:13px;font-weight:700;color:{TXT_PRI};">{name}</div>'
+    f'<div style="font-size:11px;color:{TXT_MUT};margin-top:2px;">{sub}</div></div>'
+    + status_pill(st, sc, sb)
+    + f'</div>'
+    for name, sym, bg, col, sub, st, sc, sb in [
+        ("Stripe",        "STR", f"{STRIPE_COLOR}22",  STRIPE_COLOR,  "$8,420 this month &middot; 0 failures",    "LIVE",  SUCCESS, SUCCESS_RGBA),
+        ("Square",        "SQ",  f"{SQUARE_COLOR}44",  TXT_SEC,       "$2,940 this month &middot; 0 failures",    "LIVE",  SUCCESS, SUCCESS_RGBA),
+        ("Authorize.net", "AUTH",f"{AUTHNET_COLOR}22", AUTHNET_COLOR, "$1,120 this month &middot; 1 decline",     "LIVE",  SUCCESS, SUCCESS_RGBA),
+    ]
+  )}
+</div>"""
+
+CONVERSION_STATUS = f"""
+{section_label("AUTO-CONVERT STATUS")}
+<div style="display:flex;gap:12px;margin-bottom:18px;">
+  {''.join(
+    f'<div style="flex:1;background:{SURF};border:1px solid {BORDER};border-radius:8px;'
+    f'padding:13px 16px;">'
+    f'<div style="font-size:11px;color:{TXT_MUT};margin-bottom:4px;">{l}</div>'
+    f'<div style="font-size:15px;font-weight:700;color:{c};">{v}</div>'
+    f'<div style="font-size:11px;color:{TXT_MUT};margin-top:3px;">{s}</div></div>'
+    for l, v, c, s in [
+        ("CONVERT ROUTE",       "Kraken (primary)",  TXT_PRI,  "Onramper as fallback"),
+        ("THRESHOLD",           "$500",              TXT_PRI,  "Convert when balance exceeds"),
+        ("LAST CONVERSION",     "2h 14m ago",        TXT_SEC,  "0.998 XMR for $298.40"),
+        ("NEXT TRIGGER",        "$261 to go",        WARN,     "$239 of $500 threshold filled"),
+    ]
+  )}
+</div>"""
+
+def activity_row(time, event, amount, status_text, s_col, s_bg):
+    return (f'<div style="display:flex;align-items:center;gap:14px;padding:9px 0;'
+            f'border-bottom:1px solid {BORDER};font-size:12px;">'
+            f'<div style="color:{TXT_MUT};font-family:monospace;width:90px;'
+            f'flex-shrink:0;">{time}</div>'
+            f'<div style="flex:1;color:{TXT_SEC};">{event}</div>'
+            f'<div style="color:{TXT_PRI};font-weight:700;margin-right:10px;">{amount}</div>'
+            + status_pill(status_text, s_col, s_bg)
+            + f'</div>')
+
+RECENT_ACTIVITY = f"""
+{section_label("RECENT ACTIVITY")}
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            padding:12px 16px;">
+  {activity_row("09:41",  "Stripe donation &mdash; anonymous",             "$250",       "RECEIVED",   SUCCESS, SUCCESS_RGBA)}
+  {activity_row("09:22",  "Kraken purchase triggered &mdash; $500 batch",  "1.674 XMR",  "COMPLETE",   SUCCESS, SUCCESS_RGBA)}
+  {activity_row("08:55",  "Square donation &mdash; Jane D.",               "$100",       "RECEIVED",   SUCCESS, SUCCESS_RGBA)}
+  {activity_row("08:12",  "Authorize.net donation &mdash; card declined",  "$75",        "DECLINED",   DANGER,  DANGER_RGBA)}
+  {activity_row("07:44",  "Stripe donation &mdash; anonymous",             "$500",       "RECEIVED",   SUCCESS, SUCCESS_RGBA)}
+  {activity_row("07:44",  "Kraken purchase triggered &mdash; $500 batch",  "1.676 XMR",  "COMPLETE",   SUCCESS, SUCCESS_RGBA)}
+  {activity_row("06:30",  "Onramper fallback used &mdash; Kraken timeout", "0.332 XMR",  "COMPLETE",   WARN,    WARN_RGBA)}
+</div>"""
+
+F1 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + page_header("Dashboard")
+      + nav_tabs("Dashboard")
+      + f'<div style="padding:18px 24px;">'
+      + STATS_ROW
+      + PROCESSOR_STATUS
+      + CONVERSION_STATUS
+      + RECENT_ACTIVITY
+      + f'</div></div>')
+
+# ---------------------------------------------------------------------------
+# Frame 2 -- Payment Processors
+# ---------------------------------------------------------------------------
+
+def processor_card(name, symbol, brand_color, bg_color, connected,
+                   fields, notes="", webhook_url=""):
+    status_html = (status_pill("CONNECTED", SUCCESS, SUCCESS_RGBA) if connected
+                   else status_pill("NOT CONNECTED", TXT_MUT, SURF_HI))
+    wh_html = ""
+    if webhook_url:
+        wh_html = (f'<div style="margin-top:10px;">'
+                   f'<div style="font-size:12px;color:{TXT_MUT};margin-bottom:4px;">'
+                   f'Webhook endpoint (paste into your dashboard)</div>'
+                   f'<div style="background:{SURF_HI};border:1px solid {BORDER};'
+                   f'border-radius:6px;padding:9px 13px;font-size:11px;'
+                   f'font-family:monospace;color:{ACCENT};">{webhook_url}</div></div>')
+    field_html = "".join(
+        input_field(l, v, mono=mono, password=pw)
+        for l, v, mono, pw in fields
+    )
+    note_html = (f'<div style="font-size:12px;color:{TXT_MUT};line-height:1.6;'
+                 f'margin-top:8px;">{notes}</div>' if notes else "")
+    return (f'<div style="background:{SURF};border:1px solid {BORDER};border-radius:10px;'
+            f'padding:16px 18px;margin-bottom:14px;">'
+            f'<div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">'
+            f'<div style="width:42px;height:42px;border-radius:10px;background:{bg_color};'
+            f'display:flex;align-items:center;justify-content:center;'
+            f'font-size:11px;font-weight:700;color:{brand_color};flex-shrink:0;">{symbol}</div>'
+            f'<div style="flex:1;">'
+            f'<div style="font-size:15px;font-weight:700;color:{TXT_PRI};">{name}</div>'
+            f'<div style="font-size:11px;color:{TXT_MUT};margin-top:2px;">'
+            f'{"Active" if connected else "Click to connect"}</div></div>'
+            f'{status_html}</div>'
+            f'<div style="height:1px;background:{BORDER};margin-bottom:14px;"></div>'
+            + field_html + wh_html + note_html
+            + f'<div style="display:flex;gap:8px;margin-top:12px;">'
+            + (btn("Save Changes", color=ACCENT, text_color=TXT_PRI, small=True)
+               if connected else
+               btn("Connect", color=SUCCESS, text_color=BG, small=True))
+            + f'&nbsp;&nbsp;'
+            + (btn_outline("Test Webhook", small=True) if connected else "")
+            + f'&nbsp;&nbsp;'
+            + (btn_outline("Disconnect", small=True, color=DANGER) if connected else "")
+            + f'</div></div>')
+
+PROCESSORS_HEADER = f"""
+<div style="padding:13px 24px;border-bottom:1px solid {BORDER};">
+  <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Payment Processors</div>
+  <div style="font-size:12px;color:{TXT_MUT};margin-top:2px;">
+    Donations collected here are pooled and auto-converted to XMR
+    according to your conversion settings.</div>
+</div>"""
+
+F2 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + page_header("Payment Processors")
+      + nav_tabs("Processors")
+      + PROCESSORS_HEADER
+      + f'<div style="padding:18px 24px;display:flex;gap:16px;">'
+      # Stripe
+      + f'<div style="flex:1;min-width:0;">'
+      + processor_card(
+            "Stripe", "STR", STRIPE_COLOR, f"{STRIPE_COLOR}22", True,
+            [
+                ("Secret key (sk_live_...)",  "sk_live_51...", False, True),
+                ("Publishable key",            "pk_live_51...", False, True),
+            ],
+            notes="Stripe fees: 2.9% + $0.30 per transaction. "
+                  "Webhook required for real-time donation capture.",
+            webhook_url="https://ngo.lifebond.org/webhooks/stripe")
+      # Square
+      + processor_card(
+            "Square", "SQ", TXT_SEC, f"{SQUARE_COLOR}44", True,
+            [
+                ("Access token",    "EAAAl...", False, True),
+                ("Location ID",     "L9XVMTQ...", False, True),
+            ],
+            notes="Square fees: 2.6% + $0.10 per swipe. "
+                  "Supports in-person and online donations.",
+            webhook_url="https://ngo.lifebond.org/webhooks/square")
+      + f'</div>'
+      # Authorize.net
+      + f'<div style="width:340px;flex-shrink:0;">'
+      + processor_card(
+            "Authorize.net", "AUTH", AUTHNET_COLOR, f"{AUTHNET_COLOR}22", True,
+            [
+                ("API Login ID",     "7Kx9...",  False, False),
+                ("Transaction key",  "4aB3...",  False, True),
+                ("Signature key",    "A1F2...",  False, True),
+            ],
+            notes="Authorize.net fees: 2.9% + $0.30 + $25/mo gateway fee. "
+                  "Best for high-volume nonprofit rates.",
+            webhook_url="https://ngo.lifebond.org/webhooks/authnet")
+      + f'<div style="background:{ACCENT_RGBA};border:1px solid {ACCENT};'
+      f'border-radius:8px;padding:13px 14px;font-size:12px;'
+      f'color:{TXT_SEC};line-height:1.6;">'
+      + f'<div style="font-weight:700;color:{TXT_PRI};margin-bottom:6px;">'
+      + f'Nonprofit discount programs</div>'
+      + f'<div style="margin-bottom:4px;">&bull; Stripe: apply for 0.7% discount via Stripe.com/nonprofit</div>'
+      + f'<div style="margin-bottom:4px;">&bull; Square: no nonprofit pricing &mdash; standard rates apply</div>'
+      + f'<div>&bull; Authorize.net: contact sales for 501(c)(3) gateway fee waiver</div>'
+      + f'</div>'
+      + f'</div>'
+      + f'</div></div>')
+
+# ---------------------------------------------------------------------------
+# Frame 3 -- Auto-Convert Config
+# ---------------------------------------------------------------------------
+
+CONVERT_HEADER = f"""
+<div style="padding:13px 24px;border-bottom:1px solid {BORDER};">
+  <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Auto-Convert to XMR</div>
+  <div style="font-size:12px;color:{TXT_MUT};margin-top:2px;">
+    When the pooled fiat balance exceeds your threshold, the system
+    automatically purchases XMR and deposits it to your treasury address.</div>
+</div>"""
+
+ROUTE_SELECTOR = f"""
+{section_label("CONVERSION ROUTE")}
+<div style="display:flex;gap:10px;margin-bottom:16px;">
+  {''.join(
+    f'<div style="flex:1;padding:14px 16px;border-radius:8px;cursor:pointer;'
+    f'background:{"" + ACC_GLO if r == "Kraken" else SURF_HI};'
+    f'border:{"2px" if r == "Kraken" else "1px"} solid '
+    f'{"" + ACCENT if r == "Kraken" else BORDER};">'
+    f'<div style="font-size:14px;font-weight:700;'
+    f'color:{"" + TXT_PRI if r == "Kraken" else TXT_MUT};margin-bottom:4px;">{r}</div>'
+    f'<div style="font-size:12px;color:{TXT_MUT};line-height:1.5;">{d}</div>'
+    f'<div style="font-size:11px;color:{TXT_MUT};margin-top:6px;">{note}</div></div>'
+    for r, d, note in [
+        ("Kraken",    "Direct exchange API &mdash; best rates, requires KYC account",
+         "Fee: 0.26% maker / 0.16% taker"),
+        ("Onramper",  "Aggregator &mdash; no KYC required for small amounts, "
+         "routes to best available provider",
+         "Fee: 1&ndash;3% depending on provider"),
+        ("Kraken primary,\nOnramper fallback",
+         "Uses Kraken by default, falls back to Onramper if Kraken API unreachable",
+         "Recommended for reliability"),
+    ]
+  )}
+</div>"""
+
+KRAKEN_CREDS = f"""
+{section_label("KRAKEN API CREDENTIALS")}
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            padding:14px 16px;margin-bottom:16px;">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+    {input_field("API Key", "kraken_key_...", mono=True, password=True)}
+    {input_field("API Secret", "kraken_secret_...", mono=True, password=True)}
+  </div>
+  <div style="font-size:12px;color:{TXT_MUT};line-height:1.6;margin-bottom:10px;">
+    Create a Kraken API key with <span style="color:{TXT_SEC};">Trade</span> permission only.
+    Do NOT enable withdrawal permissions on the API key &mdash; XMR is transferred
+    to your treasury address via a separate withdrawal key held offline.
+  </div>
+  <div style="display:flex;gap:8px;">
+    {btn("Verify Credentials", color=ACCENT, text_color=TXT_PRI, small=True)}
+    {btn_outline("Test Purchase ($1)", small=True)}
+  </div>
+</div>"""
+
+ONRAMPER_CREDS = f"""
+{section_label("ONRAMPER API KEY")}
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            padding:14px 16px;margin-bottom:16px;">
+  {input_field("Onramper API Key", "onr_live_...", mono=True, password=True,
+               note="Get your key at onramper.com/dashboard")}
+  <div style="display:flex;gap:8px;">
+    {btn("Verify Key", color=ACCENT, text_color=TXT_PRI, small=True)}
+  </div>
+</div>"""
+
+CONVERT_RULES = f"""
+{section_label("CONVERSION RULES")}
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            padding:14px 16px;margin-bottom:16px;">
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+    {input_field("Convert threshold", "$500",
+                 note="Trigger purchase when pooled fiat reaches this amount")}
+    {input_field("Max slippage", "1.0%",
+                 note="Abort purchase if price moves more than this")}
+    {input_field("Max per purchase", "$5,000",
+                 note="Split larger amounts into multiple purchases")}
+  </div>
+  <div style="display:flex;flex-direction:column;gap:2px;">
+    {''.join(
+      f'<div style="margin-bottom:10px;">{toggle(on, label, note)}</div>'
+      for on, label, note in [
+          (True,  "Convert immediately on threshold",
+           "Purchases XMR as soon as pooled balance hits threshold"),
+          (True,  "Email notification on each purchase",
+           "Send purchase receipt to admin@lifebond.org"),
+          (False, "Daily conversion schedule (9:00 AM UTC)",
+           "Convert once per day regardless of threshold (alternative to immediate)"),
+          (True,  "Pause if XMR price drops >10% in 24h",
+           "Hold off purchasing during sharp downward moves"),
+      ]
+    )}
+  </div>
+</div>"""
+
+XMR_DEST = f"""
+{section_label("XMR TREASURY ADDRESS")}
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            padding:14px 16px;margin-bottom:16px;">
+  {input_field("Destination XMR address",
+               "46bUt5XaSiCjMvPJM1KRbWiqwLbEGV9YLsFJezCsWBn1s8A7FLAFHhQM4Jn9wMDKey...",
+               mono=True,
+               note="Purchased XMR is swept to this address. Use a cold wallet address.")}
+  <div style="background:{WARN_RGBA};border:1px solid {WARN};border-radius:6px;
+              padding:10px 12px;font-size:12px;color:{TXT_SEC};line-height:1.5;">
+    Verify this address on your hardware wallet before saving.
+    There is no undo once XMR is swept.
+  </div>
+</div>"""
+
+F3 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + page_header("Auto-Convert Settings")
+      + nav_tabs("Auto-Convert")
+      + CONVERT_HEADER
+      + f'<div style="padding:18px 24px;display:flex;gap:20px;">'
+      + f'<div style="flex:1;min-width:0;">'
+      + ROUTE_SELECTOR
+      + KRAKEN_CREDS
+      + ONRAMPER_CREDS
+      + f'</div>'
+      + f'<div style="width:360px;flex-shrink:0;">'
+      + CONVERT_RULES
+      + XMR_DEST
+      + btn("Save All Settings", color=SUCCESS, text_color=BG, full=True)
+      + f'</div>'
+      + f'</div></div>')
+
+# ---------------------------------------------------------------------------
+# Frame 4 -- Donations Feed
+# ---------------------------------------------------------------------------
+
+DONATIONS_HEADER = f"""
+<div style="padding:11px 16px;border-bottom:1px solid {BORDER};
+            display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+            background:{SURF};">
+  <div style="font-size:12px;color:{TXT_MUT};margin-right:4px;">Filter:</div>
+  {''.join(
+    f'<div style="padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer;'
+    f'background:{"" + ACC_GLO if f == "All" else SURF_HI};'
+    f'border:1px solid {"" + ACCENT if f == "All" else BORDER};'
+    f'color:{"" + TXT_PRI if f == "All" else TXT_MUT};">{f}</div>'
+    for f in ["All", "Stripe", "Square", "Authorize.net", "Pending", "Converted", "Failed"]
+  )}
+  <div style="margin-left:auto;">
+    {btn_outline("Export CSV", small=True)}
+    {btn_outline("Export for 990", small=True)}
+  </div>
+</div>"""
+
+DONATIONS_TABLE_HDR = f"""
+<div style="display:grid;grid-template-columns:100px 90px 90px 110px 100px 130px 1fr;
+            gap:0;padding:8px 16px;border-bottom:1px solid {BORDER};
+            background:{SURF_HI};">
+  {''.join(
+    f'<div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:{TXT_MUT};">{h}</div>'
+    for h in ["DATE/TIME", "PROCESSOR", "AMOUNT", "DONOR", "STATUS", "XMR PURCHASED", "TX ID"]
+  )}
+</div>"""
+
+def donation_row(dt, processor, proc_color, amount, donor,
+                 status, s_col, s_bg, xmr, txid):
+    return (f'<div style="display:grid;'
+            f'grid-template-columns:100px 90px 90px 110px 100px 130px 1fr;'
+            f'gap:0;padding:10px 16px;border-bottom:1px solid {BORDER};'
+            f'font-size:12px;cursor:pointer;"'
+            f' onmouseover="this.style.background=\'{SURF_HI}\'"'
+            f' onmouseout="this.style.background=\'transparent\'">'
+            f'<div style="color:{TXT_MUT};font-family:monospace;">{dt}</div>'
+            f'<div><span style="padding:2px 8px;border-radius:4px;font-size:10px;'
+            f'font-weight:700;background:{proc_color}22;color:{proc_color};">'
+            f'{processor}</span></div>'
+            f'<div style="color:{TXT_PRI};font-weight:700;">{amount}</div>'
+            f'<div style="color:{TXT_MUT};">{donor}</div>'
+            f'<div>{status_pill(status, s_col, s_bg)}</div>'
+            f'<div style="color:{"" + XMR_COLOR if xmr != "&mdash;" else TXT_MUT};">'
+            f'{xmr}</div>'
+            f'<div style="color:{TXT_MUT};font-family:monospace;font-size:10px;">'
+            f'{txid}</div></div>')
+
+DONATION_ROWS = (
+    donation_row("09:41",  "Stripe",   STRIPE_COLOR,  "$250.00",  "Anonymous",   "CONVERTED", SUCCESS, SUCCESS_RGBA, "0.834 XMR", "ch_3P...f4a2")
+  + donation_row("09:22",  "Square",   SQUARE_COLOR,  "$100.00",  "Jane D.",     "CONVERTED", SUCCESS, SUCCESS_RGBA, "0.334 XMR", "sq_pay...8b3")
+  + donation_row("08:55",  "Authorize","#c8102e",     "$500.00",  "Anonymous",   "PENDING",   WARN,    WARN_RGBA,    "&mdash;",   "auth_3a...91d")
+  + donation_row("08:12",  "Authorize","#c8102e",     "$75.00",   "R. Martinez", "DECLINED",  DANGER,  DANGER_RGBA,  "&mdash;",   "auth_fail")
+  + donation_row("07:44",  "Stripe",   STRIPE_COLOR,  "$500.00",  "Anonymous",   "CONVERTED", SUCCESS, SUCCESS_RGBA, "1.676 XMR", "ch_3P...aa71")
+  + donation_row("07:30",  "Square",   SQUARE_COLOR,  "$50.00",   "T. Okafor",   "CONVERTED", SUCCESS, SUCCESS_RGBA, "0.167 XMR", "sq_pay...2c9")
+  + donation_row("06:15",  "Stripe",   STRIPE_COLOR,  "$1,000.00","Anonymous",   "CONVERTED", SUCCESS, SUCCESS_RGBA, "3.352 XMR", "ch_3P...7bc4")
+  + donation_row("Yesterday","Stripe", STRIPE_COLOR,  "$200.00",  "K. Chen",     "CONVERTED", SUCCESS, SUCCESS_RGBA, "0.670 XMR", "ch_3P...3de1")
+  + donation_row("Yesterday","Authorize","#c8102e",   "$150.00",  "Anonymous",   "CONVERTED", SUCCESS, SUCCESS_RGBA, "0.502 XMR", "auth_9b...44f")
+)
+
+F4 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + page_header("Donations")
+      + nav_tabs("Donations")
+      + f'<div style="padding:14px 16px 6px;display:flex;gap:10px;">'
+      + stat_card("TODAY", "$850.00", "7 donations")
+      + stat_card("THIS WEEK", "$4,240.00", "38 donations")
+      + stat_card("THIS MONTH", "$12,480.00", "143 donations")
+      + stat_card("PENDING CONVERT", "$500.00", "1 donation awaiting threshold", WARN)
+      + f'</div>'
+      + DONATIONS_HEADER
+      + DONATIONS_TABLE_HDR
+      + DONATION_ROWS
+      + f'</div>')
+
+# ---------------------------------------------------------------------------
+# Frame 5 -- XMR Treasury
+# ---------------------------------------------------------------------------
+
+TREASURY_HEADER_SEC = f"""
+<div style="padding:13px 24px;border-bottom:1px solid {BORDER};">
+  <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">XMR Treasury</div>
+  <div style="font-size:12px;color:{TXT_MUT};margin-top:2px;">
+    All XMR purchased via auto-convert is tracked here.</div>
+</div>"""
+
+TREASURY_BALANCE = f"""
+<div style="display:flex;gap:12px;margin-bottom:18px;">
+  <div style="flex:2;background:{XMR_COLOR}12;border:1px solid {XMR_COLOR}55;
+              border-radius:10px;padding:20px 22px;">
+    <div style="font-size:12px;color:{TXT_MUT};margin-bottom:6px;">TOTAL XMR TREASURY</div>
+    <div style="font-size:40px;font-weight:700;color:{TXT_PRI};margin-bottom:4px;">
+      218.4 XMR</div>
+    <div style="font-size:14px;color:{TXT_MUT};">&asymp; $65,083 at current price ($297.60)</div>
+    <div style="height:1px;background:{XMR_COLOR}33;margin:12px 0;"></div>
+    <div style="display:flex;gap:24px;font-size:12px;">
+      <div><span style="color:{TXT_MUT};">Cost basis:</span>
+        <span style="color:{TXT_PRI};font-weight:700;"> $58,240</span></div>
+      <div><span style="color:{TXT_MUT};">Unrealized gain:</span>
+        <span style="color:{SUCCESS};font-weight:700;"> +$6,843 (+11.7%)</span></div>
+      <div><span style="color:{TXT_MUT};">Avg purchase price:</span>
+        <span style="color:{TXT_PRI};"> $266.69 / XMR</span></div>
+    </div>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column;gap:12px;">
+    {stat_card("XMR LOCKED IN BOUNTIES", "62.4 XMR", "28.6% of treasury", WARN)}
+    {stat_card("XMR AVAILABLE", "156.0 XMR", "Ready to lock as collateral", SUCCESS)}
+  </div>
+</div>"""
+
+PURCHASE_LOG_HDR = f"""
+<div style="display:grid;grid-template-columns:100px 100px 90px 90px 110px 110px 1fr;
+            gap:0;padding:8px 16px;border-bottom:1px solid {BORDER};
+            background:{SURF_HI};">
+  {''.join(
+    f'<div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:{TXT_MUT};">{h}</div>'
+    for h in ["DATE", "ROUTE", "FIAT IN", "XMR OUT", "RATE", "WALLET TX", "NOTES"]
+  )}
+</div>"""
+
+def purchase_row(date, route, fiat, xmr_out, rate, wallet_tx, notes, r_color):
+    return (f'<div style="display:grid;'
+            f'grid-template-columns:100px 100px 90px 90px 110px 110px 1fr;'
+            f'gap:0;padding:10px 16px;border-bottom:1px solid {BORDER};font-size:12px;">'
+            f'<div style="color:{TXT_MUT};font-family:monospace;">{date}</div>'
+            f'<div><span style="padding:2px 8px;border-radius:4px;font-size:10px;'
+            f'font-weight:700;background:{r_color}22;color:{r_color};">{route}</span></div>'
+            f'<div style="color:{TXT_PRI};">{fiat}</div>'
+            f'<div style="color:{XMR_COLOR};font-weight:700;">{xmr_out}</div>'
+            f'<div style="color:{TXT_MUT};">{rate}</div>'
+            f'<div style="color:{TXT_MUT};font-family:monospace;font-size:10px;">{wallet_tx}</div>'
+            f'<div style="color:{TXT_MUT};">{notes}</div></div>')
+
+PURCHASE_ROWS = (
+    purchase_row("Apr 23 09:22", "Kraken",    "$500.00",  "1.674 XMR", "$298.70", "8bf2...1a44", "Threshold trigger", ACCENT)
+  + purchase_row("Apr 23 07:44", "Kraken",    "$500.00",  "1.676 XMR", "$298.30", "3a7d...f091", "Threshold trigger", ACCENT)
+  + purchase_row("Apr 23 06:30", "Onramper",  "$100.00",  "0.332 XMR", "$301.20", "9c12...7b3a", "Kraken fallback",   WARN)
+  + purchase_row("Apr 22 14:08", "Kraken",    "$1,500.00","5.028 XMR", "$298.40", "2e88...f04c", "Daily batch",       ACCENT)
+  + purchase_row("Apr 21 09:00", "Kraken",    "$500.00",  "1.660 XMR", "$301.20", "7d41...a19f", "Threshold trigger", ACCENT)
+  + purchase_row("Apr 20 09:00", "Kraken",    "$2,000.00","6.680 XMR", "$299.40", "5b09...e33d", "Daily batch",       ACCENT)
+  + purchase_row("Apr 19 14:22", "Onramper",  "$250.00",  "0.818 XMR", "$305.60", "4a3f...c12e", "Kraken API timeout",WARN)
+)
+
+TREASURY_ACTIONS = f"""
+<div style="display:flex;gap:10px;padding:14px 16px;
+            border-top:1px solid {BORDER};background:{SURF};">
+  {btn("Export for Accounting", color=ACCENT, text_color=TXT_PRI, small=True)}
+  {btn_outline("Export IRS 990 Schedule", small=True)}
+  {btn_outline("Verify Treasury Address", small=True)}
+  <div style="margin-left:auto;">
+    <div style="font-size:12px;color:{TXT_MUT};">
+      Treasury address:
+      <span style="font-family:monospace;color:{TXT_SEC};">46bUt5...MDKey</span>
+    </div>
+  </div>
+</div>"""
+
+F5 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + page_header("XMR Treasury")
+      + nav_tabs("Treasury")
+      + TREASURY_HEADER_SEC
+      + f'<div style="padding:18px 24px 6px;">'
+      + TREASURY_BALANCE
+      + section_label("PURCHASE LOG")
+      + f'</div>'
+      + f'<div style="background:{SURF};border-top:1px solid {BORDER};">'
+      + PURCHASE_LOG_HDR
+      + PURCHASE_ROWS
+      + f'</div>'
+      + TREASURY_ACTIONS
+      + f'</div>')
+
+# ---------------------------------------------------------------------------
+# Assemble HTML
+# ---------------------------------------------------------------------------
+
+FRAMES = [
+    ("Dashboard",    F1),
+    ("Processors",   F2),
+    ("Auto-Convert", F3),
+    ("Donations",    F4),
+    ("Treasury",     F5),
+]
+
+TABS_JS   = ",\n".join(f'"{t}"' for t, _ in FRAMES)
+FRAMES_JS = ",\n".join(
+    f'`{html.replace("`", "\\`").replace("${", "\\${")}`'
+    for _, html in FRAMES
+)
+
+HTML = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NyxForge Foundation &mdash; NGO Admin</title>
+<style>
+* {{ box-sizing: border-box; margin: 0; padding: 0; }}
+body {{ background: #080a12; font-family: 'Inter', system-ui, sans-serif;
+       display: flex; flex-direction: column; align-items: center;
+       min-height: 100vh; padding: 24px 16px; }}
+.tab-bar {{ display: flex; gap: 4px; margin-bottom: 20px;
+           background: {SURF}; border: 1px solid {BORDER};
+           border-radius: 8px; padding: 4px; max-width: {FW}px; }}
+.tab {{ padding: 7px 18px; border-radius: 6px; cursor: pointer;
+       font-size: 12px; color: {TXT_MUT}; transition: all 0.15s; }}
+.tab.active {{ background: {ACCENT}; color: {TXT_PRI}; font-weight: 700; }}
+.tab:hover:not(.active) {{ color: {TXT_PRI}; }}
+.viewport {{ display: flex; align-items: flex-start; width: {FW}px; }}
+.nav {{ display: flex; gap: 12px; margin-top: 16px; align-items: center; }}
+.nav-btn {{ padding: 8px 20px; border-radius: 6px; cursor: pointer;
+           font-size: 13px; background: {SURF}; border: 1px solid {BORDER};
+           color: {TXT_SEC}; }}
+.nav-btn:hover {{ border-color: {ACCENT}; color: {TXT_PRI}; }}
+.frame-label {{ font-size: 12px; color: {TXT_MUT}; min-width: 160px; text-align: center; }}
+</style>
+</head>
+<body>
+<div class="tab-bar" id="tabBar"></div>
+<div class="viewport" id="viewport"></div>
+<div class="nav">
+  <div class="nav-btn" onclick="go(-1)">&larr; Prev</div>
+  <div class="frame-label" id="frameLabel"></div>
+  <div class="nav-btn" onclick="go(1)">Next &rarr;</div>
+</div>
+<script>
+const TABS   = [{TABS_JS}];
+const FRAMES = [{FRAMES_JS}];
+let cur = 0;
+function render() {{
+  const tb = document.getElementById('tabBar');
+  tb.innerHTML = TABS.map((t,i) =>
+    `<div class="tab${{i===cur?' active':''}}" onclick="jump(${{i}})">${{t}}</div>`
+  ).join('');
+  document.getElementById('viewport').innerHTML = FRAMES[cur];
+  document.getElementById('frameLabel').textContent =
+    (cur+1) + ' / ' + FRAMES.length + ' — ' + TABS[cur];
+}}
+function jump(i) {{ cur = i; render(); }}
+function go(d) {{ cur = (cur + d + FRAMES.length) % FRAMES.length; render(); }}
+render();
+</script>
+</body>
+</html>"""
+
+os.makedirs(OUTDIR, exist_ok=True)
+with open(OUTFILE, "w") as f:
+    f.write(HTML)
+print(f"Written: {OUTFILE}")
+if os.environ.get("NYX_OPEN") == "1":   # opt in; macOS only
+    subprocess.Popen(["open", "-a", "Brave Browser", OUTFILE])
+    print("Opened in Brave.")

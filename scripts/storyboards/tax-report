@@ -1,0 +1,786 @@
+#!/usr/bin/env python3
+"""
+NyxForge Tax Report mockup generator.
+Generates docs/storyboards/out/tax-report-mockup.html
+
+Tax reporting UI for NGOs using the NyxForge platform:
+  - Fiat donation summaries for IRS Form 990 / Schedule B
+  - XMR acquisition and disposition ledger (Form 8949 / Schedule D)
+  - Donor acknowledgment letter generation (501(c)(3) receipts)
+  - Export to CSV, PDF, TurboTax, accountant packages
+
+5 frames:
+  1. Overview        -- year selector, event summary, export shortcuts
+  2. Donation Summary-- fiat donations by processor/donor, 990 Schedule B data
+  3. Crypto Ledger   -- XMR cost basis, acquisitions, dispositions, gain/loss
+  4. Generate Report -- report type, date range, format, preview
+  5. Donor Receipts  -- 501(c)(3) acknowledgment letters per donor
+"""
+import os, subprocess
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTDIR     = os.path.join(os.environ.get("NYXFORGE_ROOT", os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "docs/storyboards/out")
+OUTFILE    = os.path.join(OUTDIR, "tax-report-mockup.html")
+
+# ---------------------------------------------------------------------------
+# Palette
+# ---------------------------------------------------------------------------
+BG           = "#0d0f1a"
+SURF         = "#131524"
+SURF_HI      = "#1a1d2e"
+ACCENT       = "#5e6ad2"
+ACC_GLO      = "#2d3068"
+TXT_PRI      = "#e8eaf0"
+TXT_SEC      = "#b8c0d8"
+TXT_MUT      = "#8b95b0"
+SUCCESS      = "#4ade80"
+DANGER       = "#f87171"
+WARN         = "#fbbf24"
+BORDER       = "#2a2d3e"
+INACT        = "#3a3d5c"
+SUCCESS_RGBA = "rgba(74,222,128,0.10)"
+WARN_RGBA    = "rgba(251,191,36,0.10)"
+ACCENT_RGBA  = "rgba(94,106,210,0.12)"
+DANGER_RGBA  = "rgba(248,113,113,0.10)"
+
+XMR_COLOR    = "#ff6600"
+STRIPE_COLOR = "#635bff"
+SQUARE_COLOR = "#8b95b0"
+AUTHNET_COLOR= "#c8102e"
+
+FW = 1020
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def section_label(text):
+    return (f'<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;'
+            f'color:{ACCENT};margin-bottom:8px;">{text}</div>')
+
+def status_pill(text, color, bg):
+    return (f'<span style="font-size:10px;font-weight:700;letter-spacing:0.8px;'
+            f'padding:3px 9px;border-radius:4px;color:{color};background:{bg};">'
+            f'{text}</span>')
+
+def btn(label, color=SUCCESS, text_color=BG, small=False, full=False):
+    pad = "7px 14px" if small else "13px 28px"
+    fs  = "12px"    if small else "14px"
+    wid = "width:100%;display:block;text-align:center;" if full else "display:inline-block;"
+    return (f'<div style="{wid}padding:{pad};background:{color};'
+            f'border-radius:7px;font-size:{fs};font-weight:700;color:{text_color};'
+            f'cursor:pointer;letter-spacing:0.3px;">{label}</div>')
+
+def btn_outline(label, small=False, color=None, full=False):
+    pad  = "6px 13px" if small else "12px 27px"
+    fs   = "12px"     if small else "14px"
+    col  = color or TXT_SEC
+    bord = color or BORDER
+    wid  = "width:100%;display:block;text-align:center;" if full else "display:inline-block;"
+    return (f'<div style="{wid}padding:{pad};background:transparent;'
+            f'border:1px solid {bord};border-radius:7px;font-size:{fs};'
+            f'color:{col};cursor:pointer;">{label}</div>')
+
+def input_field(label, value, mono=False, note=None):
+    font = "monospace" if mono else "inherit"
+    n = (f'<div style="font-size:11px;color:{TXT_MUT};margin-top:4px;">{note}</div>'
+         if note else "")
+    return (f'<div style="margin-bottom:12px;">'
+            f'<div style="font-size:12px;color:{TXT_MUT};margin-bottom:4px;">{label}</div>'
+            f'<div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;'
+            f'padding:9px 13px;font-size:13px;color:{TXT_MUT};font-family:{font};">{value}</div>'
+            f'{n}</div>')
+
+def stat_card(label, value, sub, value_color=TXT_PRI):
+    return (f'<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;'
+            f'padding:14px 16px;flex:1;">'
+            f'<div style="font-size:11px;color:{TXT_MUT};margin-bottom:6px;">{label}</div>'
+            f'<div style="font-size:22px;font-weight:700;color:{value_color};">{value}</div>'
+            f'<div style="font-size:12px;color:{TXT_MUT};margin-top:3px;">{sub}</div>'
+            f'</div>')
+
+def page_header(subtitle="Tax Reports"):
+    return f"""
+  <div style="background:{SURF};border-bottom:1px solid {BORDER};padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:32px;height:32px;border-radius:8px;background:{ACC_GLO};
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:11px;font-weight:700;color:{ACCENT};">NGO</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">
+          NyxForge Foundation &mdash; Tax &amp; Compliance</div>
+        <div style="font-size:11px;color:{TXT_MUT};">{subtitle}</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="font-size:12px;color:{TXT_MUT};">Tax year:</div>
+      {''.join(
+        f'<div style="padding:4px 12px;border-radius:5px;font-size:12px;cursor:pointer;'
+        f'background:{"" + ACC_GLO if y == "2025" else SURF_HI};'
+        f'border:1px solid {"" + ACCENT if y == "2025" else BORDER};'
+        f'color:{"" + TXT_PRI if y == "2025" else TXT_MUT};">{y}</div>'
+        for y in ["2023", "2024", "2025"]
+      )}
+    </div>
+  </div>"""
+
+def nav_tabs(active):
+    tabs = ["Overview", "Donations", "Crypto Ledger", "Generate", "Receipts"]
+    items = "".join(
+        f'<div style="padding:10px 20px;font-size:13px;cursor:pointer;'
+        f'color:{"" + TXT_PRI if t == active else TXT_MUT};'
+        f'border-bottom:{"2px solid " + ACCENT if t == active else "2px solid transparent"};'
+        f'font-weight:{"700" if t == active else "400"};">{t}</div>'
+        for t in tabs
+    )
+    return (f'<div style="display:flex;border-bottom:1px solid {BORDER};'
+            f'background:{SURF};padding:0 24px;">{items}</div>')
+
+# ---------------------------------------------------------------------------
+# Frame 1 -- Overview
+# ---------------------------------------------------------------------------
+
+OVERVIEW_STATS = f"""
+<div style="display:flex;gap:12px;margin-bottom:18px;">
+  {stat_card("TOTAL DONATIONS RECEIVED",  "$148,320",  "Tax year 2025 (Jan 1 &ndash; Dec 31)")}
+  {stat_card("UNIQUE DONORS",             "312",       "261 anonymous, 51 identified")}
+  {stat_card("XMR ACQUISITIONS",          "497.2 XMR", "Cost basis: $138,640 total", XMR_COLOR)}
+  {stat_card("REPORTABLE DISPOSITIONS",   "62.4 XMR",  "Locked as bounty collateral", WARN)}
+</div>"""
+
+FILING_CHECKLIST = f"""
+{section_label("FILING CHECKLIST &mdash; TAX YEAR 2025")}
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            padding:0;margin-bottom:18px;overflow:hidden;">
+  {''.join(
+    f'<div style="display:flex;align-items:center;gap:14px;padding:11px 16px;'
+    f'border-bottom:1px solid {BORDER};">'
+    f'<div style="width:20px;height:20px;border-radius:50%;'
+    f'background:{"" + SUCCESS_RGBA if done else SURF_HI};'
+    f'border:2px solid {"" + SUCCESS if done else INACT};'
+    f'display:flex;align-items:center;justify-content:center;'
+    f'font-size:11px;color:{"" + SUCCESS if done else TXT_MUT};flex-shrink:0;">'
+    f'{"&#10003;" if done else "&nbsp;"}</div>'
+    f'<div style="flex:1;">'
+    f'<div style="font-size:13px;color:{TXT_PRI};">{item}</div>'
+    f'<div style="font-size:11px;color:{TXT_MUT};margin-top:2px;">{note}</div></div>'
+    + (btn_outline("Export", small=True) if done else btn("Action Required", color=WARN, text_color=BG, small=True))
+    + f'</div>'
+    for item, note, done in [
+        ("Form 990 &mdash; Return of Organization Exempt from Income Tax",
+         "Due May 15, 2026 (automatic 6-month extension available)",   False),
+        ("Schedule B &mdash; Schedule of Contributors",
+         "Required if any single donor gave &ge; $5,000",              True),
+        ("IRS Form 8949 &mdash; XMR as property (acquisitions)",
+         "497.2 XMR purchased; cost basis established at each trade",  True),
+        ("IRS Form 8949 &mdash; XMR dispositions (collateral locks)",
+         "62.4 XMR locked as bounty collateral; FMV at time of lock",  False),
+        ("Donor acknowledgment letters (501(c)(3) receipts)",
+         "All donors of $250+ require written acknowledgment",          True),
+        ("State charitable registration renewal",
+         "Due varies by state &mdash; check your jurisdiction",         False),
+    ]
+  )}
+</div>"""
+
+QUICK_EXPORTS = f"""
+{section_label("QUICK EXPORTS")}
+<div style="display:flex;gap:10px;flex-wrap:wrap;">
+  {btn("Form 990 Data Package",      color=ACCENT,   text_color=TXT_PRI, small=True)}
+  {btn("Schedule B CSV",             color=ACCENT,   text_color=TXT_PRI, small=True)}
+  {btn("Form 8949 (Acquisitions)",   color=ACCENT,   text_color=TXT_PRI, small=True)}
+  {btn("Form 8949 (Dispositions)",   color=ACCENT,   text_color=TXT_PRI, small=True)}
+  {btn_outline("All Donor Receipts PDF", small=True)}
+  {btn_outline("Full Ledger CSV",        small=True)}
+  {btn_outline("TurboTax TXF Export",    small=True)}
+</div>"""
+
+DISCLAIMER = f"""
+<div style="background:{WARN_RGBA};border:1px solid {WARN};border-radius:8px;
+            padding:12px 14px;margin-top:18px;font-size:12px;
+            color:{TXT_SEC};line-height:1.6;">
+  This tool generates data exports to assist your tax preparer. It does not
+  constitute tax advice. Consult a CPA familiar with nonprofit and cryptocurrency
+  taxation before filing. XMR acquired and held by a 501(c)(3) is treated as
+  property under IRS Notice 2014-21.
+</div>"""
+
+F1 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + page_header("Overview &mdash; Tax Year 2025")
+      + nav_tabs("Overview")
+      + f'<div style="padding:18px 24px;">'
+      + OVERVIEW_STATS
+      + FILING_CHECKLIST
+      + QUICK_EXPORTS
+      + DISCLAIMER
+      + f'</div></div>')
+
+# ---------------------------------------------------------------------------
+# Frame 2 -- Donation Summary
+# ---------------------------------------------------------------------------
+
+DONATION_SUMMARY_HDR = f"""
+<div style="padding:13px 24px;border-bottom:1px solid {BORDER};">
+  <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Donation Summary</div>
+  <div style="font-size:12px;color:{TXT_MUT};margin-top:2px;">
+    IRS Form 990 Part VIII line 1 &middot; Schedule B (contributors &ge; $5,000)
+  </div>
+</div>"""
+
+DONATION_STATS_ROW = f"""
+<div style="display:flex;gap:12px;margin-bottom:18px;">
+  {stat_card("TOTAL RECEIVED",    "$148,320",  "All processors combined")}
+  {stat_card("STRIPE",            "$98,420",   "66.4% of total", STRIPE_COLOR)}
+  {stat_card("SQUARE",            "$33,840",   "22.8% of total", TXT_SEC)}
+  {stat_card("AUTHORIZE.NET",     "$16,060",   "10.8% of total", AUTHNET_COLOR)}
+</div>"""
+
+BY_MONTH_TABLE = f"""
+{section_label("BY MONTH")}
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            overflow:hidden;margin-bottom:18px;">
+  <div style="display:grid;grid-template-columns:80px repeat(3,1fr) 1fr 80px;
+              gap:0;padding:8px 14px;background:{SURF_HI};border-bottom:1px solid {BORDER};">
+    {''.join(
+      f'<div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:{TXT_MUT};">{h}</div>'
+      for h in ["MONTH", "STRIPE", "SQUARE", "AUTH.NET", "TOTAL", "DONORS"]
+    )}
+  </div>
+  {''.join(
+    f'<div style="display:grid;grid-template-columns:80px repeat(3,1fr) 1fr 80px;'
+    f'gap:0;padding:9px 14px;border-bottom:1px solid {BORDER};font-size:12px;">'
+    f'<div style="color:{TXT_MUT};">{mo}</div>'
+    f'<div style="color:{TXT_SEC};">{s}</div>'
+    f'<div style="color:{TXT_SEC};">{sq}</div>'
+    f'<div style="color:{TXT_SEC};">{a}</div>'
+    f'<div style="color:{TXT_PRI};font-weight:700;">{tot}</div>'
+    f'<div style="color:{TXT_MUT};">{d}</div></div>'
+    for mo, s, sq, a, tot, d in [
+        ("Jan", "$6,240",  "$2,100", "$980",   "$9,320",   "18"),
+        ("Feb", "$5,980",  "$1,840", "$720",   "$8,540",   "16"),
+        ("Mar", "$9,120",  "$3,200", "$1,480", "$13,800",  "27"),
+        ("Apr", "$12,480", "$3,940", "$1,840", "$18,260",  "38"),
+        ("May", "$8,640",  "$2,780", "$1,220", "$12,640",  "24"),
+        ("Jun", "$7,320",  "$2,440", "$1,060", "$10,820",  "21"),
+        ("Jul", "$6,840",  "$2,180", "$940",   "$9,960",   "19"),
+        ("Aug", "$8,120",  "$2,640", "$1,140", "$11,900",  "23"),
+        ("Sep", "$9,840",  "$3,180", "$1,380", "$14,400",  "29"),
+        ("Oct", "$10,240", "$3,420", "$1,480", "$15,140",  "31"),
+        ("Nov", "$12,820", "$4,120", "$1,840", "$18,780",  "37"),
+        ("Dec", "$10,780", "$6,000", "$1,980", "$18,760",  "29"),
+    ]
+  )}
+  <div style="display:grid;grid-template-columns:80px repeat(3,1fr) 1fr 80px;
+              gap:0;padding:9px 14px;background:{SURF_HI};font-size:12px;font-weight:700;">
+    <div style="color:{TXT_MUT};">TOTAL</div>
+    <div style="color:{STRIPE_COLOR};">$98,420</div>
+    <div style="color:{TXT_SEC};">$33,840</div>
+    <div style="color:{AUTHNET_COLOR};">$16,060</div>
+    <div style="color:{TXT_PRI};">$148,320</div>
+    <div style="color:{TXT_MUT};">312</div>
+  </div>
+</div>"""
+
+SCHEDULE_B_NOTE = f"""
+{section_label("SCHEDULE B &mdash; LARGE CONTRIBUTORS (&ge; $5,000)")}
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            overflow:hidden;margin-bottom:14px;">
+  <div style="display:grid;grid-template-columns:180px 100px 120px 1fr;
+              gap:0;padding:8px 14px;background:{SURF_HI};border-bottom:1px solid {BORDER};">
+    {''.join(
+      f'<div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:{TXT_MUT};">{h}</div>'
+      for h in ["DONOR", "TOTAL GIVEN", "LARGEST SINGLE", "NOTE"]
+    )}
+  </div>
+  {''.join(
+    f'<div style="display:grid;grid-template-columns:180px 100px 120px 1fr;'
+    f'gap:0;padding:9px 14px;border-bottom:1px solid {BORDER};font-size:12px;">'
+    f'<div style="color:{TXT_PRI};">{donor}</div>'
+    f'<div style="color:{TXT_PRI};font-weight:700;">{total}</div>'
+    f'<div style="color:{TXT_MUT};">{single}</div>'
+    f'<div style="color:{TXT_MUT};">{note}</div></div>'
+    for donor, total, single, note in [
+        ("Anonymous (Stripe)",  "$42,000", "$10,000", "6 separate transactions"),
+        ("K. Chen",             "$12,500", "$5,000",  "Verified via Stripe identity"),
+        ("Bounty Donor Trust","$8,000",  "$8,000",  "Single wire via ACH"),
+        ("Anonymous (Square)",  "$6,200",  "$1,500",  "4 transactions"),
+    ]
+  )}
+</div>
+<div style="display:flex;gap:8px;">
+  {btn("Export Schedule B CSV", color=ACCENT, text_color=TXT_PRI, small=True)}
+  {btn_outline("Preview as PDF", small=True)}
+</div>"""
+
+F2 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + page_header("Donation Summary")
+      + nav_tabs("Donations")
+      + DONATION_SUMMARY_HDR
+      + f'<div style="padding:18px 24px;">'
+      + DONATION_STATS_ROW
+      + BY_MONTH_TABLE
+      + SCHEDULE_B_NOTE
+      + f'</div></div>')
+
+# ---------------------------------------------------------------------------
+# Frame 3 -- Crypto Ledger
+# ---------------------------------------------------------------------------
+
+CRYPTO_HDR = f"""
+<div style="padding:13px 24px;border-bottom:1px solid {BORDER};">
+  <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Crypto Ledger</div>
+  <div style="font-size:12px;color:{TXT_MUT};margin-top:2px;">
+    IRS Notice 2014-21 &mdash; XMR treated as property &middot;
+    Form 8949 &middot; Schedule D
+  </div>
+</div>"""
+
+CRYPTO_STATS = f"""
+<div style="display:flex;gap:12px;margin-bottom:18px;">
+  {stat_card("TOTAL XMR ACQUIRED",   "497.2 XMR",  "Cost basis: $138,640",     XMR_COLOR)}
+  {stat_card("AVG COST BASIS",       "$278.86/XMR", "Weighted average",         TXT_PRI)}
+  {stat_card("DISPOSITIONS",         "62.4 XMR",   "Locked as bounty collateral (FMV: $18,592)", WARN)}
+  {stat_card("UNREALIZED GAIN/LOSS", "+$29,680",   "Current FMV vs cost basis", SUCCESS)}
+</div>"""
+
+COST_BASIS_NOTE = f"""
+<div style="background:{ACCENT_RGBA};border:1px solid {ACCENT};border-radius:8px;
+            padding:12px 14px;margin-bottom:16px;font-size:12px;
+            color:{TXT_SEC};line-height:1.6;">
+  <span style="font-weight:700;color:{TXT_PRI};">Cost basis method: FIFO (First In, First Out)</span>
+  &mdash; each XMR unit's cost basis is the USD price paid at time of Kraken/Onramper purchase.
+  Locking XMR as bounty collateral is treated as a disposition at fair market value on the date
+  of locking. If the bounty expires and collateral is returned, that is a new acquisition at
+  the return date's FMV. Change method in Settings.
+</div>"""
+
+LEDGER_TABS = f"""
+<div style="display:flex;gap:0;border-bottom:1px solid {BORDER};margin-bottom:0;">
+  {''.join(
+    f'<div style="padding:8px 18px;font-size:12px;cursor:pointer;'
+    f'color:{"" + TXT_PRI if t == "Acquisitions" else TXT_MUT};'
+    f'border-bottom:{"2px solid " + ACCENT if t == "Acquisitions" else "2px solid transparent"};">{t}</div>'
+    for t in ["Acquisitions", "Dispositions", "Returns (expired bounties)"]
+  )}
+</div>"""
+
+ACQ_TABLE_HDR = f"""
+<div style="display:grid;
+            grid-template-columns:90px 80px 90px 90px 90px 90px 90px 1fr;
+            gap:0;padding:8px 14px;background:{SURF_HI};border-bottom:1px solid {BORDER};">
+  {''.join(
+    f'<div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:{TXT_MUT};">{h}</div>'
+    for h in ["DATE", "ROUTE", "USD IN", "XMR OUT", "COST/XMR", "CUMUL. UNITS", "CUMUL. BASIS", "TX REF"]
+  )}
+</div>"""
+
+def acq_row(date, route, r_col, usd_in, xmr_out, cost_per, cumul_xmr, cumul_basis, txref):
+    return (f'<div style="display:grid;'
+            f'grid-template-columns:90px 80px 90px 90px 90px 90px 90px 1fr;'
+            f'gap:0;padding:9px 14px;border-bottom:1px solid {BORDER};font-size:11px;">'
+            f'<div style="color:{TXT_MUT};font-family:monospace;">{date}</div>'
+            f'<div><span style="padding:2px 7px;border-radius:3px;font-size:10px;'
+            f'font-weight:700;background:{r_col}22;color:{r_col};">{route}</span></div>'
+            f'<div style="color:{TXT_PRI};">{usd_in}</div>'
+            f'<div style="color:{XMR_COLOR};font-weight:700;">{xmr_out}</div>'
+            f'<div style="color:{TXT_MUT};">{cost_per}</div>'
+            f'<div style="color:{TXT_SEC};">{cumul_xmr}</div>'
+            f'<div style="color:{TXT_SEC};">{cumul_basis}</div>'
+            f'<div style="color:{TXT_MUT};font-family:monospace;font-size:10px;">{txref}</div>'
+            f'</div>')
+
+ACQ_ROWS = (
+    acq_row("Jan 04", "Kraken",   ACCENT,  "$500",    "1.788 XMR",  "$279.60", "1.788",   "$500",    "krk-a1b2")
+  + acq_row("Jan 18", "Kraken",   ACCENT,  "$500",    "1.792 XMR",  "$279.02", "3.580",   "$1,000",  "krk-c3d4")
+  + acq_row("Feb 07", "Kraken",   ACCENT,  "$1,000",  "3.571 XMR",  "$280.08", "7.151",   "$2,000",  "krk-e5f6")
+  + acq_row("Feb 22", "Onramper", WARN,    "$250",    "0.874 XMR",  "$286.04", "8.025",   "$2,250",  "onr-g7h8")
+  + acq_row("Mar 10", "Kraken",   ACCENT,  "$1,500",  "5.328 XMR",  "$281.60", "13.353",  "$3,750",  "krk-i9j0")
+  + acq_row("Apr 02", "Kraken",   ACCENT,  "$2,000",  "6.760 XMR",  "$295.86", "20.113",  "$5,750",  "krk-k1l2")
+  + acq_row("Apr 23", "Kraken",   ACCENT,  "$500",    "1.674 XMR",  "$298.70", "21.787",  "$6,250",  "krk-m3n4")
+)
+
+DISPOSITION_HDR = f"""
+{section_label("DISPOSITIONS &mdash; XMR LOCKED AS BOUNTY COLLATERAL")}
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            overflow:hidden;margin-bottom:14px;">
+  <div style="display:grid;
+              grid-template-columns:90px 120px 80px 90px 90px 90px 90px 1fr;
+              gap:0;padding:8px 14px;background:{SURF_HI};border-bottom:1px solid {BORDER};">
+    {''.join(
+      f'<div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:{TXT_MUT};">{h}</div>'
+      for h in ["DATE LOCKED", "BOUNTY", "XMR", "COST BASIS", "FMV AT LOCK", "GAIN/LOSS", "STATUS", "NOTES"]
+    )}
+  </div>
+  {''.join(
+    f'<div style="display:grid;'
+    f'grid-template-columns:90px 120px 80px 90px 90px 90px 90px 1fr;'
+    f'gap:0;padding:9px 14px;border-bottom:1px solid {BORDER};font-size:11px;">'
+    f'<div style="color:{TXT_MUT};font-family:monospace;">{dt}</div>'
+    f'<div style="color:{TXT_SEC};">{bounty}</div>'
+    f'<div style="color:{XMR_COLOR};">{xmr}</div>'
+    f'<div style="color:{TXT_MUT};">{basis}</div>'
+    f'<div style="color:{TXT_PRI};">{fmv}</div>'
+    f'<div style="color:{"" + SUCCESS if "+" in gl else DANGER};">{gl}</div>'
+    f'<div>{status_pill(st, sc, sb)}</div>'
+    f'<div style="color:{TXT_MUT};font-size:10px;">{notes}</div></div>'
+    for dt, bounty, xmr, basis, fmv, gl, st, sc, sb, notes in [
+        ("Mar 15", "ALZ-2040-0047", "0.45 XMR", "$126.72", "$135.00", "+$8.28",
+         "LOCKED", WARN, WARN_RGBA, "Collateral; not yet resolved"),
+        ("Mar 22", "TB-2038-0031",  "0.90 XMR", "$253.44", "$272.70", "+$19.26",
+         "LOCKED", WARN, WARN_RGBA, "Collateral; not yet resolved"),
+        ("Apr 01", "MAL-2035-0012", "0.22 XMR", "$62.39",  "$65.34",  "+$2.95",
+         "RESOLVED", SUCCESS, SUCCESS_RGBA, "Terms met; returned to issuer"),
+    ]
+  )}
+</div>
+<div style="display:flex;gap:8px;">
+  {btn("Export Form 8949 CSV", color=ACCENT, text_color=TXT_PRI, small=True)}
+  {btn_outline("TurboTax TXF", small=True)}
+  {btn_outline("CoinTracker Import", small=True)}
+</div>"""
+
+F3 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + page_header("Crypto Ledger")
+      + nav_tabs("Crypto Ledger")
+      + CRYPTO_HDR
+      + f'<div style="padding:18px 24px;">'
+      + CRYPTO_STATS
+      + COST_BASIS_NOTE
+      + LEDGER_TABS
+      + f'<div style="background:{SURF};border:1px solid {BORDER};border-radius:0 0 8px 8px;'
+      f'overflow:hidden;margin-bottom:18px;">'
+      + ACQ_TABLE_HDR
+      + ACQ_ROWS
+      + f'</div>'
+      + DISPOSITION_HDR
+      + f'</div></div>')
+
+# ---------------------------------------------------------------------------
+# Frame 4 -- Generate Report
+# ---------------------------------------------------------------------------
+
+GEN_HDR = f"""
+<div style="padding:13px 24px;border-bottom:1px solid {BORDER};">
+  <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Generate Report</div>
+  <div style="font-size:12px;color:{TXT_MUT};margin-top:2px;">
+    Build a custom export for your accountant, auditors, or filing software.</div>
+</div>"""
+
+REPORT_TYPE_GRID = f"""
+{section_label("REPORT TYPE")}
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">
+  {''.join(
+    f'<div style="padding:13px 14px;border-radius:8px;cursor:pointer;'
+    f'background:{"" + ACC_GLO if r == "Form 990 Package" else SURF_HI};'
+    f'border:{"2px" if r == "Form 990 Package" else "1px"} solid '
+    f'{"" + ACCENT if r == "Form 990 Package" else BORDER};">'
+    f'<div style="font-size:13px;font-weight:700;'
+    f'color:{"" + TXT_PRI if r == "Form 990 Package" else TXT_MUT};margin-bottom:4px;">{r}</div>'
+    f'<div style="font-size:11px;color:{TXT_MUT};line-height:1.4;">{d}</div></div>'
+    for r, d in [
+        ("Form 990 Package",       "Full 990 data, Schedule B, Part VIII donation summary"),
+        ("Form 8949 (Crypto)",      "All XMR acquisitions and dispositions for the tax year"),
+        ("Schedule D Summary",      "Net capital gains/losses from XMR dispositions"),
+        ("Donor Summary",           "All donors, amounts, contact info for acknowledgments"),
+        ("Processor Reconciliation","Stripe / Square / Authorize.net cross-check"),
+        ("Full Ledger",             "Every donation and XMR transaction in one CSV"),
+    ]
+  )}
+</div>"""
+
+DATE_RANGE = f"""
+{section_label("DATE RANGE")}
+<div style="display:flex;gap:8px;margin-bottom:6px;">
+  {''.join(
+    f'<div style="padding:6px 14px;border-radius:5px;font-size:12px;cursor:pointer;'
+    f'background:{"" + ACC_GLO if p == "Full Year 2025" else SURF_HI};'
+    f'border:1px solid {"" + ACCENT if p == "Full Year 2025" else BORDER};'
+    f'color:{"" + TXT_PRI if p == "Full Year 2025" else TXT_MUT};">{p}</div>'
+    for p in ["Full Year 2025", "Q1 2025", "Q2 2025", "Q3 2025", "Q4 2025", "Custom"]
+  )}
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+  {input_field("From", "2025-01-01")}
+  {input_field("To",   "2025-12-31")}
+</div>"""
+
+FORMAT_SELECTOR = f"""
+{section_label("OUTPUT FORMAT")}
+<div style="display:flex;gap:8px;margin-bottom:16px;">
+  {''.join(
+    f'<div style="flex:1;padding:10px 14px;border-radius:7px;cursor:pointer;text-align:center;'
+    f'background:{"" + ACC_GLO if f == "PDF" else SURF_HI};'
+    f'border:{"2px" if f == "PDF" else "1px"} solid '
+    f'{"" + ACCENT if f == "PDF" else BORDER};">'
+    f'<div style="font-size:13px;font-weight:700;'
+    f'color:{"" + TXT_PRI if f == "PDF" else TXT_MUT};">{f}</div>'
+    f'<div style="font-size:11px;color:{TXT_MUT};margin-top:2px;">{d}</div></div>'
+    for f, d in [
+        ("PDF",       "Formatted for filing or printing"),
+        ("CSV",       "Spreadsheet / accountant import"),
+        ("TXF",       "TurboTax / TaxCut"),
+        ("JSON",      "API / developer use"),
+    ]
+  )}
+</div>"""
+
+INCLUDE_OPTIONS = f"""
+{section_label("INCLUDE IN REPORT")}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px;">
+  {''.join(
+    f'<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;'
+    f'background:{SURF_HI};border-radius:6px;cursor:pointer;">'
+    f'<div style="width:16px;height:16px;border-radius:4px;'
+    f'background:{"" + ACCENT if checked else INACT};'
+    f'border:1px solid {"" + ACCENT if checked else BORDER};'
+    f'display:flex;align-items:center;justify-content:center;'
+    f'font-size:10px;color:{TXT_PRI};flex-shrink:0;">{"&#10003;" if checked else ""}</div>'
+    f'<div style="font-size:12px;color:{TXT_PRI};">{label}</div></div>'
+    for label, checked in [
+        ("Donation totals by month",        True),
+        ("Per-donor detail",                True),
+        ("Processor breakdown",             True),
+        ("Anonymous donor rows",            False),
+        ("XMR acquisition table",           True),
+        ("XMR disposition table",           True),
+        ("Cost basis calculation detail",   True),
+        ("Unrealized gain/loss summary",    False),
+    ]
+  )}
+</div>"""
+
+REPORT_PREVIEW = f"""
+<div style="width:300px;flex-shrink:0;">
+  {section_label("PREVIEW")}
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              padding:14px 16px;margin-bottom:14px;font-family:monospace;
+              font-size:11px;color:{TXT_MUT};line-height:1.8;">
+    <div style="color:{TXT_PRI};font-weight:700;margin-bottom:8px;">
+      BOUNTY FOUNDATION</div>
+    <div>Form 990 Data Package</div>
+    <div>Tax Year: 2025-01-01 to 2025-12-31</div>
+    <div>Generated: 2025-04-23</div>
+    <div style="margin:8px 0;border-top:1px solid {BORDER};"></div>
+    <div style="color:{TXT_SEC};">Part VIII Line 1a: $148,320</div>
+    <div style="color:{TXT_SEC};">Contributors (Sch B): 4</div>
+    <div style="color:{TXT_SEC};">XMR acquisitions: 497.2 XMR</div>
+    <div style="color:{TXT_SEC};">XMR dispositions: 62.4 XMR</div>
+    <div style="margin:8px 0;border-top:1px solid {BORDER};"></div>
+    <div style="color:{TXT_MUT};">Pages: est. 12</div>
+    <div style="color:{TXT_MUT};">Format: PDF</div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    {btn("Generate &amp; Download", color=SUCCESS, text_color=BG, full=True)}
+    {btn("Email to Accountant",     color=ACCENT,  text_color=TXT_PRI, full=True)}
+    {btn_outline("Save as Template", full=True)}
+  </div>
+</div>"""
+
+F4 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + page_header("Generate Report")
+      + nav_tabs("Generate")
+      + GEN_HDR
+      + f'<div style="padding:18px 24px;display:flex;gap:20px;">'
+      + f'<div style="flex:1;min-width:0;">'
+      + REPORT_TYPE_GRID
+      + DATE_RANGE
+      + FORMAT_SELECTOR
+      + INCLUDE_OPTIONS
+      + f'</div>'
+      + REPORT_PREVIEW
+      + f'</div></div>')
+
+# ---------------------------------------------------------------------------
+# Frame 5 -- Donor Receipts
+# ---------------------------------------------------------------------------
+
+RECEIPTS_HDR = f"""
+<div style="padding:13px 24px;border-bottom:1px solid {BORDER};">
+  <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Donor Receipts</div>
+  <div style="font-size:12px;color:{TXT_MUT};margin-top:2px;">
+    IRS 501(c)(3) acknowledgment letters &mdash; required for all gifts of $250 or more
+  </div>
+</div>"""
+
+RECEIPT_STATS = f"""
+<div style="display:flex;gap:12px;margin-bottom:16px;">
+  {stat_card("LETTERS REQUIRED",  "51",  "Donors with identified info")}
+  {stat_card("SENT",              "48",  "Via email",               SUCCESS)}
+  {stat_card("PENDING",           "3",   "Missing email address",   WARN)}
+  {stat_card("ANONYMOUS",         "261", "No letter required",      TXT_MUT)}
+</div>"""
+
+RECEIPT_FILTER = f"""
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:0;
+            padding:10px 16px;border-bottom:1px solid {BORDER};background:{SURF};">
+  {''.join(
+    f'<div style="padding:5px 12px;border-radius:5px;font-size:12px;cursor:pointer;'
+    f'background:{"" + ACC_GLO if f == "All" else SURF_HI};'
+    f'border:1px solid {"" + ACCENT if f == "All" else BORDER};'
+    f'color:{"" + TXT_PRI if f == "All" else TXT_MUT};">{f}</div>'
+    for f in ["All", "Sent", "Pending", "Over $5,000"]
+  )}
+  <div style="margin-left:auto;display:flex;gap:8px;">
+    {btn("Send All Pending", color=SUCCESS, text_color=BG, small=True)}
+    {btn_outline("Export All PDF", small=True)}
+  </div>
+</div>"""
+
+RECEIPT_TABLE_HDR = f"""
+<div style="display:grid;grid-template-columns:160px 90px 100px 110px 110px 1fr 80px;
+            gap:0;padding:8px 14px;background:{SURF_HI};border-bottom:1px solid {BORDER};">
+  {''.join(
+    f'<div style="font-size:10px;font-weight:700;letter-spacing:0.8px;color:{TXT_MUT};">{h}</div>'
+    for h in ["DONOR", "TOTAL GIVEN", "LARGEST GIFT", "EMAIL", "LETTER STATUS", "ACKNOWLEDGMENT TEXT", "ACTION"]
+  )}
+</div>"""
+
+def receipt_row(donor, total, largest, email, status, s_col, s_bg, ack_preview):
+    action = (btn("Send", color=ACCENT, text_color=TXT_PRI, small=True)
+              if status == "PENDING" else
+              btn_outline("Resend", small=True))
+    return (f'<div style="display:grid;'
+            f'grid-template-columns:160px 90px 100px 110px 110px 1fr 80px;'
+            f'gap:0;padding:10px 14px;border-bottom:1px solid {BORDER};font-size:11px;">'
+            f'<div style="color:{TXT_PRI};">{donor}</div>'
+            f'<div style="color:{TXT_PRI};font-weight:700;">{total}</div>'
+            f'<div style="color:{TXT_MUT};">{largest}</div>'
+            f'<div style="color:{TXT_MUT};font-family:monospace;font-size:10px;">{email}</div>'
+            f'<div>{status_pill(status, s_col, s_bg)}</div>'
+            f'<div style="color:{TXT_MUT};font-size:10px;line-height:1.4;">{ack_preview}</div>'
+            f'<div>{action}</div></div>')
+
+RECEIPT_ROWS = (
+    receipt_row("K. Chen",       "$12,500", "$5,000", "k.chen@...",    "SENT",    SUCCESS, SUCCESS_RGBA,
+                '"No goods or services were provided in exchange..."')
+  + receipt_row("Bounty Trust","$8,000",  "$8,000", "trust@...",     "SENT",    SUCCESS, SUCCESS_RGBA,
+                '"No goods or services were provided in exchange..."')
+  + receipt_row("R. Martinez",  "$1,200",  "$300",   "r.mar@...",     "SENT",    SUCCESS, SUCCESS_RGBA,
+                '"No goods or services were provided in exchange..."')
+  + receipt_row("T. Okafor",    "$950",    "$250",   "t.oka@...",     "SENT",    SUCCESS, SUCCESS_RGBA,
+                '"No goods or services were provided in exchange..."')
+  + receipt_row("M. Johansson", "$750",    "$750",   "(missing)",      "PENDING", WARN,    WARN_RGBA,
+                "Email address needed")
+  + receipt_row("Anonymous",    "$500",    "$500",   "N/A",            "N/A",     TXT_MUT, SURF_HI,
+                "Anonymous donor &mdash; no letter required")
+)
+
+RECEIPT_TEMPLATE = f"""
+<div style="padding:14px 16px;border-top:1px solid {BORDER};">
+  {section_label("LETTER TEMPLATE")}
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              padding:14px 16px;font-size:12px;color:{TXT_SEC};line-height:1.8;">
+    <div style="color:{TXT_PRI};font-weight:700;margin-bottom:6px;">
+      NyxForge Foundation &mdash; Gift Acknowledgment</div>
+    Dear [DONOR NAME],<br><br>
+    Thank you for your generous contribution of <span style="color:{TXT_PRI};">[AMOUNT]</span>
+    to NyxForge Foundation on <span style="color:{TXT_PRI};">[DATE]</span>.
+    NyxForge Foundation is a tax-exempt organization under Section 501(c)(3) of the Internal
+    Revenue Code (EIN: XX-XXXXXXX). No goods or services were provided in exchange for your
+    contribution, and the full amount is deductible to the extent allowed by law.<br><br>
+    <span style="color:{TXT_MUT};">NyxForge Foundation &bull; 123 Mission St, San Francisco, CA 94105</span>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:10px;">
+    {btn_outline("Edit Template", small=True)}
+    {btn_outline("Preview PDF",   small=True)}
+  </div>
+</div>"""
+
+F5 = (f'<div class="frame" style="width:{FW}px;background:{BG};'
+      f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+      + page_header("Donor Receipts")
+      + nav_tabs("Receipts")
+      + RECEIPTS_HDR
+      + f'<div style="padding:18px 24px 0;">'
+      + RECEIPT_STATS
+      + f'</div>'
+      + RECEIPT_FILTER
+      + RECEIPT_TABLE_HDR
+      + RECEIPT_ROWS
+      + RECEIPT_TEMPLATE
+      + f'</div>')
+
+# ---------------------------------------------------------------------------
+# Assemble HTML
+# ---------------------------------------------------------------------------
+
+FRAMES = [
+    ("Overview",      F1),
+    ("Donations",     F2),
+    ("Crypto Ledger", F3),
+    ("Generate",      F4),
+    ("Receipts",      F5),
+]
+
+TABS_JS   = ",\n".join(f'"{t}"' for t, _ in FRAMES)
+FRAMES_JS = ",\n".join(
+    f'`{html.replace("`", "\\`").replace("${", "\\${")}`'
+    for _, html in FRAMES
+)
+
+HTML = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NyxForge Foundation &mdash; Tax Reports</title>
+<style>
+* {{ box-sizing: border-box; margin: 0; padding: 0; }}
+body {{ background: #080a12; font-family: 'Inter', system-ui, sans-serif;
+       display: flex; flex-direction: column; align-items: center;
+       min-height: 100vh; padding: 24px 16px; }}
+.tab-bar {{ display: flex; gap: 4px; margin-bottom: 20px;
+           background: {SURF}; border: 1px solid {BORDER};
+           border-radius: 8px; padding: 4px; max-width: {FW}px; }}
+.tab {{ padding: 7px 18px; border-radius: 6px; cursor: pointer;
+       font-size: 12px; color: {TXT_MUT}; transition: all 0.15s; }}
+.tab.active {{ background: {ACCENT}; color: {TXT_PRI}; font-weight: 700; }}
+.tab:hover:not(.active) {{ color: {TXT_PRI}; }}
+.viewport {{ display: flex; align-items: flex-start; width: {FW}px; }}
+.nav {{ display: flex; gap: 12px; margin-top: 16px; align-items: center; }}
+.nav-btn {{ padding: 8px 20px; border-radius: 6px; cursor: pointer;
+           font-size: 13px; background: {SURF}; border: 1px solid {BORDER};
+           color: {TXT_SEC}; }}
+.nav-btn:hover {{ border-color: {ACCENT}; color: {TXT_PRI}; }}
+.frame-label {{ font-size: 12px; color: {TXT_MUT}; min-width: 160px; text-align: center; }}
+</style>
+</head>
+<body>
+<div class="tab-bar" id="tabBar"></div>
+<div class="viewport" id="viewport"></div>
+<div class="nav">
+  <div class="nav-btn" onclick="go(-1)">&larr; Prev</div>
+  <div class="frame-label" id="frameLabel"></div>
+  <div class="nav-btn" onclick="go(1)">Next &rarr;</div>
+</div>
+<script>
+const TABS   = [{TABS_JS}];
+const FRAMES = [{FRAMES_JS}];
+let cur = 0;
+function render() {{
+  const tb = document.getElementById('tabBar');
+  tb.innerHTML = TABS.map((t,i) =>
+    `<div class="tab${{i===cur?' active':''}}" onclick="jump(${{i}})">${{t}}</div>`
+  ).join('');
+  document.getElementById('viewport').innerHTML = FRAMES[cur];
+  document.getElementById('frameLabel').textContent =
+    (cur+1) + ' / ' + FRAMES.length + ' — ' + TABS[cur];
+}}
+function jump(i) {{ cur = i; render(); }}
+function go(d) {{ cur = (cur + d + FRAMES.length) % FRAMES.length; render(); }}
+render();
+</script>
+</body>
+</html>"""
+
+os.makedirs(OUTDIR, exist_ok=True)
+with open(OUTFILE, "w") as f:
+    f.write(HTML)
+print(f"Written: {OUTFILE}")
+if os.environ.get("NYX_OPEN") == "1":   # opt in; macOS only
+    subprocess.Popen(["open", "-a", "Brave Browser", OUTFILE])
+    print("Opened in Brave.")

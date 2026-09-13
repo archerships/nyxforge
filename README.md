@@ -75,8 +75,10 @@ relevant quantum computer (CRQC) timeline.
 crates/           Rust workspace: nyxforge-{core,zk,contract,node,oracle,web,wallet,miner,cli,mcp,test-fixtures}
 ui/               Flutter browser UI (v2)
 docs/             Specifications and research (see the Status table above)
-scripts/          Tooling
-src/              Archived DarkFi-era code (historical; do not re-integrate without a decision)
+archive/          Archived DarkFi-era code (historical; do not re-integrate without a decision)
+scripts/          Tooling. Storyboard/mockup generators live in scripts/storyboards/
+tests/            CLI behavioural test suite (see tests/README.md)
+mock/             Mockoon stub API used by the UI work
 ```
 
 MVP-critical work touches a `.bounty`/bounty crate, parts of `nyxforge-cli`, and a

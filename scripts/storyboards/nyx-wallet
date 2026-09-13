@@ -16,7 +16,7 @@ collateral into .bounty files.
 import os, subprocess
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-OUTDIR     = os.path.join(SCRIPT_DIR, "../docs/storyboards/out")
+OUTDIR     = os.path.join(SCRIPT_DIR, "../../docs/storyboards/out")
 OUTFILE    = os.path.join(OUTDIR, "nyx-wallet-mockup.html")
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,303 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NyxForge Bounty Holder</title>
+<style>*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d0f1a;color:#e8eaf0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#131524}
+::-webkit-scrollbar-thumb{background:#3a3d5c;border-radius:3px}</style></head>
+<body>
+<div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:0 24px;position:sticky;top:0;z-index:100;">
+  <div style="max-width:1024px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;">
+    <div style="padding:12px 0;display:flex;align-items:center;gap:12px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:#2d3068;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:11px;font-weight:700;color:#5e6ad2;">NYX</div>
+      <div style="font-size:14px;font-weight:700;color:#e8eaf0;">Holder Portfolio</div>
+    </div>
+    <div style="display:flex;gap:0;" role="tablist"><button data-idx="0" aria-selected="true" role="tab" style="padding:8px 18px;background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;color:' + ACCENT + ';border-bottom:2px solid ' + ACCENT + ';">Portfolio</button><button data-idx="1" aria-selected="false" role="tab" style="padding:8px 18px;background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;color:' + TXT_MUT + ';border-bottom:2px solid transparent;">Bounty Detail</button><button data-idx="2" aria-selected="false" role="tab" style="padding:8px 18px;background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;color:' + TXT_MUT + ';border-bottom:2px solid transparent;">Transfer</button><button data-idx="3" aria-selected="false" role="tab" style="padding:8px 18px;background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;color:' + TXT_MUT + ';border-bottom:2px solid transparent;">File Claim</button><button data-idx="4" aria-selected="false" role="tab" style="padding:8px 18px;background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;color:' + TXT_MUT + ';border-bottom:2px solid transparent;">History</button></div>
+    <div style="width:80px;"></div>
+  </div>
+</div>
+<div style="position:fixed;bottom:20px;right:24px;z-index:200;display:flex;gap:8px;">
+  <button onclick="nav(-1)" style="padding:8px 16px;background:#1a1d2e;border:1px solid #2a2d3e;border-radius:7px;color:#b8c0d8;font-size:13px;cursor:pointer;">&larr; Prev</button>
+  <button onclick="nav(1)"  style="padding:8px 16px;background:#1a1d2e;border:1px solid #2a2d3e;border-radius:7px;color:#b8c0d8;font-size:13px;cursor:pointer;">Next &rarr;</button>
+</div>
+<div id="frames"><div data-frame="0" style="display:block;"><div style="background:#0d0f1a;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:#2d3068;display:flex;align-items:center;
+                  justify-content:center;font-size:11px;font-weight:700;color:#5e6ad2;">NYX</div>
+      <div><div style="font-size:15px;font-weight:700;color:#e8eaf0;">Holder Portfolio</div>
+           <div style="font-size:11px;color:#8b95b0;">.bounty files you hold</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="font-size:12px;font-family:monospace;color:#8b95b0;">7Ab2...88Fc</div>
+    </div></div>
+  <div style="max-width:960px;margin:0 auto;padding:28px 32px;">
+    <div style="margin-bottom:22px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:4px;text-transform:uppercase;">HOLDER PORTFOLIO / OVERVIEW</div>
+      <div style="font-size:22px;font-weight:700;color:#e8eaf0;">My Bounty Portfolio</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;">
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px 16px;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">Bounties Held</div><div style="font-size:22px;font-weight:700;color:#e8eaf0;">7</div></div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px 16px;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">Total Collateral</div><div style="font-size:22px;font-weight:700;color:#fbbf24;">~131,000 XMR</div></div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px 16px;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">Maturing < 5yr</div><div style="font-size:22px;font-weight:700;color:#4ade80;">3</div></div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px 16px;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">Claims Active</div><div style="font-size:22px;font-weight:700;color:#5e6ad2;">2</div></div>
+</div><div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">HELD BOUNTIES</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:10px;padding:18px 20px;cursor:pointer;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+    <div>
+      <div style="font-family:monospace;font-size:12px;color:#5e6ad2;margin-bottom:3px;">NYX-7F3A</div>
+      <div style="font-size:14px;font-weight:700;color:#e8eaf0;">Archer Mwangi 2036</div>
+      <div style="font-size:11px;color:#8b95b0;margin-top:2px;">SER-001 &middot; Unit 1/20</div>
+    </div>
+    <span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#4ade80;background:rgba(74,222,128,0.10);">ACTIVE</span>
+  </div>
+  <div style="height:1px;background:#2a2d3e;margin:0 0 8px;"></div>
+  <div style="display:flex;justify-content:space-between;">
+    <div><div style="font-size:11px;color:#8b95b0;">Collateral</div>
+         <div style="font-size:15px;font-weight:700;color:#fbbf24;">50,000 XMR</div></div>
+    <div><div style="font-size:11px;color:#8b95b0;">Maturity</div>
+         <div style="font-size:13px;color:#e8eaf0;">2036-04-23</div></div>
+    <div><div style="font-size:11px;color:#8b95b0;">Units held</div>
+         <div style="font-size:13px;color:#e8eaf0;">1</div></div>
+  </div></div>
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:10px;padding:18px 20px;cursor:pointer;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+    <div>
+      <div style="font-family:monospace;font-size:12px;color:#5e6ad2;margin-bottom:3px;">NYX-2B91</div>
+      <div style="font-size:14px;font-weight:700;color:#e8eaf0;">Priya Nakamura 2034</div>
+      <div style="font-size:11px;color:#8b95b0;margin-top:2px;">SER-002 &middot; Unit 3/8</div>
+    </div>
+    <span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#fbbf24;background:rgba(251,191,36,0.10);">CLAIMED</span>
+  </div>
+  <div style="height:1px;background:#2a2d3e;margin:0 0 8px;"></div>
+  <div style="display:flex;justify-content:space-between;">
+    <div><div style="font-size:11px;color:#8b95b0;">Collateral</div>
+         <div style="font-size:15px;font-weight:700;color:#fbbf24;">12,500 XMR</div></div>
+    <div><div style="font-size:11px;color:#8b95b0;">Maturity</div>
+         <div style="font-size:13px;color:#e8eaf0;">2034-11-01</div></div>
+    <div><div style="font-size:11px;color:#8b95b0;">Units held</div>
+         <div style="font-size:13px;color:#e8eaf0;">1</div></div>
+  </div></div>
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:10px;padding:18px 20px;cursor:pointer;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+    <div>
+      <div style="font-family:monospace;font-size:12px;color:#5e6ad2;margin-bottom:3px;">NYX-91C3</div>
+      <div style="font-size:14px;font-weight:700;color:#e8eaf0;">Sofia Reinholt 2040</div>
+      <div style="font-size:11px;color:#8b95b0;margin-top:2px;">SER-003 &middot; Unit 2/4</div>
+    </div>
+    <span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#4ade80;background:rgba(74,222,128,0.10);">ACTIVE</span>
+  </div>
+  <div style="height:1px;background:#2a2d3e;margin:0 0 8px;"></div>
+  <div style="display:flex;justify-content:space-between;">
+    <div><div style="font-size:11px;color:#8b95b0;">Collateral</div>
+         <div style="font-size:15px;font-weight:700;color:#fbbf24;">25,000 XMR</div></div>
+    <div><div style="font-size:11px;color:#8b95b0;">Maturity</div>
+         <div style="font-size:13px;color:#e8eaf0;">2040-02-28</div></div>
+    <div><div style="font-size:11px;color:#8b95b0;">Units held</div>
+         <div style="font-size:13px;color:#e8eaf0;">1</div></div>
+  </div></div>
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:10px;padding:18px 20px;cursor:pointer;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+    <div>
+      <div style="font-family:monospace;font-size:12px;color:#5e6ad2;margin-bottom:3px;">NYX-4401</div>
+      <div style="font-size:14px;font-weight:700;color:#e8eaf0;">Kenji Oduya Jr 2033</div>
+      <div style="font-size:11px;color:#8b95b0;margin-top:2px;">SER-004 &middot; Units 1-3</div>
+    </div>
+    <span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#4ade80;background:rgba(74,222,128,0.10);">ACTIVE</span>
+  </div>
+  <div style="height:1px;background:#2a2d3e;margin:0 0 8px;"></div>
+  <div style="display:flex;justify-content:space-between;">
+    <div><div style="font-size:11px;color:#8b95b0;">Collateral</div>
+         <div style="font-size:15px;font-weight:700;color:#fbbf24;">3x 5,000 XMR</div></div>
+    <div><div style="font-size:11px;color:#8b95b0;">Maturity</div>
+         <div style="font-size:13px;color:#e8eaf0;">2033-08-15</div></div>
+    <div><div style="font-size:11px;color:#8b95b0;">Units held</div>
+         <div style="font-size:13px;color:#e8eaf0;">3</div></div>
+  </div></div>
+</div>
+  </div></div></div><div data-frame="1" style="display:none;"><div style="background:#0d0f1a;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:#2d3068;display:flex;align-items:center;
+                  justify-content:center;font-size:11px;font-weight:700;color:#5e6ad2;">NYX</div>
+      <div><div style="font-size:15px;font-weight:700;color:#e8eaf0;">Holder Portfolio</div>
+           <div style="font-size:11px;color:#8b95b0;">.bounty files you hold</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="font-size:12px;font-family:monospace;color:#8b95b0;">7Ab2...88Fc</div>
+    </div></div>
+  <div style="max-width:960px;margin:0 auto;padding:28px 32px;">
+    <div style="margin-bottom:22px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:4px;text-transform:uppercase;">HOLDER PORTFOLIO / DETAIL</div>
+      <div style="font-size:22px;font-weight:700;color:#e8eaf0;">Bounty NYX-7F3A Detail</div>
+    </div>
+    <div style="display:flex;gap:20px;align-items:flex-start;"><div style="flex:1;">
+<div style="background:#131524;border:1px solid #2a2d3e;border-radius:10px;padding:18px 20px;margin-bottom:18px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+    <div>
+      <div style="font-family:monospace;font-size:12px;color:#5e6ad2;">NYX-7F3A-C20B-E941</div>
+      <div style="font-size:18px;font-weight:700;color:#e8eaf0;margin-top:2px;">Archer Mwangi 2036</div>
+      <div style="font-size:11px;color:#8b95b0;margin-top:2px;">Series SER-001 &middot; Serial 001 &middot; schema v1.0</div>
+    </div>
+    <span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#4ade80;background:rgba(74,222,128,0.10);">ACTIVE</span>
+  </div>
+  <div style="height:1px;background:#2a2d3e;margin:0 0 12px;"></div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
+    <div><div style="font-size:11px;color:#8b95b0;margin-bottom:3px;">Collateral</div><div style="font-size:13px;font-weight:600;color:#fbbf24;">50,000 XMR</div></div><div><div style="font-size:11px;color:#8b95b0;margin-bottom:3px;">Denomination</div><div style="font-size:13px;font-weight:600;color:#e8eaf0;">XMR</div></div><div><div style="font-size:11px;color:#8b95b0;margin-bottom:3px;">Issued</div><div style="font-size:13px;font-weight:600;color:#e8eaf0;">2026-04-23</div></div><div><div style="font-size:11px;color:#8b95b0;margin-bottom:3px;">Deadline</div><div style="font-size:13px;font-weight:600;color:#e8eaf0;">2036-04-23</div></div><div><div style="font-size:11px;color:#8b95b0;margin-bottom:3px;">Quorum</div><div style="font-size:13px;font-weight:600;color:#5e6ad2;">2-of-3 judges</div></div><div><div style="font-size:11px;color:#8b95b0;margin-bottom:3px;">DLEQ Proof</div><div style="font-size:13px;font-weight:600;color:#4ade80;">Valid &#10003;</div></div>
+  </div>
+</div>
+<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">BOND TERMS (AND)</div>
+<div style="padding:12px 14px;background:#1a1d2e;border:1px solid #2a2d3e;border-radius:7px;margin-bottom:8px;">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+    <span style="font-size:10px;font-weight:700;color:#4ade80;background:rgba(94,106,210,0.1);padding:2px 7px;border-radius:3px;">QUALITATIVE</span>
+    <span style="font-size:12px;color:#8b95b0;">Term 1</span>
+  </div>
+  <div style="font-size:13px;color:#e8eaf0;">Subject achieves biological age of 50 verified by independent biometric panel</div>
+  
+</div><div style="padding:12px 14px;background:#1a1d2e;border:1px solid #2a2d3e;border-radius:7px;margin-bottom:8px;">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+    <span style="font-size:10px;font-weight:700;color:#5e6ad2;background:rgba(94,106,210,0.1);padding:2px 7px;border-radius:3px;">QUANTITATIVE</span>
+    <span style="font-size:12px;color:#8b95b0;">Term 2</span>
+  </div>
+  <div style="font-size:13px;color:#e8eaf0;">VO2 max >= 45 mL/kg/min</div>
+  <div style="font-size:11px;font-family:monospace;color:#8b95b0;margin-top:3px;">bio.vo2max >= 45</div>
+</div><div style="padding:12px 14px;background:#1a1d2e;border:1px solid #2a2d3e;border-radius:7px;margin-bottom:8px;">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+    <span style="font-size:10px;font-weight:700;color:#fbbf24;background:rgba(94,106,210,0.1);padding:2px 7px;border-radius:3px;">HYBRID</span>
+    <span style="font-size:12px;color:#8b95b0;">Term 3</span>
+  </div>
+  <div style="font-size:13px;color:#e8eaf0;">DNA methylation age <= chronological age - 2 years</div>
+  
+</div>
+<div style="margin-top:6px;font-size:11px;color:#8b95b0;">All 3 terms must be met for payout (AND aggregation).</div></div><div style="flex:0 0 280px;"><div style="background:#131524;border:1px solid #2a2d3e;border-radius:10px;padding:18px 20px;">
+  <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">JUDGE PANEL</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #2a2d3e;"><div><div style="font-size:12px;font-family:monospace;color:#5e6ad2;">9dFk...3rPx</div><div style="font-size:11px;color:#8b95b0;">qualitative</div></div><div style="font-size:11px;color:#8b95b0;">0.5 XMR/attest</div></div><div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #2a2d3e;"><div><div style="font-size:12px;font-family:monospace;color:#5e6ad2;">7cD9...AA12</div><div style="font-size:11px;color:#8b95b0;">quantitative</div></div><div style="font-size:11px;color:#8b95b0;">0.3 XMR/attest</div></div><div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #2a2d3e;"><div><div style="font-size:12px;font-family:monospace;color:#5e6ad2;">2eF1...99B4</div><div style="font-size:11px;color:#8b95b0;">both</div></div><div style="font-size:11px;color:#8b95b0;">0.4 XMR/attest</div></div>
+  <div style="height:1px;background:#2a2d3e;margin:0 0 14px;"></div>
+  <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">COLLATERAL LOCK</div>
+  <div style="font-size:12px;color:#8b95b0;margin-bottom:6px;">Lock TX</div>
+  <div style="font-family:monospace;font-size:11px;color:#e8eaf0;word-break:break-all;margin-bottom:14px;">0x3a9f...c1d2 (block 4,102,881)</div>
+  <div style="height:1px;background:#2a2d3e;margin:0 0 14px;"></div>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <div style="width:100%;display:block;text-align:center;padding:13px 28px;background:#5e6ad2;border-radius:7px;font-size:14px;font-weight:700;color:#e8eaf0;cursor:pointer;">File a Claim</div>
+    <div style="width:100%;display:block;text-align:center;padding:12px 27px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:14px;color:#b8c0d8;cursor:pointer;">Transfer Bounty</div>
+    <div style="width:100%;display:block;text-align:center;padding:12px 27px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:14px;color:#b8c0d8;cursor:pointer;">Export .bounty File</div>
+  </div>
+</div></div></div>
+  </div></div></div><div data-frame="2" style="display:none;"><div style="background:#0d0f1a;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:#2d3068;display:flex;align-items:center;
+                  justify-content:center;font-size:11px;font-weight:700;color:#5e6ad2;">NYX</div>
+      <div><div style="font-size:15px;font-weight:700;color:#e8eaf0;">Holder Portfolio</div>
+           <div style="font-size:11px;color:#8b95b0;">.bounty files you hold</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="font-size:12px;font-family:monospace;color:#8b95b0;">7Ab2...88Fc</div>
+    </div></div>
+  <div style="max-width:960px;margin:0 auto;padding:28px 32px;">
+    <div style="margin-bottom:22px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:4px;text-transform:uppercase;">HOLDER PORTFOLIO / TRANSFER</div>
+      <div style="font-size:22px;font-weight:700;color:#e8eaf0;">Transfer Bounty</div>
+    </div>
+    
+<div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Bounty to Transfer</div><div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#8b95b0;font-family:monospace;">NYX-7F3A-C20B-E941  (Archer Mwangi 2036 &middot; 50,000 XMR)</div></div>
+<div style="height:1px;background:#2a2d3e;margin:0 0 12px;"></div>
+<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">RECIPIENT</div>
+<div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Recipient's Public Key</div><div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#8b95b0;font-family:monospace;">New bearer Ed25519 pubkey (hex or base58)...</div><div style="font-size:11px;color:#8b95b0;margin-top:4px;">The recipient must provide their public key before the transfer. They do not need to be online.</div></div>
+<div style="margin-bottom:12px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Delivery Method</div><div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:6px;padding:9px 13px;font-size:13px;color:#8b95b0;font-family:inherit;"></div><div style="font-size:11px;color:#8b95b0;margin-top:4px;">File can be sent via Tor, Signal, or physical media alongside the updated .bounty file</div></div>
+<div style="padding:12px 16px;background:rgba(251,191,36,0.10);border-left:3px solid #fbbf24;
+              border-radius:0 6px 6px 0;font-size:12px;color:#b8c0d8;margin-bottom:20px;">
+  Transferring changes the bearer key embedded in the .bounty file. Once transferred,
+  only the new bearer key can file claims or further transfer the bounty. This action is irreversible.</div>
+<div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;padding:14px 16px;margin-bottom:20px;">
+  <div style="font-size:12px;font-weight:700;color:#e8eaf0;margin-bottom:8px;">Transfer Summary</div>
+  <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:12px;color:#8b95b0;">Bounty</span><span style="font-size:12px;color:#e8eaf0;">NYX-7F3A-C20B-E941</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:12px;color:#8b95b0;">Current bearer</span><span style="font-size:12px;color:#e8eaf0;">7Ab2...88Fc (you)</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:12px;color:#8b95b0;">New bearer</span><span style="font-size:12px;color:#e8eaf0;">NEWBEARER00000001</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:12px;color:#8b95b0;">Network fee</span><span style="font-size:12px;color:#e8eaf0;">0.0001 XMR</span></div>
+</div>
+<div style="display:flex;gap:12px;"><div style="display:inline-block;padding:12px 27px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:14px;color:#b8c0d8;cursor:pointer;">Cancel</div> <div style="display:inline-block;padding:13px 28px;background:#5e6ad2;border-radius:7px;font-size:14px;font-weight:700;color:#e8eaf0;cursor:pointer;">Sign & Transfer</div></div>
+  </div></div></div><div data-frame="3" style="display:none;"><div style="background:#0d0f1a;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:#2d3068;display:flex;align-items:center;
+                  justify-content:center;font-size:11px;font-weight:700;color:#5e6ad2;">NYX</div>
+      <div><div style="font-size:15px;font-weight:700;color:#e8eaf0;">Holder Portfolio</div>
+           <div style="font-size:11px;color:#8b95b0;">.bounty files you hold</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="font-size:12px;font-family:monospace;color:#8b95b0;">7Ab2...88Fc</div>
+    </div></div>
+  <div style="max-width:960px;margin:0 auto;padding:28px 32px;">
+    <div style="margin-bottom:22px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:4px;text-transform:uppercase;">HOLDER PORTFOLIO / FILE CLAIM</div>
+      <div style="font-size:22px;font-weight:700;color:#e8eaf0;">File a Claim</div>
+    </div>
+    <div style="background:#131524;border:1px solid #2a2d3e;border-radius:10px;padding:18px 20px;margin-bottom:20px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <div><div style="font-size:15px;font-weight:700;color:#e8eaf0;">NYX-7F3A — Archer Mwangi 2036</div>
+         <div style="font-size:11px;color:#8b95b0;margin-top:2px;">50,000 XMR &middot; Deadline 2036-04-23 &middot; Judge 9dFk...3rPx</div></div>
+    <span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#4ade80;background:rgba(74,222,128,0.10);">ACTIVE</span>
+  </div>
+  <div style="padding:10px 14px;background:rgba(94,106,210,0.12);border-radius:6px;font-size:12px;color:#b8c0d8;">
+    This claim wizard is pre-filled with the selected bounty. You can modify any field before submitting.
+  </div>
+</div><div style="display:flex;gap:0;margin-bottom:24px;background:#131524;border:1px solid #2a2d3e;border-radius:8px;overflow:hidden;">
+  <div style="flex:1;padding:10px 14px;text-align:center;background:' + ACC_GLO + ';border-bottom:2px solid ' + ACCENT + ';'"><div style="font-size:11px;font-weight:700;color:' + ACCENT + ';letter-spacing:0.5px;">1. SELECT BOUNTY</div></div><div style="flex:1;padding:10px 14px;text-align:center;"><div style="font-size:11px;font-weight:700;color:' + TXT_MUT + ';letter-spacing:0.5px;">2. CLAIM TYPE</div></div><div style="flex:1;padding:10px 14px;text-align:center;"><div style="font-size:11px;font-weight:700;color:' + TXT_MUT + ';letter-spacing:0.5px;">3. EVIDENCE</div></div><div style="flex:1;padding:10px 14px;text-align:center;"><div style="font-size:11px;font-weight:700;color:' + TXT_MUT + ';letter-spacing:0.5px;">4. CONFIRM</div></div>
+</div><div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">CLAIM TYPE</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">
+  <div style="padding:12px 14px;background:' + ACC_GLO + ';border:1px solid ' + ACCENT + ';border-radius:8px;cursor:pointer;"><div style="font-size:13px;font-weight:600;color:#e8eaf0;margin-bottom:3px;">Maturity Payout</div><div style="font-size:11px;color:#8b95b0;">All terms met, collateral due</div></div><div style="padding:12px 14px;background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;cursor:pointer;"><div style="font-size:13px;font-weight:600;color:#e8eaf0;margin-bottom:3px;">Partial Payout</div><div style="font-size:11px;color:#8b95b0;">Terms partially met</div></div><div style="padding:12px 14px;background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;cursor:pointer;"><div style="font-size:13px;font-weight:600;color:#e8eaf0;margin-bottom:3px;">Issuer Default</div><div style="font-size:11px;color:#8b95b0;">Issuer failed obligations</div></div><div style="padding:12px 14px;background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;cursor:pointer;"><div style="font-size:13px;font-weight:600;color:#e8eaf0;margin-bottom:3px;">Expired</div><div style="font-size:11px;color:#8b95b0;">Bounty expired without settlement</div></div>
+</div>
+<div style="display:flex;gap:12px;"><div style="display:inline-block;padding:12px 27px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:14px;color:#b8c0d8;cursor:pointer;">Back to Portfolio</div> <div style="display:inline-block;padding:13px 28px;background:#5e6ad2;border-radius:7px;font-size:14px;font-weight:700;color:#e8eaf0;cursor:pointer;">Next: Evidence</div></div>
+  </div></div></div><div data-frame="4" style="display:none;"><div style="background:#0d0f1a;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:#2d3068;display:flex;align-items:center;
+                  justify-content:center;font-size:11px;font-weight:700;color:#5e6ad2;">NYX</div>
+      <div><div style="font-size:15px;font-weight:700;color:#e8eaf0;">Holder Portfolio</div>
+           <div style="font-size:11px;color:#8b95b0;">.bounty files you hold</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="font-size:12px;font-family:monospace;color:#8b95b0;">7Ab2...88Fc</div>
+    </div></div>
+  <div style="max-width:960px;margin:0 auto;padding:28px 32px;">
+    <div style="margin-bottom:22px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:4px;text-transform:uppercase;">HOLDER PORTFOLIO / HISTORY</div>
+      <div style="font-size:22px;font-weight:700;color:#e8eaf0;">Settlement History</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;">
+  <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px 16px;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">Lifetime Received</div><div style="font-size:22px;font-weight:700;color:#fbbf24;">16,500 XMR</div></div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px 16px;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">Approved</div><div style="font-size:22px;font-weight:700;color:#4ade80;">1</div></div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px 16px;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">Denied</div><div style="font-size:22px;font-weight:700;color:#f87171;">1</div></div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px 16px;"><div style="font-size:11px;color:#8b95b0;margin-bottom:6px;">Transferred/Expired</div><div style="font-size:22px;font-weight:700;color:#8b95b0;">2</div></div>
+</div><div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">CLOSED BOUNTIES</div><div style="display:grid;grid-template-columns:120px 1fr 120px 110px 100px 70px;gap:12px;padding:8px 16px;margin-bottom:6px;"><div style="font-size:11px;color:#8b95b0;">BOND ID</div><div style="font-size:11px;color:#8b95b0;">SUBJECT</div><div style="font-size:11px;color:#8b95b0;">COLLATERAL</div><div style="font-size:11px;color:#8b95b0;">CLOSED</div><div style="font-size:11px;color:#8b95b0;">OUTCOME</div><div></div></div><div style="display:grid;grid-template-columns:120px 1fr 120px 110px 100px 70px;gap:12px;align-items:center;padding:11px 16px;background:#131524;border:1px solid #2a2d3e;border-radius:8px;margin-bottom:8px;">
+  <div style="font-family:monospace;font-size:11px;color:#5e6ad2;">NYX-44EF</div>
+  <div style="font-size:13px;color:#e8eaf0;">Kenji Oduya 2031</div>
+  <div style="font-size:13px;color:#fbbf24;font-weight:600;">8,000 XMR</div>
+  <div style="font-size:12px;color:#8b95b0;">2026-02-14</div>
+  <div><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#4ade80;background:rgba(74,222,128,0.10);">APPROVED</span></div>
+  <div style="text-align:right;"><div style="display:inline-block;padding:6px 14px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:12px;color:#b8c0d8;cursor:pointer;">Details</div></div></div><div style="display:grid;grid-template-columns:120px 1fr 120px 110px 100px 70px;gap:12px;align-items:center;padding:11px 16px;background:#131524;border:1px solid #2a2d3e;border-radius:8px;margin-bottom:8px;">
+  <div style="font-family:monospace;font-size:11px;color:#5e6ad2;">NYX-3301</div>
+  <div style="font-size:13px;color:#e8eaf0;">Ana Lima 2028</div>
+  <div style="font-size:13px;color:#fbbf24;font-weight:600;">5,000 XMR</div>
+  <div style="font-size:12px;color:#8b95b0;">2025-09-01</div>
+  <div><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#5e6ad2;background:rgba(94,106,210,0.12);">TRANSFERRED</span></div>
+  <div style="text-align:right;"><div style="display:inline-block;padding:6px 14px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:12px;color:#b8c0d8;cursor:pointer;">Details</div></div></div><div style="display:grid;grid-template-columns:120px 1fr 120px 110px 100px 70px;gap:12px;align-items:center;padding:11px 16px;background:#131524;border:1px solid #2a2d3e;border-radius:8px;margin-bottom:8px;">
+  <div style="font-family:monospace;font-size:11px;color:#5e6ad2;">NYX-1102</div>
+  <div style="font-size:13px;color:#e8eaf0;">Bo Zhang 2025</div>
+  <div style="font-size:13px;color:#fbbf24;font-weight:600;">2,500 XMR</div>
+  <div style="font-size:12px;color:#8b95b0;">2025-01-15</div>
+  <div><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#8b95b0;background:rgba(139,149,176,0.1);">EXPIRED</span></div>
+  <div style="text-align:right;"><div style="display:inline-block;padding:6px 14px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:12px;color:#b8c0d8;cursor:pointer;">Details</div></div></div><div style="display:grid;grid-template-columns:120px 1fr 120px 110px 100px 70px;gap:12px;align-items:center;padding:11px 16px;background:#131524;border:1px solid #2a2d3e;border-radius:8px;margin-bottom:8px;">
+  <div style="font-family:monospace;font-size:11px;color:#5e6ad2;">NYX-0091</div>
+  <div style="font-size:13px;color:#e8eaf0;">Maria V. 2024</div>
+  <div style="font-size:13px;color:#fbbf24;font-weight:600;">1,000 XMR</div>
+  <div style="font-size:12px;color:#8b95b0;">2024-11-30</div>
+  <div><span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:#f87171;background:rgba(248,113,113,0.10);">DENIED</span></div>
+  <div style="text-align:right;"><div style="display:inline-block;padding:6px 14px;background:transparent;border:1px solid #2a2d3e;border-radius:7px;font-size:12px;color:#b8c0d8;cursor:pointer;">Details</div></div></div>
+  </div></div></div></div>
+<script>
+let cur=0;const tot=5;
+const fr=document.querySelectorAll('[data-frame]'),tb=document.querySelectorAll('[data-idx]');
+function show(i){fr[cur].style.display='none';tb[cur].style.color='#8b95b0';tb[cur].style.borderBottomColor='transparent';
+  cur=i;fr[cur].style.display='block';tb[cur].style.color='#5e6ad2';tb[cur].style.borderBottomColor='#5e6ad2';window.scrollTo(0,0);}
+function nav(d){show((cur+d+tot)%tot);}
+tb.forEach(t=>t.addEventListener('click',()=>show(+t.dataset.idx)));
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight')nav(1);if(e.key==='ArrowLeft')nav(-1);});
+</script></body></html>

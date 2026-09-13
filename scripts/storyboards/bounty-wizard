@@ -1,0 +1,576 @@
+#!/usr/bin/env python3
+"""
+NyxForge Bounty Creation Wizard mockup generator.
+Generates docs/storyboards/out/bounty-wizard-mockup.html
+
+6 steps (NGO / issuer perspective):
+  1. Description  -- bounty title, description, bearer warning
+  2. Terms        -- quantitative / qualitative, criterion, threshold, + ADD TERM
+  3. Timing       -- deadline, expiry, grace period, example timeline
+  4. Collateral   -- currency, lock mechanism, amount/file, file count, summary
+  5. Judges      -- judge pubkey, role, quorum, challenge period, settlement flow
+  6. Review       -- full summary before writing .bounty files
+"""
+import os, subprocess
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTDIR     = os.path.join(os.environ.get("NYXFORGE_ROOT", os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "docs/storyboards/out")
+OUTFILE    = os.path.join(OUTDIR, "bounty-wizard-mockup.html")
+
+# ---------------------------------------------------------------------------
+# Palette
+# ---------------------------------------------------------------------------
+BG           = "#0d0f1a"
+SURF         = "#131524"
+SURF_HI      = "#1a1d2e"
+ACCENT       = "#5e6ad2"
+ACC_GLO      = "#2d3068"
+TXT_PRI      = "#e8eaf0"
+TXT_SEC      = "#b8c0d8"
+TXT_MUT      = "#8b95b0"
+SUCCESS      = "#4ade80"
+DANGER       = "#f87171"
+WARN         = "#fbbf24"
+BORDER       = "#2a2d3e"
+INACT        = "#3a3d5c"
+WARN_RGBA    = "rgba(251,191,36,0.10)"
+ACCENT_RGBA  = "rgba(94,106,210,0.12)"
+
+FW = 900
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def section_label(text):
+    return (f'<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;'
+            f'color:{ACCENT};margin-bottom:8px;">{text}</div>')
+
+def divider(mb=12):
+    return f'<div style="height:1px;background:{BORDER};margin:0 0 {mb}px;"></div>'
+
+def input_field(label, value, mono=False, height=44, help_tip=False):
+    font = "monospace" if mono else "inherit"
+    tip  = (f'<span style="display:inline-block;width:15px;height:15px;border-radius:8px;'
+            f'background:{ACC_GLO};border:1px solid {ACCENT};font-size:10px;font-weight:700;'
+            f'color:{ACCENT};text-align:center;line-height:15px;margin-left:6px;">?</span>'
+            if help_tip else "")
+    return (f'<div style="margin-bottom:14px;">'
+            f'<div style="font-size:12px;color:{TXT_MUT};margin-bottom:5px;">{label}{tip}</div>'
+            f'<div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;'
+            f'padding:0 14px;height:{height}px;display:flex;align-items:center;'
+            f'font-size:13px;color:{TXT_MUT};font-family:{font};">{value}</div>'
+            f'</div>')
+
+def textarea_field(label, value, rows=3):
+    lh = rows * 22 + 16
+    return (f'<div style="margin-bottom:14px;">'
+            f'<div style="font-size:12px;color:{TXT_MUT};margin-bottom:5px;">{label}</div>'
+            f'<div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;'
+            f'padding:10px 14px;min-height:{lh}px;font-size:13px;color:{TXT_MUT};'
+            f'line-height:1.6;">{value}</div>'
+            f'</div>')
+
+def btn(label, color=SUCCESS, text_color=BG, small=False):
+    pad = "8px 18px" if small else "12px 26px"
+    fs  = "12px"     if small else "14px"
+    return (f'<div style="display:inline-block;padding:{pad};background:{color};'
+            f'border-radius:7px;font-size:{fs};font-weight:700;color:{text_color};'
+            f'cursor:pointer;letter-spacing:0.3px;">{label}</div>')
+
+def btn_outline(label, small=False):
+    pad = "7px 17px" if small else "11px 25px"
+    fs  = "12px"     if small else "14px"
+    return (f'<div style="display:inline-block;padding:{pad};background:transparent;'
+            f'border:1px solid {INACT};border-radius:7px;font-size:{fs};'
+            f'color:{TXT_SEC};cursor:pointer;">{label}</div>')
+
+def tab_toggle(labels, active_idx):
+    items = []
+    for i, lbl in enumerate(labels):
+        if i == active_idx:
+            items.append(
+                f'<div style="flex:1;padding:8px;background:{ACCENT};border-radius:5px;'
+                f'text-align:center;font-size:13px;font-weight:700;color:{TXT_PRI};">'
+                f'{lbl}</div>')
+        else:
+            items.append(
+                f'<div style="flex:1;padding:8px;background:transparent;border-radius:5px;'
+                f'text-align:center;font-size:13px;color:{TXT_MUT};cursor:pointer;">'
+                f'{lbl}</div>')
+    return (f'<div style="display:flex;gap:4px;background:{SURF_HI};border:1px solid {BORDER};'
+            f'border-radius:7px;padding:4px;margin-bottom:4px;">'
+            + "".join(items) + '</div>')
+
+def help_note(text):
+    return (f'<div style="font-size:11px;color:{TXT_MUT};margin-top:-8px;'
+            f'margin-bottom:14px;">{text}</div>')
+
+def wizard_header(title, subtitle):
+    return f"""
+  <div style="padding:18px 24px 14px;border-bottom:1px solid {BORDER};">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:{ACC_GLO};
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:11px;font-weight:700;color:{ACCENT};">NYX</div>
+      <div style="font-size:18px;font-weight:700;color:{TXT_PRI};">{title}</div>
+    </div>
+    <div style="font-size:13px;color:{TXT_MUT};padding-left:40px;">{subtitle}</div>
+  </div>"""
+
+def progress_stepper(steps, current):
+    items = []
+    n = len(steps)
+    for i, lbl in enumerate(steps):
+        step_n = i + 1
+        done   = step_n < current
+        active = step_n == current
+        if done:
+            dot_bg  = ACC_GLO
+            dot_brd = ACCENT
+            num_col = ACCENT
+            lbl_col = TXT_SEC
+            num_txt = "&#10003;"
+        elif active:
+            dot_bg  = ACCENT
+            dot_brd = ACCENT
+            num_col = BG
+            lbl_col = TXT_PRI
+            num_txt = str(step_n)
+        else:
+            dot_bg  = SURF_HI
+            dot_brd = INACT
+            num_col = TXT_MUT
+            lbl_col = TXT_MUT
+            num_txt = str(step_n)
+
+        dot = (f'<div style="width:26px;height:26px;border-radius:13px;'
+               f'background:{dot_bg};border:2px solid {dot_brd};'
+               f'display:flex;align-items:center;justify-content:center;'
+               f'font-size:11px;font-weight:700;color:{num_col};flex-shrink:0;">'
+               f'{num_txt}</div>')
+        label_el = (f'<div style="font-size:11px;color:{lbl_col};'
+                    f'font-weight:{"700" if active else "400"};'
+                    f'margin-top:5px;white-space:nowrap;">{lbl}</div>')
+        connector = ""
+        if i < n - 1:
+            connector = (f'<div style="flex:1;height:2px;background:{BORDER};'
+                         f'margin:0 2px;margin-top:-13px;"></div>')
+        items.append(
+            f'<div style="display:flex;flex-direction:column;align-items:center;">'
+            f'{dot}{label_el}</div>')
+        if connector:
+            items.append(
+                f'<div style="flex:1;height:2px;background:{BORDER};'
+                f'align-self:flex-start;margin-top:12px;"></div>')
+
+    return (f'<div style="display:flex;align-items:flex-start;padding:14px 24px 10px;'
+            f'border-bottom:1px solid {BORDER};">'
+            + "".join(items) + '</div>')
+
+STEPS = ["Description", "Terms", "Timing", "Collateral", "Judges", "Review"]
+
+def footer(step):
+    back = btn_outline("BACK") if step > 1 else \
+           f'<div style="width:94px;"></div>'
+    fwd_label = "CREATE BOUNTY" if step == 6 else "NEXT"
+    fwd_color = SUCCESS if step == 6 else ACCENT
+    fwd_tcol  = BG if step == 6 else TXT_PRI
+    return f"""
+  <div style="border-top:1px solid {BORDER};padding:14px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    {back}
+    <div style="font-size:12px;color:{TXT_MUT};">Step {step} of 6</div>
+    {btn(fwd_label, color=fwd_color, text_color=fwd_tcol)}
+  </div>"""
+
+def frame(fh, current_step, content):
+    return (f'<div class="frame" style="width:{FW}px;min-height:{fh}px;background:{BG};'
+            f'border:1px solid {BORDER};border-radius:10px;overflow:hidden;'
+            f'display:flex;flex-direction:column;">'
+            + wizard_header("Create Bounty", "")
+            + progress_stepper(STEPS, current_step)
+            + f'<div style="flex:1;padding:20px 24px;">{content}</div>'
+            + footer(current_step)
+            + '</div>')
+
+# ---------------------------------------------------------------------------
+# Step 1 -- Description
+# ---------------------------------------------------------------------------
+
+BEARER_WARNING = f"""
+<div style="background:{WARN_RGBA};border:1px solid {WARN};border-radius:8px;
+            padding:12px 16px;margin-top:8px;">
+  <div style="font-size:13px;font-weight:700;color:{WARN};margin-bottom:4px;">
+    Treat this file like cash.
+  </div>
+  <div style="font-size:12px;color:{TXT_SEC};line-height:1.6;">
+    Lose the .bounty file or its private key and the bounty is permanently lost.
+    Whoever possesses the .bounty file and its private key can redeem the collateral
+    once the judge panel attests that the bounty terms have been met.
+  </div>
+</div>"""
+
+S1 = (
+    f'<div style="font-size:13px;color:{TXT_MUT};margin-bottom:18px;">'
+    f'Step 1 of 6: Give your bounty a title and description.</div>'
+    + input_field("Bounty Title", "Example: US Federal Spending Reduction 2030", help_tip=True)
+    + textarea_field("Description (optional)",
+                     "Example: Reduce total US federal outlays as a percentage of GDP "
+                     "from the 2025 baseline of 24.5% to below 20% by 2030.", rows=4)
+    + BEARER_WARNING
+)
+
+F1 = frame(640, 1, S1)
+
+# ---------------------------------------------------------------------------
+# Step 2 -- Terms
+# ---------------------------------------------------------------------------
+
+TERM_CARD = f"""
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            padding:14px 16px;margin-bottom:14px;">
+  <div style="font-size:11px;font-weight:700;color:{TXT_MUT};letter-spacing:0.8px;
+              margin-bottom:12px;">TERM 1</div>
+  <div style="margin-bottom:12px;">
+    <div style="font-size:12px;color:{TXT_MUT};margin-bottom:5px;">Goal type</div>
+    <div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;
+                padding:0 14px;height:38px;display:flex;align-items:center;
+                justify-content:space-between;font-size:13px;color:{TXT_SEC};">
+      quantitative
+      <span style="color:{TXT_MUT};">&#9660;</span>
+    </div>
+  </div>
+  {input_field("Criterion", "Example: US federal outlays fall below 20% of GDP", help_tip=True)}
+  <div style="display:flex;gap:10px;align-items:flex-end;">
+    <div style="flex:1;">
+      <div style="font-size:12px;color:{TXT_MUT};margin-bottom:5px;">Threshold
+        <span style="display:inline-block;width:14px;height:14px;border-radius:7px;
+          background:{ACC_GLO};border:1px solid {ACCENT};font-size:10px;font-weight:700;
+          color:{ACCENT};text-align:center;line-height:14px;margin-left:5px;">?</span>
+      </div>
+      <div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;
+                  padding:0 14px;height:38px;display:flex;align-items:center;
+                  font-size:13px;color:{TXT_MUT};">0.20</div>
+    </div>
+    <div style="width:60px;height:38px;background:{ACC_GLO};border-radius:6px;
+                display:flex;align-items:center;justify-content:center;
+                font-size:14px;font-weight:700;color:{ACCENT};cursor:pointer;">&lt;=</div>
+  </div>
+</div>"""
+
+S2 = (
+    f'<div style="font-size:13px;color:{TXT_MUT};margin-bottom:14px;">'
+    f'Each term is one measurable condition that must be satisfied.</div>'
+    + tab_toggle(["Quantitative", "Qualitative"], 0)
+    + help_note("Quantitative: a number crosses a threshold.  "
+                "Example: US CPI &lt; 3% for 12 months.")
+    + f'<div style="height:12px;"></div>'
+    + TERM_CARD
+    + f'<div style="font-size:12px;color:{TXT_MUT};margin-bottom:10px;">'
+    f'All terms must be satisfied. Add as many terms as needed.</div>'
+    + f'<div style="background:{SURF_HI};border:1px dashed {BORDER};border-radius:7px;'
+    f'padding:10px;text-align:center;cursor:pointer;">'
+    f'<span style="font-size:13px;font-weight:700;color:{ACCENT};">+ ADD TERM</span></div>'
+)
+
+F2 = frame(660, 2, S2)
+
+# ---------------------------------------------------------------------------
+# Step 3 -- Timing
+# ---------------------------------------------------------------------------
+
+TIMELINE_EX = f"""
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            padding:14px 16px;margin-top:16px;">
+  <div style="font-size:11px;font-weight:700;color:{TXT_MUT};letter-spacing:0.8px;
+              margin-bottom:10px;">EXAMPLE TIMELINE</div>
+  {''.join(
+    f'<div style="display:flex;gap:12px;margin-bottom:8px;font-size:12px;">'
+    f'<div style="font-family:monospace;color:{TXT_MUT};white-space:nowrap;width:82px;">{d}</div>'
+    f'<div style="color:{TXT_SEC};">{e}</div>'
+    f'</div>'
+    for d, e in [
+        ("2026-01-15", "Bounty drafted by issuer."),
+        ("2026-02-01", "Judge panel accepts the bounty."),
+        ("2026-03-01", "Bounty auctioned; first holders acquire .bounty files."),
+        ("2030-01-01", "Deadline: judge evaluates whether terms are met."),
+        ("2030-04-01", "Expiry: bounty can no longer settle; challenge window closes."),
+        ("2030-05-01", "Timelock matures (30-day grace): issuer may reclaim collateral."),
+    ]
+  )}
+</div>"""
+
+S3 = (
+    f'<div style="font-size:13px;color:{TXT_MUT};margin-bottom:18px;">'
+    f'Expiry must be after deadline. Grace period delays timelock maturity.</div>'
+    + f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:6px;">'
+    + input_field("Deadline", "2030-01-01 00:00:00", mono=True, help_tip=True)
+    + input_field("Expiry",   "2030-04-01 23:59:59", mono=True, help_tip=True)
+    + f'</div>'
+    + help_note("Enter date only (e.g. 2030-01-01) to default to 23:59:59 on that day.")
+    + f'<div style="display:grid;grid-template-columns:160px 1fr;gap:14px;align-items:end;">'
+    + input_field("Grace period (days)", "30", help_tip=True)
+    + f'<div style="font-size:12px;color:{TXT_MUT};padding-bottom:16px;">'
+    f'Days after expiry before timelock matures and collateral can be reclaimed.</div>'
+    + f'</div>'
+    + TIMELINE_EX
+)
+
+F3 = frame(740, 3, S3)
+
+# ---------------------------------------------------------------------------
+# Step 4 -- Collateral
+# ---------------------------------------------------------------------------
+
+CURRENCIES = ["XMR", "ZEC", "BTC", "ETH", "TARI", "NYX"]
+CUR_PILLS = "".join(
+    f'<div style="padding:7px 16px;border-radius:6px;font-size:14px;font-weight:700;'
+    f'background:{ACCENT};color:{TXT_PRI};">{c}</div>'
+    if c == "XMR" else
+    f'<div style="padding:7px 16px;border-radius:6px;font-size:14px;color:{TXT_MUT};'
+    f'background:{SURF_HI};border:1px solid {BORDER};">{c}</div>'
+    for c in CURRENCIES
+)
+
+COLLATERAL_SUMMARY = f"""
+<div style="background:{ACC_GLO};border:1px solid {ACCENT};border-radius:8px;
+            padding:12px 16px;margin-top:4px;">
+  <div style="font-size:11px;font-weight:700;color:{ACCENT};letter-spacing:0.8px;
+              margin-bottom:4px;">COLLATERAL SUMMARY</div>
+  <div style="font-size:13px;color:{TXT_SEC};">
+    1.0 XMR &times; 1 file = <strong style="color:{TXT_PRI};">1.0 XMR total</strong>
+    &nbsp;(USD ~165) &nbsp;&middot;&nbsp; lock: <code style="color:{ACCENT};">dleq_xmr</code>
+  </div>
+</div>"""
+
+S4 = (
+    f'<div style="font-size:13px;color:{TXT_MUT};margin-bottom:18px;">'
+    f'Choose currency and lock amount. One file is one bearer unit.</div>'
+    + section_label("CURRENCY")
+    + f'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">{CUR_PILLS}</div>'
+    + help_note('Lock mechanism: <code>dleq_xmr</code> &nbsp;(changes automatically with currency selection)')
+    + f'<div style="height:8px;"></div>'
+    + f'<div style="display:grid;grid-template-columns:220px 1fr;gap:14px;align-items:end;">'
+    + input_field("Amount per file", "1.0", help_tip=True)
+    + f'<div style="padding-bottom:16px;display:flex;align-items:center;gap:10px;">'
+    f'<span style="font-size:15px;font-weight:700;color:{TXT_SEC};">XMR</span>'
+    f'<span style="font-size:13px;color:{TXT_MUT};">(USD ~165)</span>'
+    f'</div>'
+    + f'</div>'
+    + input_field("Number of files in series", "1", help_tip=True)
+    + input_field("Redemption value (optional, informational)",
+                  "Example: USD 10,000", help_tip=True)
+    + COLLATERAL_SUMMARY
+)
+
+F4 = frame(680, 4, S4)
+
+# ---------------------------------------------------------------------------
+# Step 5 -- Judges
+# ---------------------------------------------------------------------------
+
+ORACLE_CARD = f"""
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            padding:14px 16px;margin-bottom:14px;">
+  <div style="font-size:11px;font-weight:700;color:{TXT_MUT};letter-spacing:0.8px;
+              margin-bottom:12px;">JUDGE 1</div>
+  {input_field("Public key (64 hex chars)", "a1b2c3d4...  (32 bytes)", mono=True, help_tip=True)}
+  <div style="margin-bottom:12px;">
+    <div style="font-size:12px;color:{TXT_MUT};margin-bottom:5px;">Role</div>
+    <div style="display:flex;gap:6px;">
+      {''.join(
+        f'<div style="padding:6px 14px;border-radius:5px;font-size:12px;'
+        f'background:{ACCENT};color:{TXT_PRI};font-weight:700;">Both</div>'
+        if r == "Both" else
+        f'<div style="padding:6px 14px;border-radius:5px;font-size:12px;'
+        f'background:{SURF_HI};border:1px solid {BORDER};color:{TXT_MUT};">{r}</div>'
+        for r in ["Quantitative", "Qualitative", "Both"]
+      )}
+    </div>
+  </div>
+</div>"""
+
+SETTLEMENT_NOTE = f"""
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            padding:12px 16px;margin-top:8px;">
+  <div style="font-size:11px;font-weight:700;color:{TXT_MUT};letter-spacing:0.8px;
+              margin-bottom:6px;">SETTLEMENT FLOW</div>
+  <div style="font-size:12px;color:{TXT_SEC};line-height:1.8;">
+    Judge quorum signs attestation
+    &nbsp;&rarr;&nbsp; holder presents proof
+    &nbsp;&rarr;&nbsp; timelock releases
+  </div>
+</div>"""
+
+S5 = (
+    f'<div style="font-size:13px;color:{TXT_MUT};margin-bottom:16px;">'
+    f'Judges attest to term outcomes. Minimum quorum required for settlement.</div>'
+    + ORACLE_CARD
+    + f'<div style="display:grid;grid-template-columns:160px 220px;gap:14px;">'
+    + input_field("Min signatures", "2", help_tip=True)
+    + input_field("Challenge period (days)", "7", help_tip=True)
+    + f'</div>'
+    + f'<div style="background:{SURF_HI};border:1px dashed {BORDER};border-radius:7px;'
+    f'padding:10px;text-align:center;cursor:pointer;margin-bottom:14px;">'
+    f'<span style="font-size:13px;font-weight:700;color:{ACCENT};">+ ADD JUDGE</span></div>'
+    + SETTLEMENT_NOTE
+)
+
+F5 = frame(720, 5, S5)
+
+# ---------------------------------------------------------------------------
+# Step 6 -- Review
+# ---------------------------------------------------------------------------
+
+def review_section(title):
+    return (f'<div style="font-size:11px;font-weight:700;letter-spacing:1.0px;'
+            f'color:{ACCENT};margin-bottom:8px;margin-top:16px;">{title}</div>')
+
+def review_row(label, value):
+    return (f'<div style="display:flex;gap:12px;margin-bottom:6px;">'
+            f'<div style="font-size:12px;color:{TXT_MUT};width:120px;flex-shrink:0;">{label}</div>'
+            f'<div style="font-size:12px;color:{TXT_PRI};flex:1;">{value}</div>'
+            f'</div>')
+
+LEFT = (
+    review_section("DESCRIPTION")
+    + review_row("Title", "US Federal Spending Reduction 2030")
+    + review_row("Description", "Reduce federal outlays below 20% of GDP by 2030...")
+    + review_section("COLLATERAL")
+    + review_row("Currency", "XMR")
+    + review_row("Lock mechanism", "dleq_xmr")
+    + review_row("Amount / file", "1.0 XMR (USD ~165)")
+    + review_row("Files in series", "1")
+    + review_row("Total", "1.0 XMR")
+)
+
+RIGHT = (
+    review_section("TIMING")
+    + review_row("Deadline", "2030-01-01 00:00:00")
+    + review_row("Expiry", "2030-04-01 23:59:59")
+    + review_row("Grace period", "30 days")
+    + review_section("JUDGE PANEL")
+    + review_row("Judge 1", "a1b2c3d4...")
+    + review_row("Role", "Both")
+    + review_row("Quorum", "2 of 3")
+    + review_row("Challenge", "7 days")
+)
+
+TERMS_TABLE = f"""
+<div style="margin-top:16px;">
+  {section_label("TERMS  (all must be satisfied)")}
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;overflow:hidden;">
+    <div style="display:grid;grid-template-columns:28px 110px 1fr 120px;gap:8px;
+                padding:8px 14px;background:{SURF_HI};font-size:11px;color:{TXT_MUT};
+                letter-spacing:0.6px;">
+      <div>#</div><div>TYPE</div><div>CRITERION</div><div>OP / THRESHOLD</div>
+    </div>
+    <div style="height:1px;background:{BORDER};"></div>
+    <div style="display:grid;grid-template-columns:28px 110px 1fr 120px;gap:8px;
+                padding:10px 14px;font-size:12px;color:{TXT_PRI};">
+      <div>1</div>
+      <div>Quantitative</div>
+      <div>US federal outlays &lt; 20% of GDP</div>
+      <div style="font-family:monospace;">&lt;= 0.20</div>
+    </div>
+  </div>
+</div>"""
+
+S6 = (
+    f'<div style="font-size:13px;color:{TXT_MUT};margin-bottom:14px;">'
+    f'Verify all parameters before writing .bounty files.</div>'
+    + f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">'
+    + f'<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;'
+    f'padding:14px 16px;">{LEFT}</div>'
+    + f'<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;'
+    f'padding:14px 16px;">{RIGHT}</div>'
+    + f'</div>'
+    + TERMS_TABLE
+)
+
+F6 = frame(720, 6, S6)
+
+# ---------------------------------------------------------------------------
+# Assemble HTML with tab viewer
+# ---------------------------------------------------------------------------
+
+FRAMES = [
+    ("Step 1 — Description", F1),
+    ("Step 2 — Terms",       F2),
+    ("Step 3 — Timing",      F3),
+    ("Step 4 — Collateral",  F4),
+    ("Step 5 — Judges",     F5),
+    ("Step 6 — Review",      F6),
+]
+
+TABS_JS = ",\n".join(f'"{t}"' for t, _ in FRAMES)
+FRAMES_JS = ",\n".join(
+    f'`{html.replace("`", "\\`").replace("${", "\\${")}`'
+    for _, html in FRAMES
+)
+
+HTML = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NyxForge Bounty Creation Wizard</title>
+<style>
+* {{ box-sizing: border-box; margin: 0; padding: 0; }}
+body {{ background: #080a12; font-family: 'Inter', system-ui, sans-serif;
+       display: flex; flex-direction: column; align-items: center;
+       min-height: 100vh; padding: 24px 16px; }}
+.tab-bar {{ display: flex; gap: 4px; margin-bottom: 20px;
+           background: {SURF}; border: 1px solid {BORDER};
+           border-radius: 8px; padding: 4px; flex-wrap: wrap;
+           max-width: {FW}px; }}
+.tab {{ padding: 7px 14px; border-radius: 6px; cursor: pointer;
+       font-size: 12px; color: {TXT_MUT}; transition: all 0.15s;
+       white-space: nowrap; }}
+.tab.active {{ background: {ACCENT}; color: {TXT_PRI}; font-weight: 700; }}
+.tab:hover:not(.active) {{ color: {TXT_PRI}; }}
+.viewport {{ display: flex; align-items: flex-start; justify-content: center;
+            width: {FW}px; }}
+.nav {{ display: flex; gap: 12px; margin-top: 16px; align-items: center; }}
+.nav-btn {{ padding: 8px 20px; border-radius: 6px; cursor: pointer;
+           font-size: 13px; background: {SURF}; border: 1px solid {BORDER};
+           color: {TXT_SEC}; }}
+.nav-btn:hover {{ border-color: {ACCENT}; color: {TXT_PRI}; }}
+.frame-label {{ font-size: 12px; color: {TXT_MUT}; min-width: 160px; text-align: center; }}
+</style>
+</head>
+<body>
+<div class="tab-bar" id="tabBar"></div>
+<div class="viewport" id="viewport"></div>
+<div class="nav">
+  <div class="nav-btn" onclick="go(-1)">&larr; Prev</div>
+  <div class="frame-label" id="frameLabel"></div>
+  <div class="nav-btn" onclick="go(1)">Next &rarr;</div>
+</div>
+<script>
+const TABS   = [{TABS_JS}];
+const FRAMES = [{FRAMES_JS}];
+let cur = 0;
+function render() {{
+  const tb = document.getElementById('tabBar');
+  tb.innerHTML = TABS.map((t,i) =>
+    `<div class="tab${{i===cur?' active':''}}" onclick="jump(${{i}})">${{t}}</div>`
+  ).join('');
+  document.getElementById('viewport').innerHTML = FRAMES[cur];
+  document.getElementById('frameLabel').textContent =
+    (cur+1) + ' / ' + FRAMES.length + ' — ' + TABS[cur];
+}}
+function jump(i) {{ cur = i; render(); }}
+function go(d) {{ cur = (cur + d + FRAMES.length) % FRAMES.length; render(); }}
+render();
+</script>
+</body>
+</html>"""
+
+os.makedirs(OUTDIR, exist_ok=True)
+with open(OUTFILE, "w") as f:
+    f.write(HTML)
+print(f"Written: {OUTFILE}")
+if os.environ.get("NYX_OPEN") == "1":   # opt in; macOS only
+    subprocess.Popen(["open", "-a", "Brave Browser", OUTFILE])
+    print("Opened in Brave.")

@@ -1,0 +1,670 @@
+#!/usr/bin/env python3
+"""
+NyxForge Bounty Portfolio mockup generator.
+Generates docs/storyboards/out/bounty-portfolio-mockup.html
+
+5 frames (holder / bearer file perspective):
+  1. Portfolio       -- wallet home, held bounties list, status badges, total value
+  2. Bounty Detail     -- single bounty: terms, judge status, collateral, timeline
+  3. Redeem          -- outcome confirmed, claim collateral + payout
+  4. Transfer        -- send bearer .bounty file to new holder
+  5. Import          -- add a .bounty file to wallet by paste or upload
+"""
+import os, subprocess
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTDIR     = os.path.join(os.environ.get("NYXFORGE_ROOT", os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "docs/storyboards/out")
+OUTFILE    = os.path.join(OUTDIR, "bounty-portfolio-mockup.html")
+
+# ---------------------------------------------------------------------------
+# Palette
+# ---------------------------------------------------------------------------
+BG           = "#0d0f1a"
+SURF         = "#131524"
+SURF_HI      = "#1a1d2e"
+ACCENT       = "#5e6ad2"
+ACC_GLO      = "#2d3068"
+TXT_PRI      = "#e8eaf0"
+TXT_SEC      = "#b8c0d8"
+TXT_MUT      = "#8b95b0"
+SUCCESS      = "#4ade80"
+DANGER       = "#f87171"
+WARN         = "#fbbf24"
+BORDER       = "#2a2d3e"
+INACT        = "#3a3d5c"
+SUCCESS_RGBA = "rgba(74,222,128,0.10)"
+DANGER_RGBA  = "rgba(248,113,113,0.10)"
+WARN_RGBA    = "rgba(251,191,36,0.10)"
+ACCENT_RGBA  = "rgba(94,106,210,0.12)"
+
+FW = 900
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def section_label(text):
+    return (f'<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;'
+            f'color:{ACCENT};margin-bottom:8px;">{text}</div>')
+
+def divider(mb=12):
+    return f'<div style="height:1px;background:{BORDER};margin:0 0 {mb}px;"></div>'
+
+def input_field(label, value, mono=False, note=None):
+    font = "monospace" if mono else "inherit"
+    n = (f'<div style="font-size:11px;color:{TXT_MUT};margin-top:4px;">{note}</div>'
+         if note else "")
+    return (f'<div style="margin-bottom:12px;">'
+            f'<div style="font-size:12px;color:{TXT_MUT};margin-bottom:4px;">{label}</div>'
+            f'<div style="background:{SURF};border:1px solid {BORDER};border-radius:6px;'
+            f'padding:9px 13px;font-size:13px;color:{TXT_SEC};font-family:{font};">{value}</div>'
+            f'{n}</div>')
+
+def btn(label, color=SUCCESS, text_color=BG, small=False):
+    pad = "8px 18px" if small else "13px 28px"
+    fs  = "12px"     if small else "14px"
+    return (f'<div style="display:inline-block;padding:{pad};background:{color};'
+            f'border-radius:8px;font-size:{fs};font-weight:700;color:{text_color};'
+            f'cursor:pointer;letter-spacing:0.3px;">{label}</div>')
+
+def btn_outline(label, small=False, color=None):
+    pad  = "7px 17px" if small else "12px 27px"
+    fs   = "12px"     if small else "14px"
+    col  = color or TXT_SEC
+    bord = color or BORDER
+    return (f'<div style="display:inline-block;padding:{pad};background:transparent;'
+            f'border:1px solid {bord};border-radius:8px;font-size:{fs};'
+            f'color:{col};cursor:pointer;">{label}</div>')
+
+def status_pill(text, color, bg):
+    return (f'<span style="font-size:10px;font-weight:700;letter-spacing:0.8px;'
+            f'padding:3px 9px;border-radius:4px;color:{color};background:{bg};">'
+            f'{text}</span>')
+
+def check_row(label, checked=False):
+    box = (f'<div style="width:16px;height:16px;border-radius:3px;background:{ACC_GLO};'
+           f'border:2px solid {ACCENT};flex-shrink:0;display:flex;align-items:center;'
+           f'justify-content:center;font-size:10px;color:{SUCCESS};">&#10003;</div>') if checked else \
+          (f'<div style="width:16px;height:16px;border-radius:3px;background:{SURF};'
+           f'border:2px solid {INACT};flex-shrink:0;"></div>')
+    return (f'<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">'
+            f'{box}'
+            f'<span style="font-size:13px;color:{TXT_SEC};line-height:1.5;">{label}</span>'
+            f'</div>')
+
+def nyx_wallet_header(addr_short):
+    return f"""
+  <div style="background:{SURF};border-bottom:1px solid {BORDER};padding:14px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:{ACC_GLO};
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:11px;font-weight:700;color:{ACCENT};">NYX</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Bounty Wallet</div>
+        <div style="font-size:11px;color:{TXT_MUT};margin-top:1px;">NyxForge</div>
+      </div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:11px;color:{TXT_MUT};margin-bottom:2px;">WALLET ADDRESS</div>
+      <div style="font-size:12px;font-family:monospace;color:{TXT_SEC};">{addr_short}</div>
+    </div>
+  </div>"""
+
+def timeline_row(label, date, done=False, active=False):
+    dot_bg  = SUCCESS if done else (ACCENT if active else INACT)
+    lbl_col = TXT_PRI if (done or active) else TXT_MUT
+    return (f'<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">'
+            f'<div style="width:10px;height:10px;border-radius:5px;background:{dot_bg};'
+            f'flex-shrink:0;"></div>'
+            f'<div style="flex:1;font-size:13px;color:{lbl_col};">{label}</div>'
+            f'<div style="font-size:12px;color:{TXT_MUT};font-family:monospace;">{date}</div>'
+            f'</div>')
+
+def judge_row(name, org, status, status_color, status_bg, img_id):
+    return (f'<div style="display:flex;align-items:center;gap:10px;padding:8px 0;'
+            f'border-bottom:1px solid {BORDER};">'
+            f'<img src="https://i.pravatar.cc/32?img={img_id}" '
+            f'style="width:32px;height:32px;border-radius:16px;flex-shrink:0;">'
+            f'<div style="flex:1;">'
+            f'<div style="font-size:13px;color:{TXT_PRI};">{name}</div>'
+            f'<div style="font-size:11px;color:{TXT_MUT};">{org}</div>'
+            f'</div>'
+            f'{status_pill(status, status_color, status_bg)}'
+            f'</div>')
+
+def bounty_row(bounty_id, name, amount, collateral, status, status_color, status_bg, deadline):
+    return (f'<div style="display:grid;grid-template-columns:1fr 2fr 80px 90px 110px 100px;'
+            f'gap:8px;align-items:center;padding:11px 14px;'
+            f'border-bottom:1px solid {BORDER};font-size:13px;">'
+            f'<div style="font-family:monospace;font-size:11px;color:{TXT_MUT};">{bounty_id}</div>'
+            f'<div style="color:{TXT_PRI};">{name}</div>'
+            f'<div style="color:{TXT_SEC};text-align:right;">{amount}</div>'
+            f'<div style="color:{TXT_MUT};font-family:monospace;text-align:right;">{collateral}</div>'
+            f'<div>{status_pill(status, status_color, status_bg)}</div>'
+            f'<div style="color:{TXT_MUT};font-size:11px;">{deadline}</div>'
+            f'</div>')
+
+# ---------------------------------------------------------------------------
+# Frame builder
+# ---------------------------------------------------------------------------
+
+def frame(fh, content):
+    return f"""
+<div class="frame" style="width:{FW}px;min-height:{fh}px;background:{BG};
+     border:1px solid {BORDER};border-radius:10px;overflow:hidden;
+     display:flex;flex-direction:column;">
+{content}
+</div>"""
+
+# ---------------------------------------------------------------------------
+# Frame 1 -- Portfolio
+# ---------------------------------------------------------------------------
+
+ADDR = "4AB...f9c2"
+
+BOUNTY_ROWS = (
+    bounty_row("ALZ-2040-0047", "Alzheimer HALE Bounty 2040", "$100", "0.45 XMR",
+             "ACTIVE", ACCENT, ACCENT_RGBA, "Dec 31, 2040") +
+    bounty_row("MAL-2035-0012", "Malaria Eradication Bounty 2035", "$50", "0.22 XMR",
+             "REDEEMABLE", SUCCESS, SUCCESS_RGBA, "Jun 30, 2035") +
+    bounty_row("WAT-2030-0083", "Clean Water Access 2030", "$25", "returned",
+             "EXPIRED", TXT_MUT, SURF_HI, "Mar 15, 2030") +
+    bounty_row("TB-2038-0031",  "Global TB Reduction Bounty", "$200", "0.90 XMR",
+             "ACTIVE", ACCENT, ACCENT_RGBA, "Dec 31, 2038")
+)
+
+SUMMARY_CARDS = f"""
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:14px 16px;">
+    <div style="font-size:11px;color:{TXT_MUT};letter-spacing:0.8px;">BOUNTIES HELD</div>
+    <div style="font-size:24px;font-weight:700;color:{TXT_PRI};margin-top:4px;">4</div>
+  </div>
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:14px 16px;">
+    <div style="font-size:11px;color:{TXT_MUT};letter-spacing:0.8px;">TOTAL BACKED</div>
+    <div style="font-size:24px;font-weight:700;color:{TXT_PRI};margin-top:4px;">$375</div>
+  </div>
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:14px 16px;">
+    <div style="font-size:11px;color:{TXT_MUT};letter-spacing:0.8px;">COLLATERAL LOCKED</div>
+    <div style="font-size:24px;font-weight:700;color:{TXT_PRI};margin-top:4px;">1.57 XMR</div>
+  </div>
+  <div style="background:{SUCCESS};border-radius:8px;padding:14px 16px;">
+    <div style="font-size:11px;color:{BG};letter-spacing:0.8px;font-weight:700;">READY TO CLAIM</div>
+    <div style="font-size:24px;font-weight:700;color:{BG};margin-top:4px;">0.22 XMR</div>
+  </div>
+</div>"""
+
+TABLE_HEADER = (
+    f'<div style="display:grid;grid-template-columns:1fr 2fr 80px 90px 110px 100px;'
+    f'gap:8px;align-items:center;padding:8px 14px;'
+    f'background:{SURF_HI};border-bottom:1px solid {BORDER};">'
+    f'<div style="font-size:11px;color:{TXT_MUT};letter-spacing:0.8px;">BOUNTY ID</div>'
+    f'<div style="font-size:11px;color:{TXT_MUT};letter-spacing:0.8px;">CAMPAIGN</div>'
+    f'<div style="font-size:11px;color:{TXT_MUT};letter-spacing:0.8px;text-align:right;">BACKED</div>'
+    f'<div style="font-size:11px;color:{TXT_MUT};letter-spacing:0.8px;text-align:right;">COLLATERAL</div>'
+    f'<div style="font-size:11px;color:{TXT_MUT};letter-spacing:0.8px;">STATUS</div>'
+    f'<div style="font-size:11px;color:{TXT_MUT};letter-spacing:0.8px;">DEADLINE</div>'
+    f'</div>'
+)
+
+F1 = frame(820, nyx_wallet_header(ADDR) + f"""
+<div style="padding:20px 24px;flex:1;">
+  {SUMMARY_CARDS}
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+    {section_label("MY BOUNTIES")}
+    <div style="display:flex;gap:8px;">
+      {btn("+ Import Bounty", color=ACCENT, text_color=TXT_PRI, small=True)}
+    </div>
+  </div>
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;overflow:hidden;margin-bottom:20px;">
+    {TABLE_HEADER}
+	    {BOUNTY_ROWS}
+  </div>
+  <div style="background:{WARN_RGBA};border:1px solid {WARN};border-radius:8px;
+              padding:12px 16px;display:flex;align-items:center;gap:12px;">
+    <div style="font-size:18px;color:{WARN};">&#9888;</div>
+    <div style="font-size:13px;color:{TXT_SEC};">
+      <strong style="color:{WARN};">Malaria Eradication Bounty 2035</strong> has been resolved.
+      0.22 XMR is ready to claim to your return address.
+      <span style="color:{ACCENT};cursor:pointer;"> Claim now &rarr;</span>
+    </div>
+  </div>
+</div>""")
+
+# ---------------------------------------------------------------------------
+# Frame 2 -- Bounty Detail (ACTIVE: Alzheimer HALE Bounty)
+# ---------------------------------------------------------------------------
+
+LEFT_COL = f"""
+<div style="flex:1;min-width:0;">
+  {section_label("BOUNTY TERMS")}
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              padding:14px 16px;margin-bottom:16px;">
+    <div style="font-size:13px;color:{TXT_SEC};line-height:1.6;">
+      The bounty resolves in favor of holders if the WHO Global Healthy Life Expectancy
+      (HALE) metric reaches or exceeds <strong style="color:{TXT_PRI};">80 years</strong>
+      by December 31, 2040, as measured by the WHO World Health Statistics annual report.
+    </div>
+  </div>
+
+  {section_label("JUDGE ASSIGNMENTS")}
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              overflow:hidden;margin-bottom:16px;">
+    {judge_row("Dr. Sarah Chen", "WHO Geneva", "MONITORING", ACCENT, ACCENT_RGBA, 16)}
+    {judge_row("Dr. Marcus Webb", "FDA / NIH", "MONITORING", ACCENT, ACCENT_RGBA, 51)}
+    {judge_row("Dr. Elena Marchetti", "Cochrane Reviews", "MONITORING", ACCENT, ACCENT_RGBA, 47)}
+  </div>
+
+  {section_label("RESOLUTION TIMELINE")}
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              padding:14px 16px;">
+    {timeline_row("Bounty funded", "Apr 22, 2026", done=True)}
+    {timeline_row("Judge window opens", "Dec 1, 2040", active=True)}
+    {timeline_row("Judge window closes", "Jan 31, 2041")}
+    {timeline_row("Resolution on-chain", "Feb 2041")}
+    {timeline_row("Collateral released", "Feb 2041")}
+  </div>
+</div>"""
+
+RIGHT_COL = f"""
+<div style="width:260px;flex-shrink:0;">
+  {section_label("YOUR POSITION")}
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              padding:14px 16px;margin-bottom:16px;">
+    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+      <div style="font-size:12px;color:{TXT_MUT};">Backing amount</div>
+      <div style="font-size:13px;color:{TXT_PRI};font-weight:700;">$100</div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+      <div style="font-size:12px;color:{TXT_MUT};">Collateral locked</div>
+      <div style="font-size:13px;color:{TXT_PRI};font-family:monospace;">0.45 XMR</div>
+    </div>
+    <div style="display:flex;justify-content:space-between;">
+      <div style="font-size:12px;color:{TXT_MUT};">Max payout</div>
+      <div style="font-size:14px;color:{SUCCESS};font-weight:700;">0.45 XMR</div>
+    </div>
+  </div>
+
+  {section_label("RETURN ADDRESS")}
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              padding:12px 14px;margin-bottom:16px;">
+    <div style="font-size:11px;font-family:monospace;color:{TXT_MUT};word-break:break-all;
+                line-height:1.6;">4Ac7bPzQnR...e91f</div>
+    <div style="font-size:11px;color:{TXT_MUT};margin-top:6px;">XMR return address</div>
+  </div>
+
+  {section_label("BOUNTY FILE")}
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              padding:12px 14px;margin-bottom:16px;">
+    <div style="font-size:12px;color:{TXT_SEC};margin-bottom:8px;">ALZ-2040-0047.bounty</div>
+    <div style="font-size:11px;color:{TXT_MUT};margin-bottom:10px;">
+      This is a bearer file. Keep it with the controlling .nfkey -- together they grant claim rights.
+    </div>
+    {btn_outline("Export .bounty file", small=True)}
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    {btn_outline("Transfer Bounty", small=True, color=ACCENT)}
+    {btn_outline("File a Dispute", small=True, color=DANGER)}
+  </div>
+</div>"""
+
+BOUNTY_HEADER = f"""
+<div style="padding:16px 24px;border-bottom:1px solid {BORDER};
+            display:flex;align-items:center;gap:12px;">
+  <div style="font-size:12px;color:{ACCENT};cursor:pointer;">&larr; My Bounties</div>
+  <div style="width:1px;height:16px;background:{BORDER};"></div>
+  <div style="flex:1;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="font-size:16px;font-weight:700;color:{TXT_PRI};">Alzheimer HALE Bounty 2040</div>
+      {status_pill("ACTIVE", ACCENT, ACCENT_RGBA)}
+    </div>
+    <div style="font-size:11px;font-family:monospace;color:{TXT_MUT};margin-top:3px;">
+      ALZ-2040-0047 &middot; Backed Apr 22, 2026 &middot; ARA Foundation</div>
+  </div>
+</div>"""
+
+F2 = frame(860, nyx_wallet_header(ADDR) + BOUNTY_HEADER + f"""
+<div style="padding:20px 24px;display:flex;gap:20px;flex:1;">
+  {LEFT_COL}
+  {RIGHT_COL}
+</div>""")
+
+# ---------------------------------------------------------------------------
+# Frame 3 -- Redeem (Malaria bounty REDEEMABLE)
+# ---------------------------------------------------------------------------
+
+CLAIM_BREAKDOWN = f"""
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            padding:18px 20px;margin-bottom:16px;">
+  <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+    <div style="font-size:13px;color:{TXT_MUT};">Collateral (principal)</div>
+    <div style="font-size:13px;color:{TXT_SEC};font-family:monospace;">0.22 XMR</div>
+  </div>
+  <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+    <div style="font-size:13px;color:{TXT_MUT};">Judge fee</div>
+    <div style="font-size:13px;color:{TXT_SEC};font-family:monospace;">paid by issuer</div>
+  </div>
+  {divider(10)}
+  <div style="display:flex;justify-content:space-between;">
+    <div style="font-size:14px;font-weight:700;color:{TXT_PRI};">Total payout</div>
+    <div style="font-size:18px;font-weight:700;color:{SUCCESS};font-family:monospace;">0.22 XMR</div>
+  </div>
+</div>"""
+
+VERDICT_SUMMARY = f"""
+<div style="background:{SUCCESS_RGBA};border:1px solid {SUCCESS};border-radius:8px;
+            padding:14px 16px;margin-bottom:16px;">
+  {section_label("OUTCOME CONFIRMED")}
+  <div style="font-size:13px;color:{TXT_SEC};line-height:1.6;">
+    WHO data confirmed malaria incidence below the bounty threshold as of June 2035.
+    2-of-3 judges submitted matching attestations with TLS-Notary proofs.
+    The bounty resolved in favor of holders on <strong style="color:{TXT_PRI};">July 4, 2035</strong>.
+  </div>
+</div>"""
+
+RETURN_ADDR = f"""
+<div style="margin-bottom:16px;">
+  {section_label("PAYMENT WILL BE SENT TO")}
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              padding:12px 16px;">
+    <div style="font-size:12px;font-family:monospace;color:{TXT_SEC};word-break:break-all;">
+      48RcQnWaLM7...b4d9
+    </div>
+    <div style="font-size:11px;color:{TXT_MUT};margin-top:5px;">
+      XMR return address provided at bounty purchase
+    </div>
+  </div>
+</div>"""
+
+F3_HEADER = f"""
+<div style="padding:16px 24px;border-bottom:1px solid {BORDER};
+            display:flex;align-items:center;gap:12px;">
+  <div style="font-size:12px;color:{ACCENT};cursor:pointer;">&larr; My Bounties</div>
+  <div style="width:1px;height:16px;background:{BORDER};"></div>
+  <div style="flex:1;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="font-size:16px;font-weight:700;color:{TXT_PRI};">Malaria Eradication Bounty 2035</div>
+      {status_pill("REDEEMABLE", SUCCESS, SUCCESS_RGBA)}
+    </div>
+    <div style="font-size:11px;font-family:monospace;color:{TXT_MUT};margin-top:3px;">
+      MAL-2035-0012 &middot; Backed Jan 5, 2026 &middot; Gates Foundation</div>
+  </div>
+</div>"""
+
+F3_BODY = f"""
+<div style="padding:20px 24px;max-width:560px;margin:0 auto;width:100%;">
+  <div style="text-align:center;margin-bottom:24px;">
+    <div style="width:56px;height:56px;border-radius:28px;background:{SUCCESS_RGBA};
+                border:2px solid {SUCCESS};display:flex;align-items:center;
+                justify-content:center;font-size:24px;color:{SUCCESS};
+                margin:0 auto 12px;">&#10003;</div>
+    <div style="font-size:20px;font-weight:700;color:{TXT_PRI};margin-bottom:6px;">
+      Bounty outcome confirmed
+    </div>
+    <div style="font-size:13px;color:{TXT_MUT};">
+      The goal was achieved. Your collateral is ready to claim.
+    </div>
+  </div>
+  {VERDICT_SUMMARY}
+  {CLAIM_BREAKDOWN}
+  {RETURN_ADDR}
+  <div style="display:flex;gap:10px;justify-content:center;">
+    {btn("CLAIM 0.22 XMR", color=SUCCESS, text_color=BG)}
+    {btn_outline("View Judge Proofs", small=False)}
+  </div>
+  <div style="margin-top:14px;font-size:11px;color:{TXT_MUT};text-align:center;">
+    On-chain settlement typically confirms within 30 minutes.
+    The .bounty file will be invalidated after claim.
+  </div>
+</div>"""
+
+F3 = frame(760, nyx_wallet_header(ADDR) + F3_HEADER + F3_BODY)
+
+# ---------------------------------------------------------------------------
+# Frame 4 -- Transfer
+# ---------------------------------------------------------------------------
+
+WARN_BEARER = f"""
+<div style="background:{WARN_RGBA};border:1px solid {WARN};border-radius:8px;
+            padding:12px 16px;margin-bottom:20px;display:flex;gap:12px;">
+  <div style="font-size:18px;color:{WARN};flex-shrink:0;">&#9888;</div>
+  <div style="font-size:13px;color:{TXT_SEC};line-height:1.5;">
+    <strong style="color:{WARN};">Bearer bounty warning.</strong> This is a bearer instrument.
+    Whoever holds the .bounty file can claim the payout. Once transferred, you lose all rights.
+    This action cannot be undone.
+  </div>
+</div>"""
+
+TRANSFER_STEPS = f"""
+<div style="display:flex;gap:8px;margin-bottom:20px;">
+  <div style="flex:1;background:{ACC_GLO};border:2px solid {ACCENT};border-radius:8px;
+              padding:12px;text-align:center;">
+    <div style="font-size:18px;font-weight:700;color:{ACCENT};">1</div>
+    <div style="font-size:12px;color:{TXT_SEC};margin-top:4px;">Choose method</div>
+  </div>
+  <div style="flex:1;background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              padding:12px;text-align:center;">
+    <div style="font-size:18px;font-weight:700;color:{TXT_MUT};">2</div>
+    <div style="font-size:12px;color:{TXT_MUT};margin-top:4px;">Recipient</div>
+  </div>
+  <div style="flex:1;background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              padding:12px;text-align:center;">
+    <div style="font-size:18px;font-weight:700;color:{TXT_MUT};">3</div>
+    <div style="font-size:12px;color:{TXT_MUT};margin-top:4px;">Confirm</div>
+  </div>
+</div>"""
+
+TRANSFER_METHODS = f"""
+{section_label("TRANSFER METHOD")}
+<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+  <div style="background:{SURF};border:2px solid {ACCENT};border-radius:8px;
+              padding:14px 16px;display:flex;align-items:flex-start;gap:12px;">
+    <div style="width:16px;height:16px;border-radius:8px;border:2px solid {ACCENT};
+                background:{ACC_GLO};flex-shrink:0;margin-top:2px;display:flex;
+                align-items:center;justify-content:center;">
+      <div style="width:7px;height:7px;border-radius:4px;background:{ACCENT};"></div>
+    </div>
+    <div>
+      <div style="font-size:13px;font-weight:700;color:{TXT_PRI};">Download .bounty file</div>
+      <div style="font-size:12px;color:{TXT_MUT};margin-top:3px;">
+        Download the encrypted bearer file and send it to the recipient directly.
+        Use this for in-person transfers or secure off-channel delivery.
+      </div>
+    </div>
+  </div>
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              padding:14px 16px;display:flex;align-items:flex-start;gap:12px;">
+    <div style="width:16px;height:16px;border-radius:8px;border:2px solid {INACT};
+                background:{SURF};flex-shrink:0;margin-top:2px;"></div>
+    <div>
+      <div style="font-size:13px;font-weight:700;color:{TXT_PRI};">Send to NyxForge address</div>
+      <div style="font-size:12px;color:{TXT_MUT};margin-top:3px;">
+        Route through the Nym mixnet to a recipient's NyxForge wallet address.
+        The recipient's identity and yours remain private.
+      </div>
+    </div>
+  </div>
+</div>
+<div style="display:flex;gap:10px;">
+  {btn("Continue", color=ACCENT, text_color=TXT_PRI)}
+  {btn_outline("Cancel")}
+</div>"""
+
+F4_HEADER = f"""
+<div style="padding:16px 24px;border-bottom:1px solid {BORDER};
+            display:flex;align-items:center;gap:12px;">
+  <div style="font-size:12px;color:{ACCENT};cursor:pointer;">&larr; Bounty Detail</div>
+  <div style="width:1px;height:16px;background:{BORDER};"></div>
+  <div>
+    <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Transfer Bounty</div>
+    <div style="font-size:11px;font-family:monospace;color:{TXT_MUT};margin-top:2px;">
+      ALZ-2040-0047 &middot; Alzheimer HALE Bounty 2040</div>
+  </div>
+</div>"""
+
+F4 = frame(720, nyx_wallet_header(ADDR) + F4_HEADER + f"""
+<div style="padding:20px 24px;max-width:540px;">
+  {WARN_BEARER}
+  {TRANSFER_STEPS}
+  {TRANSFER_METHODS}
+</div>""")
+
+# ---------------------------------------------------------------------------
+# Frame 5 -- Import Bounty
+# ---------------------------------------------------------------------------
+
+IMPORT_METHODS = f"""
+{section_label("IMPORT METHOD")}
+<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+  <div style="background:{SURF};border:2px solid {ACCENT};border-radius:8px;
+              padding:14px 16px;display:flex;align-items:flex-start;gap:12px;">
+    <div style="width:16px;height:16px;border-radius:8px;border:2px solid {ACCENT};
+                background:{ACC_GLO};flex-shrink:0;margin-top:2px;display:flex;
+                align-items:center;justify-content:center;">
+      <div style="width:7px;height:7px;border-radius:4px;background:{ACCENT};"></div>
+    </div>
+    <div>
+      <div style="font-size:13px;font-weight:700;color:{TXT_PRI};">Upload .bounty file</div>
+      <div style="font-size:12px;color:{TXT_MUT};margin-top:3px;">
+        Select a .bounty file from your device to add to this wallet.
+      </div>
+    </div>
+  </div>
+  <div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+              padding:14px 16px;display:flex;align-items:flex-start;gap:12px;">
+    <div style="width:16px;height:16px;border-radius:8px;border:2px solid {INACT};
+                background:{SURF};flex-shrink:0;margin-top:2px;"></div>
+    <div>
+      <div style="font-size:13px;font-weight:700;color:{TXT_PRI};">Paste bounty token</div>
+      <div style="font-size:12px;color:{TXT_MUT};margin-top:3px;">
+        Paste the base64-encoded bounty token string received from the sender.
+      </div>
+    </div>
+  </div>
+</div>"""
+
+UPLOAD_ZONE = f"""
+<div style="border:2px dashed {BORDER};border-radius:10px;padding:32px;text-align:center;
+            margin-bottom:20px;background:{SURF};">
+  <div style="font-size:28px;color:{TXT_MUT};margin-bottom:10px;">&#128194;</div>
+  <div style="font-size:14px;color:{TXT_PRI};margin-bottom:6px;">
+    Drop .bounty file here or click to browse
+  </div>
+  <div style="font-size:12px;color:{TXT_MUT};">SQLite .bounty files only &middot; Max 10 MB</div>
+</div>"""
+
+IMPORT_NOTES = f"""
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;
+            padding:14px 16px;margin-bottom:20px;">
+  {section_label("WHAT HAPPENS ON IMPORT")}
+  <div style="font-size:13px;color:{TXT_SEC};line-height:1.8;">
+    1. The bounty schema and chain anchor are validated against the NyxForge registry.<br>
+    2. The bounty is decrypted using your wallet key to verify you are the authorized holder.<br>
+    3. The bounty appears in your portfolio and is tracked for judge status updates.
+  </div>
+</div>"""
+
+F5_HEADER = f"""
+<div style="padding:16px 24px;border-bottom:1px solid {BORDER};
+            display:flex;align-items:center;gap:12px;">
+  <div style="font-size:12px;color:{ACCENT};cursor:pointer;">&larr; My Bounties</div>
+  <div style="width:1px;height:16px;background:{BORDER};"></div>
+  <div>
+    <div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Import Bounty</div>
+    <div style="font-size:11px;color:{TXT_MUT};margin-top:2px;">
+      Add a bearer .bounty file to your wallet</div>
+  </div>
+</div>"""
+
+F5 = frame(740, nyx_wallet_header(ADDR) + F5_HEADER + f"""
+<div style="padding:20px 24px;max-width:540px;">
+  {IMPORT_METHODS}
+  {UPLOAD_ZONE}
+  {IMPORT_NOTES}
+  <div style="display:flex;gap:10px;">
+    {btn("Import Bounty", color=ACCENT, text_color=TXT_PRI)}
+    {btn_outline("Cancel")}
+  </div>
+</div>""")
+
+# ---------------------------------------------------------------------------
+# Assemble HTML with tab viewer
+# ---------------------------------------------------------------------------
+
+FRAMES = [
+    ("Portfolio",   F1),
+    ("Bounty Detail", F2),
+    ("Redeem",      F3),
+    ("Transfer",    F4),
+    ("Import",      F5),
+]
+
+TABS_JS = ",\n".join(f'"{t}"' for t, _ in FRAMES)
+FRAMES_JS = ",\n".join(
+    f'`{html.replace("`", "\\`").replace("${", "\\${")}`'
+    for _, html in FRAMES
+)
+
+HTML = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NyxForge Bounty Wallet Mockup</title>
+<style>
+* {{ box-sizing: border-box; margin: 0; padding: 0; }}
+body {{ background: #080a12; font-family: 'Inter', system-ui, sans-serif;
+       display: flex; flex-direction: column; align-items: center;
+       min-height: 100vh; padding: 24px 16px; }}
+.tab-bar {{ display: flex; gap: 4px; margin-bottom: 20px;
+           background: {SURF}; border: 1px solid {BORDER};
+           border-radius: 8px; padding: 4px; }}
+.tab {{ padding: 7px 18px; border-radius: 6px; cursor: pointer;
+       font-size: 13px; color: {TXT_MUT}; transition: all 0.15s; }}
+.tab.active {{ background: {ACCENT}; color: {TXT_PRI}; font-weight: 700; }}
+.tab:hover:not(.active) {{ color: {TXT_PRI}; }}
+.viewport {{ display: flex; align-items: flex-start; justify-content: center;
+            width: {FW}px; }}
+.nav {{ display: flex; gap: 12px; margin-top: 16px; align-items: center; }}
+.nav-btn {{ padding: 8px 20px; border-radius: 6px; cursor: pointer;
+           font-size: 13px; background: {SURF}; border: 1px solid {BORDER};
+           color: {TXT_SEC}; }}
+.nav-btn:hover {{ border-color: {ACCENT}; color: {TXT_PRI}; }}
+.frame-label {{ font-size: 12px; color: {TXT_MUT}; min-width: 120px; text-align: center; }}
+</style>
+</head>
+<body>
+<div class="tab-bar" id="tabBar"></div>
+<div class="viewport" id="viewport"></div>
+<div class="nav">
+  <div class="nav-btn" onclick="go(-1)">&larr; Prev</div>
+  <div class="frame-label" id="frameLabel"></div>
+  <div class="nav-btn" onclick="go(1)">Next &rarr;</div>
+</div>
+<script>
+const TABS   = [{TABS_JS}];
+const FRAMES = [{FRAMES_JS}];
+let cur = 0;
+function render() {{
+  const tb = document.getElementById('tabBar');
+  tb.innerHTML = TABS.map((t,i) =>
+    `<div class="tab${{i===cur?' active':''}}" onclick="jump(${{i}})">${{t}}</div>`
+  ).join('');
+  document.getElementById('viewport').innerHTML = FRAMES[cur];
+  document.getElementById('frameLabel').textContent =
+    (cur+1) + ' / ' + FRAMES.length + ' — ' + TABS[cur];
+}}
+function jump(i) {{ cur = i; render(); }}
+function go(d) {{ cur = (cur + d + FRAMES.length) % FRAMES.length; render(); }}
+render();
+</script>
+</body>
+</html>"""
+
+os.makedirs(OUTDIR, exist_ok=True)
+with open(OUTFILE, "w") as f:
+    f.write(HTML)
+print(f"Written: {OUTFILE}")
+if os.environ.get("NYX_OPEN") == "1":   # opt in; macOS only
+    subprocess.Popen(["open", "-a", "Brave Browser", OUTFILE])
+    print("Opened in Brave.")

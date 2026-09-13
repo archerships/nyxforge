@@ -1,0 +1,265 @@
+#!/usr/bin/env python3
+"""
+NyxForge Issuer Dashboard mockup generator.
+Generates docs/storyboards/out/issuer-dashboard-mockup.html
+
+5 frames:
+  1. Overview       -- all series issued, total collateral locked, revenue
+  2. Series Detail  -- one series: units, fills, collateral, claim status
+  3. Claims Queue   -- incoming claims across all series
+  4. Judge Panel    -- judge keys assigned, fee schedule, quorum settings
+  5. Revenue        -- judge fees, issuance fees, lifetime history
+"""
+import os
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTDIR     = os.path.join(os.environ.get("NYXFORGE_ROOT", os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "docs/storyboards/out")
+OUTFILE    = os.path.join(OUTDIR, "issuer-dashboard-mockup.html")
+
+BG=("#0d0f1a");SURF=("#131524");SURF_HI=("#1a1d2e")
+ACCENT=("#5e6ad2");ACC_GLO=("#2d3068");TXT_PRI=("#e8eaf0")
+TXT_SEC=("#b8c0d8");TXT_MUT=("#8b95b0");SUCCESS=("#4ade80")
+DANGER=("#f87171");WARN=("#fbbf24");BORDER=("#2a2d3e");INACT=("#3a3d5c")
+SUCCESS_RGBA="rgba(74,222,128,0.10)";WARN_RGBA="rgba(251,191,36,0.10)"
+ACCENT_RGBA="rgba(94,106,210,0.12)";DANGER_RGBA="rgba(248,113,113,0.10)"
+FW=1020
+
+def sl(t): return f'<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:{ACCENT};margin-bottom:8px;">{t}</div>'
+def div(mb=12): return f'<div style="height:1px;background:{BORDER};margin:0 0 {mb}px;"></div>'
+def pill(t,c,bg): return f'<span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:{c};background:{bg};">{t}</span>'
+def btn(l,color=SUCCESS,text_color=BG,small=False,full=False):
+    p="7px 16px" if small else "13px 28px";fs="12px" if small else "14px"
+    w="width:100%;display:block;text-align:center;" if full else "display:inline-block;"
+    return f'<div style="{w}padding:{p};background:{color};border-radius:7px;font-size:{fs};font-weight:700;color:{text_color};cursor:pointer;">{l}</div>'
+def btn_o(l,small=False,color=None,full=False):
+    p="6px 14px" if small else "12px 27px";fs="12px" if small else "14px"
+    col=color or TXT_SEC;brd=color or BORDER
+    w="width:100%;display:block;text-align:center;" if full else "display:inline-block;"
+    return f'<div style="{w}padding:{p};background:transparent;border:1px solid {brd};border-radius:7px;font-size:{fs};color:{col};cursor:pointer;">{l}</div>'
+def hdr():
+    return f"""<div style="background:{SURF};border-bottom:1px solid {BORDER};padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:{ACC_GLO};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:{ACCENT};">NYX</div>
+      <div><div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Issuer Dashboard</div>
+           <div style="font-size:11px;color:{TXT_MUT};">Manage your bounty issuances</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="font-size:12px;font-family:monospace;color:{TXT_MUT};">9dFk...3rPx (issuer)</div>
+      {btn("+ Issue New Series",color=ACCENT,text_color=TXT_PRI,small=True)}
+    </div></div>"""
+def frame(title,sub,body):
+    return f"""<div style="background:{BG};min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  {hdr()}
+  <div style="max-width:{FW}px;margin:0 auto;padding:28px 32px;">
+    <div style="margin-bottom:22px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:{ACCENT};margin-bottom:4px;text-transform:uppercase;">{title}</div>
+      <div style="font-size:22px;font-weight:700;color:{TXT_PRI};">{sub}</div>
+    </div>
+    {body}
+  </div></div>"""
+
+def series_row(sid,subject,units,filled,collateral,claims,status,sc,sbg):
+    fill_pct=int(filled.split("/")[0])/int(filled.split("/")[1])*100
+    return f"""<div style="padding:16px 20px;background:{SURF};border:1px solid {BORDER};border-radius:10px;margin-bottom:10px;cursor:pointer;">
+  <div style="display:grid;grid-template-columns:130px 1fr 90px 90px 130px 80px 80px;gap:12px;align-items:center;">
+    <div style="font-family:monospace;font-size:11px;color:{ACCENT};">{sid}</div>
+    <div><div style="font-size:13px;font-weight:600;color:{TXT_PRI};">{subject}</div>
+         <div style="margin-top:4px;height:4px;background:{SURF_HI};border-radius:2px;width:100px;">
+           <div style="height:4px;width:{fill_pct:.0f}%;background:{ACCENT};border-radius:2px;"></div></div></div>
+    <div style="font-size:13px;color:{TXT_PRI};">{units} units</div>
+    <div style="font-size:12px;color:{ACCENT};">{filled} sold</div>
+    <div style="font-size:13px;color:{WARN};font-weight:600;">{collateral}</div>
+    <div style="font-size:12px;color:{"' + WARN + '" if claims != "0" else TXT_MUT};">{claims} claims</div>
+    <div>{pill(status,sc,sbg)}</div>
+  </div>
+</div>"""
+
+def f1():
+    stats=f"""<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px;">
+  {"".join(f'<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:14px 16px;">'
+           f'<div style="font-size:11px;color:{TXT_MUT};margin-bottom:6px;">{l}</div>'
+           f'<div style="font-size:20px;font-weight:700;color:{c};">{v}</div></div>'
+           for l,v,c in [("Series Issued","8",TXT_PRI),("Units Sold","127 / 180",ACCENT),
+                         ("Collateral Locked","~4.2M XMR",WARN),("Open Claims","3",WARN),
+                         ("Lifetime Revenue","24.8 XMR",SUCCESS)])}
+</div>"""
+    hdr_row=f'<div style="display:grid;grid-template-columns:130px 1fr 90px 90px 130px 80px 80px;gap:12px;padding:8px 20px;margin-bottom:6px;"><div style="font-size:11px;color:{TXT_MUT};">SERIES ID</div><div style="font-size:11px;color:{TXT_MUT};">SUBJECT</div><div style="font-size:11px;color:{TXT_MUT};">UNITS</div><div style="font-size:11px;color:{TXT_MUT};">SOLD</div><div style="font-size:11px;color:{TXT_MUT};">COLLATERAL</div><div style="font-size:11px;color:{TXT_MUT};">CLAIMS</div><div style="font-size:11px;color:{TXT_MUT};">STATUS</div></div>'
+    rows=(series_row("SER-001","Archer Mwangi 2036","20","14/20","50k XMR x 20","0","ACTIVE",SUCCESS,SUCCESS_RGBA)+
+          series_row("SER-002","Priya Nakamura 2034","8","8/8","12.5k XMR x 8","1","CLAIMED",WARN,WARN_RGBA)+
+          series_row("SER-003","Sofia Reinholt 2040","4","2/4","25k XMR x 4","0","ACTIVE",SUCCESS,SUCCESS_RGBA)+
+          series_row("SER-004","Kenji Oduya Jr 2033","20","15/20","5k XMR x 20","2","ACTIVE",WARN,WARN_RGBA))
+    return frame("ISSUER DASHBOARD / OVERVIEW","Bounty Issuances",stats+sl("ALL SERIES")+hdr_row+rows)
+
+def f2():
+    units=f"""<div style="display:grid;grid-template-columns:repeat(10,1fr);gap:6px;margin-bottom:18px;">
+  {"".join(f'<div style="aspect-ratio:1;border-radius:6px;background:{"' + ACC_GLO + '" if i<14 else SURF_HI};border:1px solid {"' + ACCENT + '" if i<14 else BORDER};display:flex;align-items:center;justify-content:center;font-size:11px;font-family:monospace;color:{"' + ACCENT + '" if i<14 else TXT_MUT};">{str(i+1).zfill(3)}</div>'
+           for i in range(20))}
+</div><div style="font-size:11px;color:{TXT_MUT};margin-bottom:20px;">{ACCENT} = sold &nbsp; {SURF_HI} = available</div>"""
+    left=f"""
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:10px;padding:18px 20px;margin-bottom:18px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+    <div><div style="font-family:monospace;font-size:12px;color:{ACCENT};">SER-001</div>
+         <div style="font-size:18px;font-weight:700;color:{TXT_PRI};margin-top:2px;">Archer Mwangi 2036</div></div>
+    {pill("ACTIVE",SUCCESS,SUCCESS_RGBA)}
+  </div>
+  {div()}
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
+    {"".join(f'<div><div style="font-size:11px;color:{TXT_MUT};margin-bottom:3px;">{l}</div>'
+             f'<div style="font-size:13px;font-weight:600;color:{c};">{v}</div></div>'
+             for l,v,c in [("Collateral/unit","50,000 XMR",WARN),("Units total","20",TXT_PRI),
+                           ("Units sold","14",ACCENT),("Proceeds","2,548 XMR",SUCCESS),
+                           ("Deadline","2036-04-23",TXT_PRI),("Quorum","2-of-3",ACCENT)])}
+  </div>
+</div>
+{sl("UNIT INVENTORY")}
+{units}"""
+    right=f"""<div style="display:flex;flex-direction:column;gap:14px;">
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:10px;padding:18px 20px;">
+  {sl("ACTIONS")}
+  {btn("Add Units to Series",color=ACCENT,text_color=TXT_PRI,full=True)}
+  <div style="margin-top:8px;">{btn_o("Close Series",full=True)}</div>
+  <div style="margin-top:8px;">{btn_o("Export Audit Log",full=True)}</div>
+</div>
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:10px;padding:18px 20px;">
+  {sl("COLLATERAL LOCK")}
+  <div style="font-size:12px;color:{TXT_MUT};margin-bottom:4px;">Lock TX</div>
+  <div style="font-family:monospace;font-size:11px;color:{TXT_PRI};word-break:break-all;margin-bottom:10px;">0x3a9f...c1d2</div>
+  <div style="font-size:12px;color:{TXT_MUT};margin-bottom:4px;">XMR locked</div>
+  <div style="font-size:16px;font-weight:700;color:{WARN};">700,000 XMR</div>
+  <div style="font-size:11px;color:{TXT_MUT};margin-top:2px;">(14 units x 50,000)</div>
+</div>
+</div>"""
+    body=f'<div style="display:flex;gap:20px;align-items:flex-start;"><div style="flex:1;">{left}</div><div style="flex:0 0 240px;">{right}</div></div>'
+    return frame("ISSUER DASHBOARD / SERIES","Series SER-001 Detail",body)
+
+def f3():
+    claim_row=lambda cid,series,subj,filed,claimant,status,sc,sbg: f"""<div style="display:grid;grid-template-columns:110px 90px 1fr 110px 140px 110px 80px;
+              gap:12px;align-items:center;padding:12px 16px;background:{SURF};border:1px solid {BORDER};
+              border-radius:8px;margin-bottom:8px;">
+  <div style="font-family:monospace;font-size:11px;color:{ACCENT};">{cid}</div>
+  <div style="font-family:monospace;font-size:11px;color:{TXT_MUT};">{series}</div>
+  <div style="font-size:13px;color:{TXT_PRI};">{subj}</div>
+  <div style="font-size:12px;color:{TXT_MUT};">{filed}</div>
+  <div style="font-family:monospace;font-size:11px;color:{TXT_MUT};">{claimant}</div>
+  <div>{pill(status,sc,sbg)}</div>
+  <div>{btn_o("Review",small=True)}</div>
+</div>"""
+    rows=(claim_row("CLM-0044","SER-001","Archer Mwangi","2026-04-23","7Ab2...88Fc","REVIEW",WARN,WARN_RGBA)+
+          claim_row("CLM-0041","SER-004","Kenji Oduya Jr","2026-04-10","4aB2...CC91","EVIDENCE",ACCENT,ACCENT_RGBA)+
+          claim_row("CLM-0038","SER-004","Kenji Oduya Jr","2026-03-28","3eF8...12D0","DECIDED",TXT_MUT,f"rgba(139,149,176,0.1)"))
+    hdr_row=f'<div style="display:grid;grid-template-columns:110px 90px 1fr 110px 140px 110px 80px;gap:12px;padding:8px 16px;margin-bottom:6px;"><div style="font-size:11px;color:{TXT_MUT};">CLAIM ID</div><div style="font-size:11px;color:{TXT_MUT};">SERIES</div><div style="font-size:11px;color:{TXT_MUT};">SUBJECT</div><div style="font-size:11px;color:{TXT_MUT};">FILED</div><div style="font-size:11px;color:{TXT_MUT};">CLAIMANT</div><div style="font-size:11px;color:{TXT_MUT};">STATUS</div><div></div></div>'
+    note=f"""<div style="padding:12px 16px;background:{WARN_RGBA};border-left:3px solid {WARN};
+             border-radius:0 6px 6px 0;font-size:12px;color:{TXT_SEC};margin-bottom:18px;">
+  As issuer you cannot directly influence verdict outcome. You may submit evidence to your judge panel.
+  Approved claims trigger automatic collateral release from the PTLC adaptor signature.</div>"""
+    return frame("ISSUER DASHBOARD / CLAIMS","Incoming Claims",note+sl("OPEN CLAIMS (2)")+hdr_row+rows)
+
+def f4():
+    judge_card=lambda fp,role,fee,verdicts,pending,quorum: f"""<div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:8px;padding:14px 16px;margin-bottom:10px;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+    <div><div style="font-family:monospace;font-size:13px;color:{ACCENT};">{fp}</div>
+         <div style="font-size:11px;color:{TXT_MUT};margin-top:2px;">{role}</div></div>
+    <div style="text-align:right;"><div style="font-size:13px;color:{WARN};font-weight:600;">{fee} XMR/attest</div>
+         <div style="font-size:11px;color:{TXT_MUT};">{verdicts} verdicts</div></div>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    {pill(f"{pending} pending",WARN,WARN_RGBA) if pending != "0" else pill("No pending",TXT_MUT,f"rgba(139,149,176,0.1)")}
+    {pill(f"Quorum {quorum}",ACCENT,ACCENT_RGBA)}
+  </div>
+</div>"""
+    body=f"""
+<div style="display:grid;grid-template-columns:1fr 280px;gap:20px;align-items:flex-start;">
+  <div>
+    {sl("ASSIGNED JUDGES")}
+    {judge_card("9dFk...3rPx","qualitative + hybrid","0.5","247","1","2-of-3")}
+    {judge_card("7cD9...AA12","quantitative","0.3","512","0","2-of-3")}
+    {judge_card("2eF1...99B4","qualitative + both","0.4","921","1","2-of-3")}
+    {div()}
+    {btn_o("+ Invite Judge to Panel")}
+  </div>
+  <div>
+    <div style="background:{SURF};border:1px solid {BORDER};border-radius:10px;padding:18px 20px;">
+      {sl("QUORUM CONFIG")}
+      {"".join(f'<div style="margin-bottom:12px;"><div style="font-size:12px;color:{TXT_MUT};margin-bottom:4px;">{l}</div>'
+               f'<div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;padding:9px 13px;font-size:13px;color:{TXT_PRI};">{v}</div></div>'
+               for l,v in [("Quorum (min sigs to settle)","2 of 3"),("Challenge window","30 days"),("Appeal path","Panel vote (3-of-5)")])}
+      {div()}
+      {btn_o("Edit Quorum Settings",full=True)}
+    </div>
+  </div>
+</div>"""
+    return frame("ISSUER DASHBOARD / JUDGE PANEL","Judge Panel",body)
+
+def f5():
+    rev_row=lambda date,src,series,amt,c: f"""<div style="display:grid;grid-template-columns:110px 1fr 90px 100px;gap:12px;align-items:center;padding:9px 16px;border-bottom:1px solid {BORDER};">
+  <div style="font-size:12px;color:{TXT_MUT};">{date}</div>
+  <div style="font-size:13px;color:{TXT_PRI};">{src}</div>
+  <div style="font-family:monospace;font-size:11px;color:{TXT_MUT};">{series}</div>
+  <div style="font-size:13px;color:{c};font-weight:600;text-align:right;">{amt}</div>
+</div>"""
+    rows=(rev_row("2026-04-23","Judge attestation fee","SER-001","+0.5 XMR",SUCCESS)+
+          rev_row("2026-04-22","Issuance fee (1 unit)","SER-001","+1.8 XMR",SUCCESS)+
+          rev_row("2026-04-20","Judge attestation fee","SER-004","+0.4 XMR",SUCCESS)+
+          rev_row("2026-04-19","Issuance fee (3 units)","SER-004","+5.4 XMR",SUCCESS)+
+          rev_row("2026-04-15","Judge panel setup fee","SER-003","-0.3 XMR",DANGER))
+    stats=f"""<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;">
+  {"".join(f'<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:14px 16px;">'
+           f'<div style="font-size:11px;color:{TXT_MUT};margin-bottom:6px;">{l}</div>'
+           f'<div style="font-size:20px;font-weight:700;color:{c};">{v}</div></div>'
+           for l,v,c in [("Lifetime Revenue","24.8 XMR",SUCCESS),("This Month","7.4 XMR",SUCCESS),
+                         ("Judge Fees Paid","3.2 XMR",DANGER),("Net","21.6 XMR",SUCCESS)])}
+</div>"""
+    return frame("ISSUER DASHBOARD / REVENUE","Revenue",stats+sl("TRANSACTION HISTORY")+
+                 f'<div style="background:{SURF};border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+                 f'<div style="display:grid;grid-template-columns:110px 1fr 90px 100px;gap:12px;padding:8px 16px;background:{SURF_HI};">'
+                 f'<div style="font-size:11px;color:{TXT_MUT};">DATE</div><div style="font-size:11px;color:{TXT_MUT};">SOURCE</div><div style="font-size:11px;color:{TXT_MUT};">SERIES</div><div style="font-size:11px;color:{TXT_MUT};text-align:right;">AMOUNT</div></div>'+rows+'</div>')
+
+FRAMES=[("Overview",f1),("Series Detail",f2),("Claims Queue",f3),("Judge Panel",f4),("Revenue",f5)]
+
+def build():
+    tabs="".join(f'<button data-idx="{i}" aria-selected="{"true" if i==0 else "false"}" role="tab" '
+                 f'style="padding:8px 18px;background:none;border:none;cursor:pointer;font-size:13px;'
+                 f'font-weight:600;color:{"' + ACCENT + '" if i==0 else "' + TXT_MUT + '"};'
+                 f'border-bottom:2px solid {"' + ACCENT + '" if i==0 else "transparent"};">'
+                 f'{l}</button>' for i,(l,_) in enumerate(FRAMES))
+    bodies="".join(f'<div data-frame="{i}" style="display:{"block" if i==0 else "none"};">{fn()}</div>'
+                   for i,(_,fn) in enumerate(FRAMES))
+    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NyxForge Issuer Dashboard</title>
+<style>*,*::before,*::after{{box-sizing:border-box;margin:0;padding:0}}
+body{{background:{BG};color:{TXT_PRI};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}}
+::-webkit-scrollbar{{width:6px}}::-webkit-scrollbar-track{{background:{SURF}}}
+::-webkit-scrollbar-thumb{{background:{INACT};border-radius:3px}}</style></head>
+<body>
+<div style="background:{SURF};border-bottom:1px solid {BORDER};padding:0 24px;position:sticky;top:0;z-index:100;">
+  <div style="max-width:{FW+64}px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;">
+    <div style="padding:12px 0;display:flex;align-items:center;gap:12px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:{ACC_GLO};display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:11px;font-weight:700;color:{ACCENT};">NYX</div>
+      <div style="font-size:14px;font-weight:700;color:{TXT_PRI};">Issuer Dashboard</div>
+    </div>
+    <div style="display:flex;gap:0;" role="tablist">{tabs}</div>
+    <div style="width:80px;"></div>
+  </div>
+</div>
+<div style="position:fixed;bottom:20px;right:24px;z-index:200;display:flex;gap:8px;">
+  <button onclick="nav(-1)" style="padding:8px 16px;background:{SURF_HI};border:1px solid {BORDER};border-radius:7px;color:{TXT_SEC};font-size:13px;cursor:pointer;">&larr; Prev</button>
+  <button onclick="nav(1)"  style="padding:8px 16px;background:{SURF_HI};border:1px solid {BORDER};border-radius:7px;color:{TXT_SEC};font-size:13px;cursor:pointer;">Next &rarr;</button>
+</div>
+<div id="frames">{bodies}</div>
+<script>
+let cur=0;const tot={len(FRAMES)};
+const fr=document.querySelectorAll('[data-frame]'),tb=document.querySelectorAll('[data-idx]');
+function show(i){{fr[cur].style.display='none';tb[cur].style.color='{TXT_MUT}';tb[cur].style.borderBottomColor='transparent';
+  cur=i;fr[cur].style.display='block';tb[cur].style.color='{ACCENT}';tb[cur].style.borderBottomColor='{ACCENT}';window.scrollTo(0,0);}}
+function nav(d){{show((cur+d+tot)%tot);}}
+tb.forEach(t=>t.addEventListener('click',()=>show(+t.dataset.idx)));
+document.addEventListener('keydown',e=>{{if(e.key==='ArrowRight')nav(1);if(e.key==='ArrowLeft')nav(-1);}});
+</script></body></html>"""
+
+if __name__=="__main__":
+    os.makedirs(OUTDIR,exist_ok=True)
+    html=build()
+    with open(OUTFILE,"w") as f: f.write(html)
+    print(f"Written: {OUTFILE}  ({len(html):,} bytes)")

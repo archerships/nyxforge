@@ -1,0 +1,182 @@
+#!/usr/bin/env python3
+# NyxForge internal consistency checker.
+# Validates mechanical invariants between spec, CLI code, and mock data.
+# Run manually or automatically via the git pre-commit hook.
+#
+# Exit 0 = clean. Exit 1 = one or more failures (commit blocked if run as hook).
+
+import json
+import re
+import sys
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent  # prj/nyxforge/
+
+errors = []
+
+def fail(msg):
+    errors.append(msg)
+
+
+# ---------------------------------------------------------------------------
+# 1. Parse gen_bonds.js
+# ---------------------------------------------------------------------------
+
+gen_bonds_path = REPO / "mock" / "gen_bonds.js"
+gen_bonds = gen_bonds_path.read_text()
+
+m = re.search(r'const STATES\s*=\s*\[([^\]]+)\]', gen_bonds)
+if not m:
+    fail("gen_bonds.js: cannot locate STATES array")
+    gen_states = set()
+else:
+    gen_states = {s.strip().strip('"') for s in m.group(1).split(',')}
+
+# ---------------------------------------------------------------------------
+# 2. Parse nyxforge.mockoon.json
+# ---------------------------------------------------------------------------
+
+with open(REPO / "mock" / "nyxforge.mockoon.json") as f:
+    mockoon = json.load(f)
+
+responses = mockoon["routes"][0]["responses"]
+
+# All method values referenced in response rules
+mock_methods = set()
+for resp in responses:
+    for rule in resp.get("rules", []):
+        if rule.get("modifier") == "method":
+            mock_methods.add(rule["value"])
+
+# States present in bonds.list example data
+bonds_list_resp = next((r for r in responses if r["uuid"] == "rsp001-draft"), None)
+mock_list_states = set()
+mock_list_fields = set()
+if bonds_list_resp:
+    try:
+        body = json.loads(bonds_list_resp["body"])
+        for bond in body["result"]["bonds"]:
+            mock_list_states.add(bond["state"])
+            mock_list_fields |= set(bond.keys())
+    except Exception as e:
+        fail(f"mockoon bonds.list: body parse error: {e}")
+
+# States covered by bonds.get rule (params.state)
+mock_get_states = set()
+for resp in responses:
+    for rule in resp.get("rules", []):
+        if rule.get("modifier") == "params.state":
+            mock_get_states.add(rule["value"])
+
+# fields present in every bonds.get response body
+bonds_get_resps = [r for r in responses if r.get("label", "").startswith("bonds.get --")]
+
+# ---------------------------------------------------------------------------
+# 3. Parse bond.rs
+# ---------------------------------------------------------------------------
+
+bond_rs = (REPO / "src" / "crates" / "nyxforge-cli" / "src" / "commands" / "bounty.rs").read_text()
+rs_commands = set(re.findall(r'BountyCommand::(\w+)', bond_rs))
+
+# ---------------------------------------------------------------------------
+# 4. Parse 00_MVP.md
+# ---------------------------------------------------------------------------
+
+mvp_md = (REPO / "doc" / "00_MVP.md").read_text()
+
+# ---------------------------------------------------------------------------
+# Checks
+# ---------------------------------------------------------------------------
+
+# C1: Every state gen_bonds.js can produce must appear in mockoon bonds.list
+missing_list = gen_states - mock_list_states
+if missing_list:
+    fail(f"mockoon bonds.list: states in gen_bonds.js STATES but not in example bonds: {sorted(missing_list)}")
+
+# C2: Every state gen_bonds.js can produce must have a bonds.get rule
+missing_get = gen_states - mock_get_states
+if missing_get:
+    fail(f"mockoon bonds.get: no response rule for states: {sorted(missing_get)}")
+
+# C3: bonds.list example bonds must carry required fields
+required_list_fields = {
+    "file", "series_id", "serial", "state", "title",
+    "goal_type", "deadline", "expiry", "grace_days",
+    "amount", "currency", "lock_mechanism", "oracle_count", "quorum",
+}
+missing_fields = required_list_fields - mock_list_fields
+if missing_fields:
+    fail(f"mockoon bonds.list: missing required fields in example bonds: {sorted(missing_fields)}")
+
+# C4: Every bonds.get response must include grace_days
+for resp in bonds_get_resps:
+    try:
+        body = json.loads(resp["body"])
+        result = body.get("result", {})
+        if "grace_days" not in result:
+            fail(f"mockoon {resp['label']}: grace_days missing from response body")
+    except Exception as e:
+        fail(f"mockoon {resp['label']}: body parse error: {e}")
+
+# C5: gen_bonds.js must emit required fields
+for field in ("grace_days", "holder_pubkey", "alg_epoch", "amount", "currency", "lock_mechanism", "terms"):
+    if field not in gen_bonds:
+        fail(f"gen_bonds.js: {field} field missing from bond output")
+
+# C6: bonds.prove endpoint must exist in mockoon
+if "bonds.prove" not in mock_methods:
+    fail("mockoon: bonds.prove endpoint missing")
+
+# C7: bounty.rs BountyCommand must include all expected subcommands
+expected_commands = {
+    "Create", "Inspect", "Status", "List", "Transfer",
+    "Verify", "Issue", "Redeem", "Reclaim", "Prove", "Dev",
+}
+missing_cmds = expected_commands - rs_commands
+if missing_cmds:
+    fail(f"bounty.rs BountyCommand: missing variants: {sorted(missing_cmds)}")
+
+# C8: 00_MVP.md must not contain stale field names
+if "unit_serial" in mvp_md:
+    fail("00_MVP.md: stale field name 'unit_serial' found (should be 'serial')")
+if "collateral_xmr" in mvp_md:
+    fail("00_MVP.md: stale field name 'collateral_xmr' found (should be 'amount')")
+if "fee_xmr" in mvp_md:
+    fail("00_MVP.md: stale field name 'fee_xmr' found (should be 'fee')")
+
+# C10: bonds.get responses must include 'terms' array, not legacy 'criterion' object
+for resp in bonds_get_resps:
+    try:
+        body = json.loads(resp["body"])
+        result = body.get("result", {})
+        if "criterion" in result:
+            fail(f"mockoon {resp['label']}: stale 'criterion' field present (should be 'terms' array)")
+        if isinstance(result, dict) and result.get("state") and "terms" not in result:
+            fail(f"mockoon {resp['label']}: 'terms' array missing from bonds.get response")
+    except Exception as e:
+        pass  # parse errors caught by C4
+
+# C9: 'serial' must be present in gen_bonds.js output
+if re.search(r'\bserial\b', gen_bonds) is None:
+    fail("gen_bonds.js: 'serial' field missing from bond output")
+
+# ---------------------------------------------------------------------------
+# Report
+# ---------------------------------------------------------------------------
+
+print("NyxForge consistency check")
+print(f"  gen_bonds.js STATES : {sorted(gen_states)}")
+print(f"  mockoon list states : {sorted(mock_list_states)}")
+print(f"  mockoon get states  : {sorted(mock_get_states)}")
+print(f"  mockoon methods     : {sorted(mock_methods)}")
+print(f"  bounty.rs commands  : {sorted(rs_commands)}")
+print()
+
+if errors:
+    for e in errors:
+        print(f"  FAIL  {e}")
+    print(f"\n  {len(errors)} error(s). Fix before committing.")
+    sys.exit(1)
+else:
+    print(f"  OK  all {len(required_list_fields) + 5} checks passed.")
+    sys.exit(0)

@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Generates one HTML file per .mmd diagram in docs/storyboards/out/.
+# Each HTML file has a dark background and embeds the compiled SVG.
+# Usage: bin/gen-storyboard-html
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+SVG_DIR="${NYXFORGE_ROOT:-$REPO_ROOT}/docs/storyboards/out"
+
+python3 - "$SVG_DIR" << 'PYEOF'
+import sys, os, re
+
+out_dir = sys.argv[1]
+svgs = sorted(f for f in os.listdir(out_dir) if f.endswith('.svg'))
+
+for svg_file in svgs:
+    name = svg_file[:-4]
+    title = name.replace('-', ' ').title()
+    with open(os.path.join(out_dir, svg_file)) as f:
+        svg = f.read()
+    svg = re.sub(r'<\?xml[^?]*\?>\s*', '', svg)
+    svg = re.sub(r'\bwidth="[^"]*"', 'width="100%"', svg, count=1)
+    svg = re.sub(r'\bheight="[^"]*"', 'height="auto"', svg, count=1)
+    html = f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{title}</title>
+<style>
+* {{ box-sizing: border-box; margin: 0; padding: 0; }}
+body {{ background: #0d0f1a; color: #e0e0e0; font-family: monospace; padding: 2rem; }}
+h2 {{ color: #a0c4ff; margin-bottom: 1rem; font-size: 1.1rem; }}
+svg {{ display: block; width: 100%; max-width: 900px; height: auto; }}
+</style>
+</head>
+<body>
+<h2>{title}</h2>
+{svg}
+</body>
+</html>'''
+    out_path = os.path.join(out_dir, f'{name}.html')
+    with open(out_path, 'w') as f:
+        f.write(html)
+    print(f"  {name}.html")
+PYEOF

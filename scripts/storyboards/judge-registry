@@ -1,0 +1,310 @@
+#!/usr/bin/env python3
+"""
+NyxForge Judge Registry mockup generator.
+Generates docs/storyboards/out/judge-registry-mockup.html
+
+5 frames:
+  1. Browse         -- searchable judge list with reputation/fees
+  2. Judge Profile  -- history, verdict record, fee schedule, specialization
+  3. Invite Judge   -- add a judge to a bounty's judge panel
+  4. Rate Judge     -- post-verdict rating submission
+  5. Become Judge   -- register as a judge on-chain
+"""
+import os
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTDIR     = os.path.join(os.environ.get("NYXFORGE_ROOT", os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "docs/storyboards/out")
+OUTFILE    = os.path.join(OUTDIR, "judge-registry-mockup.html")
+
+BG=("#0d0f1a");SURF=("#131524");SURF_HI=("#1a1d2e")
+ACCENT=("#5e6ad2");ACC_GLO=("#2d3068");TXT_PRI=("#e8eaf0")
+TXT_SEC=("#b8c0d8");TXT_MUT=("#8b95b0");SUCCESS=("#4ade80")
+DANGER=("#f87171");WARN=("#fbbf24");BORDER=("#2a2d3e");INACT=("#3a3d5c")
+SUCCESS_RGBA="rgba(74,222,128,0.10)";WARN_RGBA="rgba(251,191,36,0.10)"
+ACCENT_RGBA="rgba(94,106,210,0.12)"
+FW=980
+
+def sl(t): return f'<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:{ACCENT};margin-bottom:8px;">{t}</div>'
+def div(mb=12): return f'<div style="height:1px;background:{BORDER};margin:0 0 {mb}px;"></div>'
+def pill(t,c,bg): return f'<span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:{c};background:{bg};">{t}</span>'
+def btn(l,color=SUCCESS,text_color=BG,small=False,full=False):
+    p="7px 16px" if small else "13px 28px";fs="12px" if small else "14px"
+    w="width:100%;display:block;text-align:center;" if full else "display:inline-block;"
+    return f'<div style="{w}padding:{p};background:{color};border-radius:7px;font-size:{fs};font-weight:700;color:{text_color};cursor:pointer;">{l}</div>'
+def btn_o(l,small=False,color=None,full=False):
+    p="6px 14px" if small else "12px 27px";fs="12px" if small else "14px"
+    col=color or TXT_SEC;brd=color or BORDER
+    w="width:100%;display:block;text-align:center;" if full else "display:inline-block;"
+    return f'<div style="{w}padding:{p};background:transparent;border:1px solid {brd};border-radius:7px;font-size:{fs};color:{col};cursor:pointer;">{l}</div>'
+def inp(label,val,mono=False,note=None):
+    f="monospace" if mono else "inherit"
+    n=f'<div style="font-size:11px;color:{TXT_MUT};margin-top:4px;">{note}</div>' if note else ""
+    return (f'<div style="margin-bottom:12px;"><div style="font-size:12px;color:{TXT_MUT};margin-bottom:4px;">{label}</div>'
+            f'<div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;padding:9px 13px;font-size:13px;color:{TXT_MUT};font-family:{f};">{val}</div>{n}</div>')
+def _rating_group(label, opts):
+    items = "".join(
+        f'<div style="padding:5px 12px;background:{ACC_GLO if j==0 else SURF_HI};'
+        f'border:1px solid {ACCENT if j==0 else BORDER};border-radius:5px;'
+        f'font-size:12px;color:{ACCENT if j==0 else TXT_MUT};cursor:pointer;">{o}</div>'
+        for j, o in enumerate(opts)
+    )
+    return (f'<div><div style="font-size:12px;color:{TXT_MUT};margin-bottom:4px;">{label}</div>'
+            f'<div style="display:flex;gap:6px;">{items}</div></div>')
+
+def star_rating(n,max=5):
+    return "".join(f'<span style="color:{"' + WARN + '" if i<n else INACT};font-size:14px;">&#9733;</span>' for i in range(max))
+def hdr():
+    return f"""<div style="background:{SURF};border-bottom:1px solid {BORDER};padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:{ACC_GLO};display:flex;align-items:center;justify-content:center;font-size:16px;">&#x2696;</div>
+      <div><div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Judge Registry</div>
+           <div style="font-size:11px;color:{TXT_MUT};">Browse and evaluate judges</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;padding:7px 14px;font-size:13px;color:{TXT_MUT};">&#x1F50D; Search judges...</div>
+      {btn("Become a Judge",color=ACCENT,text_color=TXT_PRI,small=True)}
+    </div></div>"""
+def frame(title,sub,body):
+    return f"""<div style="background:{BG};min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  {hdr()}
+  <div style="max-width:{FW}px;margin:0 auto;padding:28px 32px;">
+    <div style="margin-bottom:22px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:{ACCENT};margin-bottom:4px;text-transform:uppercase;">{title}</div>
+      <div style="font-size:22px;font-weight:700;color:{TXT_PRI};">{sub}</div>
+    </div>
+    {body}
+  </div></div>"""
+
+def judge_row(fp,handle,role,verdicts,rating,fee,resp,avail):
+    role_c={"qualitative":SUCCESS,"quantitative":ACCENT,"both":WARN}.get(role,TXT_MUT)
+    avail_c=SUCCESS if avail=="Available" else WARN
+    return f"""<div style="display:grid;grid-template-columns:140px 1fr 110px 80px 80px 90px 90px 80px;
+              gap:12px;align-items:center;padding:12px 16px;background:{SURF};border:1px solid {BORDER};
+              border-radius:8px;margin-bottom:8px;cursor:pointer;">
+  <div style="font-family:monospace;font-size:11px;color:{ACCENT};">{fp}</div>
+  <div><div style="font-size:13px;font-weight:600;color:{TXT_PRI};">{handle}</div>
+       <div style="font-size:10px;color:{role_c};margin-top:2px;">{role.upper()}</div></div>
+  <div><div>{star_rating(rating)}</div><div style="font-size:11px;color:{TXT_MUT};">{verdicts} verdicts</div></div>
+  <div style="font-size:13px;color:{TXT_PRI};">{rating}/5</div>
+  <div style="font-size:13px;color:{WARN};font-weight:600;">{fee} XMR</div>
+  <div style="font-size:11px;color:{TXT_MUT};">{resp}</div>
+  <div style="font-size:11px;color:{avail_c};">{avail}</div>
+  <div>{btn_o("View",small=True)}</div>
+</div>"""
+
+def f1():
+    filters=f"""<div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
+  {"".join(f'<div style="padding:6px 14px;background:{"' + ACC_GLO + '" if i==0 else SURF_HI};border:1px solid {"' + ACCENT + '" if i==0 else BORDER};border-radius:20px;font-size:12px;color:{"' + ACCENT + '" if i==0 else TXT_MUT};cursor:pointer;">{t}</div>'
+           for i,t in enumerate(["All","Qualitative","Quantitative","Both","Top Rated","Fast Response","Low Fee"]))}
+</div>"""
+    hdr_row=f'<div style="display:grid;grid-template-columns:140px 1fr 110px 80px 80px 90px 90px 80px;gap:12px;padding:8px 16px;margin-bottom:6px;"><div style="font-size:11px;color:{TXT_MUT};">KEY</div><div style="font-size:11px;color:{TXT_MUT};">HANDLE / ROLE</div><div style="font-size:11px;color:{TXT_MUT};">REPUTATION</div><div style="font-size:11px;color:{TXT_MUT};">RATING</div><div style="font-size:11px;color:{TXT_MUT};">FEE</div><div style="font-size:11px;color:{TXT_MUT};">RESP TIME</div><div style="font-size:11px;color:{TXT_MUT};">STATUS</div><div></div></div>'
+    rows=(judge_row("9dFk...3rPx","Dr. Nakamura","qualitative",247,5,"0.5","< 48h","Available")+
+          judge_row("7cD9...AA12","Quant Node #7","quantitative",512,4,"0.3","< 12h","Available")+
+          judge_row("2eF1...99B4","Judge Osei","both",921,5,"0.4","< 24h","Available")+
+          judge_row("4aB2...CC91","BioVerify LLC","qualitative",183,4,"0.6","3-5 days","Busy")+
+          judge_row("8gH3...77E2","DataAttest Pro","quantitative",64,3,"0.2","< 6h","Available"))
+    stats=f"""<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;">
+  {"".join(f'<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:14px 16px;">'
+           f'<div style="font-size:11px;color:{TXT_MUT};margin-bottom:6px;">{l}</div>'
+           f'<div style="font-size:20px;font-weight:700;color:{c};">{v}</div></div>'
+           for l,v,c in [("Registered Judges","31",TXT_PRI),("Avg Rating","4.6 / 5",SUCCESS),("Avg Fee","0.41 XMR",WARN),("Active Verdicts","14",ACCENT)])}
+</div>"""
+    return frame("JUDGE REGISTRY / BROWSE","Browse Judges",stats+filters+hdr_row+rows)
+
+def f2():
+    verdict_row=lambda date,bid,result,rc: f"""<div style="display:grid;grid-template-columns:110px 1fr 90px;gap:12px;padding:8px 0;border-bottom:1px solid {BORDER};">
+  <div style="font-size:12px;color:{TXT_MUT};">{date}</div>
+  <div style="font-family:monospace;font-size:12px;color:{ACCENT};">{bid}</div>
+  <div>{pill(result,rc,SUCCESS_RGBA if rc==SUCCESS else 'rgba(248,113,113,0.10)')}</div>
+</div>"""
+    left=f"""
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:10px;padding:18px 20px;margin-bottom:18px;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
+    <div>
+      <div style="font-family:monospace;font-size:12px;color:{ACCENT};">9dFk...3rPx</div>
+      <div style="font-size:20px;font-weight:700;color:{TXT_PRI};margin-top:2px;">Dr. Nakamura</div>
+      <div style="font-size:11px;color:{TXT_MUT};margin-top:2px;">Qualitative specialist &middot; Medical, biometric, longevity</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:32px;font-weight:700;color:{SUCCESS};">5.0</div>
+      <div>{star_rating(5)}</div>
+      <div style="font-size:11px;color:{TXT_MUT};">247 verdicts</div>
+    </div>
+  </div>
+  {div()}
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;">
+    {"".join(f'<div><div style="font-size:11px;color:{TXT_MUT};margin-bottom:3px;">{l}</div>'
+             f'<div style="font-size:13px;font-weight:600;color:{c};">{v}</div></div>'
+             for l,v,c in [("Fee","0.5 XMR/attest",WARN),("Specialization","Qualitative",SUCCESS),
+                           ("Avg response","< 48h",TXT_PRI),("Registered","2024-11-02",TXT_MUT)])}
+  </div>
+</div>
+{sl("RECENT VERDICTS")}
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:10px;padding:18px 20px;">
+  {verdict_row("2026-04-20","NYX-44EF","APPROVED",SUCCESS)}
+  {verdict_row("2026-04-11","NYX-1102","DENIED",DANGER)}
+  {verdict_row("2026-03-28","NYX-7799","APPROVED",SUCCESS)}
+  {verdict_row("2026-03-15","NYX-55BC","APPROVED",SUCCESS)}
+</div>"""
+    right=f"""<div style="display:flex;flex-direction:column;gap:14px;">
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:10px;padding:18px 20px;">
+  {sl("RATING BREAKDOWN")}
+  {"".join(f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
+           f'<span style="font-size:12px;color:{TXT_MUT};width:30px;">{n}&#9733;</span>'
+           f'<div style="flex:1;height:6px;background:{SURF_HI};border-radius:3px;">'
+           f'<div style="height:6px;width:{p}%;background:{WARN};border-radius:3px;"></div></div>'
+           f'<span style="font-size:11px;color:{TXT_MUT};width:30px;">{c}</span></div>'
+           for n,p,c in [(5,88,"218"),(4,8,"20"),(3,3,"8"),(2,1,"2"),(1,0,"0")])}
+  {div(14)}
+  {sl("APPROVE / DENY RATIO")}
+  <div style="height:8px;background:{DANGER};border-radius:4px;margin-bottom:4px;">
+    <div style="height:8px;width:94%;background:{SUCCESS};border-radius:4px;"></div></div>
+  <div style="display:flex;justify-content:space-between;">
+    <span style="font-size:11px;color:{SUCCESS};">94% Approved</span>
+    <span style="font-size:11px;color:{DANGER};">6% Denied</span></div>
+</div>
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:10px;padding:18px 20px;">
+  {sl("ACTIONS")}
+  {btn("Invite to My Panel",color=ACCENT,text_color=TXT_PRI,full=True)}
+  <div style="margin-top:8px;">{btn_o("Submit Rating",full=True)}</div>
+</div>
+</div>"""
+    body=f'<div style="display:flex;gap:20px;align-items:flex-start;"><div style="flex:1;">{left}</div><div style="flex:0 0 260px;">{right}</div></div>'
+    return frame("JUDGE REGISTRY / PROFILE","Judge Profile: Dr. Nakamura",body)
+
+def f3():
+    body=f"""
+{sl("SELECT JUDGE")}
+<div style="padding:14px 16px;background:{SURF};border:1px solid {BORDER};border-radius:10px;margin-bottom:18px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div><div style="font-family:monospace;font-size:12px;color:{ACCENT};">9dFk...3rPx</div>
+         <div style="font-size:14px;font-weight:700;color:{TXT_PRI};margin-top:2px;">Dr. Nakamura</div>
+         <div style="font-size:11px;color:{TXT_MUT};margin-top:1px;">Qualitative &middot; 247 verdicts &middot; 5.0/5</div></div>
+    <div style="text-align:right;"><div style="font-size:16px;font-weight:700;color:{WARN};">0.5 XMR</div>
+         <div style="font-size:11px;color:{TXT_MUT};">per attestation</div></div>
+  </div>
+</div>
+{sl("SELECT BOUNTY SERIES")}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">
+  {"".join(f'<div style="padding:11px 14px;background:{"' + ACC_GLO + '" if i==0 else SURF_HI};border:1px solid {"' + ACCENT + '" if i==0 else BORDER};border-radius:8px;cursor:pointer;">'
+           f'<div style="font-family:monospace;font-size:11px;color:{ACCENT};">{s}</div>'
+           f'<div style="font-size:13px;font-weight:600;color:{TXT_PRI};margin-top:2px;">{n}</div>'
+           f'<div style="font-size:11px;color:{TXT_MUT};">{d}</div></div>'
+           for i,(s,n,d) in enumerate([("SER-001","Archer Mwangi 2036","qualitative &middot; 20 units"),("SER-003","Sofia Reinholt 2040","qualitative &middot; 4 units"),("SER-004","Kenji Oduya Jr 2033","quantitative &middot; 20 units"),("SER-005","New Series","-- create new --")]))}
+</div>
+{sl("ROLE IN PANEL")}
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px;">
+  {"".join(f'<div style="padding:11px 14px;background:{"' + ACC_GLO + '" if i==0 else SURF_HI};border:1px solid {"' + ACCENT + '" if i==0 else BORDER};border-radius:8px;cursor:pointer;text-align:center;">'
+           f'<div style="font-size:13px;font-weight:600;color:{TXT_PRI};">{t}</div>'
+           f'<div style="font-size:11px;color:{TXT_MUT};">{d}</div></div>'
+           for i,(t,d) in enumerate([("Primary","First approver"),("Secondary","Tie-breaker"),("Arbitrator","Dispute only")]))}
+</div>
+<div style="display:flex;gap:12px;">{btn_o("Cancel")} {btn("Send Invitation",color=ACCENT,text_color=TXT_PRI)}</div>"""
+    return frame("JUDGE REGISTRY / INVITE","Invite Judge to Panel",body)
+
+def f4():
+    stars=f"""<div style="display:flex;gap:8px;margin-bottom:16px;">
+  {"".join(f'<div style="width:36px;height:36px;border-radius:6px;background:{"' + ACC_GLO + '" if i<4 else SURF_HI};border:1px solid {"' + ACCENT + '" if i<4 else BORDER};display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;">&#9733;</div>'
+           for i in range(5))}
+  <span style="font-size:13px;color:{WARN};margin-left:6px;line-height:36px;">4 / 5</span>
+</div>"""
+    body=f"""
+{sl("CLAIM BEING RATED")}
+<div style="padding:14px 16px;background:{SURF};border:1px solid {BORDER};border-radius:10px;margin-bottom:18px;">
+  <div style="display:flex;justify-content:space-between;">
+    <div><div style="font-family:monospace;font-size:11px;color:{ACCENT};">CLM-0031</div>
+         <div style="font-size:13px;font-weight:600;color:{TXT_PRI};margin-top:2px;">NYX-44EF &mdash; Kenji Oduya 2031</div></div>
+    <div style="text-align:right;"><div style="font-size:12px;color:{TXT_MUT};">Verdict</div>
+         <div style="font-size:13px;font-weight:700;color:{SUCCESS};">APPROVED</div></div>
+  </div>
+</div>
+{sl("RATE JUDGE: 9dFk...3rPx (Dr. Nakamura)")}
+{stars}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+  {"".join(_rating_group(l, opts) for l,opts in [("Response time",["Fast","OK","Slow"]),("Communication",["Clear","Adequate","Poor"]),("Evidence handling",["Thorough","OK","Lacking"]),("Fairness",["Very fair","Fair","Unfair"])])}
+</div>
+<div style="font-size:12px;color:{TXT_MUT};margin-bottom:4px;">Written feedback (optional)</div>
+<div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;padding:10px 13px;font-size:13px;color:{TXT_PRI};min-height:70px;margin-bottom:18px;">Fast response, thorough review of biometric evidence. Minor quibble on photo ID verification process.</div>
+<div style="display:flex;gap:12px;">{btn_o("Skip")} {btn("Submit Rating",color=SUCCESS)}</div>"""
+    return frame("JUDGE REGISTRY / RATE","Rate Judge After Verdict",body)
+
+def f5():
+    body=f"""
+<div style="padding:14px 16px;background:{ACCENT_RGBA};border-left:3px solid {ACCENT};
+            border-radius:0 6px 6px 0;font-size:12px;color:{TXT_SEC};margin-bottom:22px;">
+  Registering as a judge stakes your Ed25519 key on-chain as a verifiable signer.
+  Issuers select judges by reputation and fee. You earn a fee per attestation. No slashing in v1;
+  reputation is your only skin in the game.</div>
+{sl("YOUR JUDGE KEY")}
+{inp("Ed25519 Public Key","9dFk...3rPx  (select from Key Manager)",mono=True,note="This is the key you will use to sign verdicts. It must be in your Key Manager.")}
+{sl("SPECIALIZATION")}
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px;">
+  {"".join(f'<div style="padding:11px 14px;background:{"' + ACC_GLO + '" if i==0 else SURF_HI};border:1px solid {"' + ACCENT + '" if i==0 else BORDER};border-radius:8px;cursor:pointer;text-align:center;">'
+           f'<div style="font-size:13px;font-weight:600;color:{TXT_PRI};">{t}</div>'
+           f'<div style="font-size:11px;color:{TXT_MUT};">{d}</div></div>'
+           for i,(t,d) in enumerate([("Qualitative","Human judgment, biometric, legal"),("Quantitative","Data feeds, APIs, metrics"),("Both","All claim types")]))}
+</div>
+{sl("FEE & AVAILABILITY")}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
+  <div>
+    <div style="font-size:12px;color:{TXT_MUT};margin-bottom:4px;">Fee per attestation (XMR)</div>
+    <div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;padding:9px 13px;font-size:13px;color:{WARN};">0.5</div>
+  </div>
+  <div>
+    <div style="font-size:12px;color:{TXT_MUT};margin-bottom:4px;">Max concurrent cases</div>
+    <div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;padding:9px 13px;font-size:13px;color:{TXT_MUT};">10</div>
+  </div>
+</div>
+{inp("Professional bio / credentials","Describe your qualifications. Shown to issuers evaluating your panel.",note="Markdown supported. Max 500 chars.")}
+<div style="display:flex;gap:12px;">{btn_o("Cancel")} {btn("Register as Judge",color=ACCENT,text_color=TXT_PRI)}</div>"""
+    return frame("JUDGE REGISTRY / REGISTER","Become a Judge",body)
+
+FRAMES=[("Browse",f1),("Judge Profile",f2),("Invite Judge",f3),("Rate Judge",f4),("Become Judge",f5)]
+
+def build():
+    tabs="".join(f'<button data-idx="{i}" aria-selected="{"true" if i==0 else "false"}" role="tab" '
+                 f'style="padding:8px 18px;background:none;border:none;cursor:pointer;font-size:13px;'
+                 f'font-weight:600;color:{"' + ACCENT + '" if i==0 else "' + TXT_MUT + '"};'
+                 f'border-bottom:2px solid {"' + ACCENT + '" if i==0 else "transparent"};">'
+                 f'{l}</button>' for i,(l,_) in enumerate(FRAMES))
+    bodies="".join(f'<div data-frame="{i}" style="display:{"block" if i==0 else "none"};">{fn()}</div>'
+                   for i,(_,fn) in enumerate(FRAMES))
+    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NyxForge Judge Registry</title>
+<style>*,*::before,*::after{{box-sizing:border-box;margin:0;padding:0}}
+body{{background:{BG};color:{TXT_PRI};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}}
+::-webkit-scrollbar{{width:6px}}::-webkit-scrollbar-track{{background:{SURF}}}
+::-webkit-scrollbar-thumb{{background:{INACT};border-radius:3px}}</style></head>
+<body>
+<div style="background:{SURF};border-bottom:1px solid {BORDER};padding:0 24px;position:sticky;top:0;z-index:100;">
+  <div style="max-width:{FW+64}px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;">
+    <div style="padding:12px 0;display:flex;align-items:center;gap:12px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:{ACC_GLO};display:flex;align-items:center;justify-content:center;font-size:16px;">&#x2696;</div>
+      <div style="font-size:14px;font-weight:700;color:{TXT_PRI};">Judge Registry</div>
+    </div>
+    <div style="display:flex;gap:0;" role="tablist">{tabs}</div>
+    <div style="width:80px;"></div>
+  </div>
+</div>
+<div style="position:fixed;bottom:20px;right:24px;z-index:200;display:flex;gap:8px;">
+  <button onclick="nav(-1)" style="padding:8px 16px;background:{SURF_HI};border:1px solid {BORDER};border-radius:7px;color:{TXT_SEC};font-size:13px;cursor:pointer;">&larr; Prev</button>
+  <button onclick="nav(1)"  style="padding:8px 16px;background:{SURF_HI};border:1px solid {BORDER};border-radius:7px;color:{TXT_SEC};font-size:13px;cursor:pointer;">Next &rarr;</button>
+</div>
+<div id="frames">{bodies}</div>
+<script>
+let cur=0;const tot={len(FRAMES)};
+const fr=document.querySelectorAll('[data-frame]'),tb=document.querySelectorAll('[data-idx]');
+function show(i){{fr[cur].style.display='none';tb[cur].style.color='{TXT_MUT}';tb[cur].style.borderBottomColor='transparent';
+  cur=i;fr[cur].style.display='block';tb[cur].style.color='{ACCENT}';tb[cur].style.borderBottomColor='{ACCENT}';window.scrollTo(0,0);}}
+function nav(d){{show((cur+d+tot)%tot);}}
+tb.forEach(t=>t.addEventListener('click',()=>show(+t.dataset.idx)));
+document.addEventListener('keydown',e=>{{if(e.key==='ArrowRight')nav(1);if(e.key==='ArrowLeft')nav(-1);}});
+</script></body></html>"""
+
+if __name__=="__main__":
+    os.makedirs(OUTDIR,exist_ok=True)
+    html=build()
+    with open(OUTFILE,"w") as f: f.write(html)
+    print(f"Written: {OUTFILE}  ({len(html):,} bytes)")

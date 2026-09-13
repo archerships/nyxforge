@@ -1,0 +1,253 @@
+#!/usr/bin/env python3
+"""
+NyxForge Key Manager mockup generator.
+Generates docs/storyboards/out/key-manager-mockup.html
+
+5 frames:
+  1. Key Vault   -- list all keys: type, usage, fingerprint
+  2. Generate    -- create new Ed25519 keypair with passphrase
+  3. Import      -- import from file or hardware wallet (Ledger/Trezor)
+  4. Export      -- passphrase-encrypted export + QR
+  5. Rotate      -- rotate a compromised bearer key on a .bounty file
+"""
+import os
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTDIR     = os.path.join(os.environ.get("NYXFORGE_ROOT", os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "docs/storyboards/out")
+OUTFILE    = os.path.join(OUTDIR, "key-manager-mockup.html")
+
+BG=("#0d0f1a");SURF=("#131524");SURF_HI=("#1a1d2e")
+ACCENT=("#5e6ad2");ACC_GLO=("#2d3068");TXT_PRI=("#e8eaf0")
+TXT_SEC=("#b8c0d8");TXT_MUT=("#8b95b0");SUCCESS=("#4ade80")
+DANGER=("#f87171");WARN=("#fbbf24");BORDER=("#2a2d3e");INACT=("#3a3d5c")
+SUCCESS_RGBA="rgba(74,222,128,0.10)";WARN_RGBA="rgba(251,191,36,0.10)"
+ACCENT_RGBA="rgba(94,106,210,0.12)";DANGER_RGBA="rgba(248,113,113,0.10)"
+FW=920
+
+def sl(t): return f'<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:{ACCENT};margin-bottom:8px;">{t}</div>'
+def div(mb=12): return f'<div style="height:1px;background:{BORDER};margin:0 0 {mb}px;"></div>'
+def pill(t,c,bg): return f'<span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:{c};background:{bg};">{t}</span>'
+def btn(l,color=SUCCESS,text_color=BG,small=False,full=False):
+    p="7px 16px" if small else "13px 28px";fs="12px" if small else "14px"
+    w="width:100%;display:block;text-align:center;" if full else "display:inline-block;"
+    return f'<div style="{w}padding:{p};background:{color};border-radius:7px;font-size:{fs};font-weight:700;color:{text_color};cursor:pointer;">{l}</div>'
+def btn_o(l,small=False,color=None,full=False):
+    p="6px 14px" if small else "12px 27px";fs="12px" if small else "14px"
+    col=color or TXT_SEC;brd=color or BORDER
+    w="width:100%;display:block;text-align:center;" if full else "display:inline-block;"
+    return f'<div style="{w}padding:{p};background:transparent;border:1px solid {brd};border-radius:7px;font-size:{fs};color:{col};cursor:pointer;">{l}</div>'
+def inp(label,val,mono=False,note=None,pw=False):
+    f="monospace" if mono else "inherit"
+    n=f'<div style="font-size:11px;color:{TXT_MUT};margin-top:4px;">{note}</div>' if note else ""
+    vt="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" if pw else val
+    return (f'<div style="margin-bottom:12px;"><div style="font-size:12px;color:{TXT_MUT};margin-bottom:4px;">{label}</div>'
+            f'<div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;padding:9px 13px;font-size:13px;color:{TXT_MUT};font-family:{f};">{vt}</div>{n}</div>')
+def hdr():
+    return f"""<div style="background:{SURF};border-bottom:1px solid {BORDER};padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:{ACC_GLO};display:flex;align-items:center;
+                  justify-content:center;font-size:16px;">&#x1F511;</div>
+      <div><div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Key Manager</div>
+           <div style="font-size:11px;color:{TXT_MUT};">Ed25519 keypair vault</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      {btn("+ Generate Key",color=ACCENT,text_color=TXT_PRI,small=True)}
+      {btn_o("Import",small=True)}
+    </div></div>"""
+def frame(title,sub,body):
+    return f"""<div style="background:{BG};min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  {hdr()}
+  <div style="max-width:{FW}px;margin:0 auto;padding:28px 32px;">
+    <div style="margin-bottom:22px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:{ACCENT};margin-bottom:4px;text-transform:uppercase;">{title}</div>
+      <div style="font-size:22px;font-weight:700;color:{TXT_PRI};">{sub}</div>
+    </div>
+    {body}
+  </div></div>"""
+
+def key_row(fp,label,ktype,usage,created,active=False):
+    kc={"bearer":SUCCESS,"judge":ACCENT,"wallet":WARN}.get(ktype,TXT_MUT)
+    bg=f"rgba(94,106,210,0.08)" if active else SURF
+    brd=ACCENT if active else BORDER
+    return f"""<div style="display:grid;grid-template-columns:180px 1fr 90px 110px 120px 90px;gap:12px;
+              align-items:center;padding:12px 16px;background:{bg};border:1px solid {brd};
+              border-radius:8px;margin-bottom:8px;">
+  <div style="font-family:monospace;font-size:11px;color:{TXT_PRI};">{fp}</div>
+  <div><div style="font-size:13px;color:{TXT_PRI};font-weight:600;">{label}</div>
+       <div style="font-size:11px;color:{TXT_MUT};">Ed25519</div></div>
+  <div>{pill(ktype.upper(),kc,f"rgba(94,106,210,0.1)")}</div>
+  <div style="font-size:11px;color:{TXT_MUT};">{usage}</div>
+  <div style="font-size:11px;color:{TXT_MUT};">{created}</div>
+  <div style="display:flex;gap:6px;">{btn_o("...",small=True)}</div></div>"""
+
+def strength_bar(pct, label, c):
+    return f"""<div style="margin-bottom:8px;">
+  <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+    <span style="font-size:11px;color:{TXT_MUT};">Passphrase strength</span>
+    <span style="font-size:11px;color:{c};">{label}</span></div>
+  <div style="height:4px;background:{SURF_HI};border-radius:2px;">
+    <div style="height:4px;width:{pct}%;background:{c};border-radius:2px;"></div></div></div>"""
+
+def f1():
+    hdr_row=f'<div style="display:grid;grid-template-columns:180px 1fr 90px 110px 120px 90px;gap:12px;padding:8px 16px;margin-bottom:6px;"><div style="font-size:11px;color:{TXT_MUT};">FINGERPRINT</div><div style="font-size:11px;color:{TXT_MUT};">LABEL</div><div style="font-size:11px;color:{TXT_MUT};">TYPE</div><div style="font-size:11px;color:{TXT_MUT};">USAGE</div><div style="font-size:11px;color:{TXT_MUT};">CREATED</div><div></div></div>'
+    rows=(key_row("7Ab2...88Fc","Primary Bearer Key","bearer","NYX-7F3A, NYX-91C3","2026-01-15",True)+
+          key_row("9dFk...3rPx","Judge Key #1",      "judge", "CLM-0041, CLM-0038","2025-11-02")+
+          key_row("4aB2...CC91","Wallet Spend Key",  "wallet","XMR/NYX/TARI",      "2026-02-20")+
+          key_row("3eF8...12D0","Backup Bearer Key", "bearer","Not yet used",       "2026-04-01"))
+    sec=f"""<div style="background:{WARN_RGBA};border:1px solid {WARN};border-radius:8px;padding:14px 16px;margin-top:16px;">
+  <div style="font-size:12px;font-weight:700;color:{WARN};margin-bottom:4px;">Security Reminder</div>
+  <div style="font-size:12px;color:{TXT_SEC};">Private keys are stored encrypted at rest in ~/.nyx/keys/.
+  Bearer keys control who can claim collateral. Back up every key before using it on a live bounty.
+  The .bounty file and the private key together = redeemable bounty. Keep them separate.</div></div>"""
+    return frame("KEY MANAGER / VAULT","Key Vault",sl("STORED KEYS")+hdr_row+rows+sec)
+
+def f2():
+    left=f"""
+{sl("KEY LABEL")}
+{inp("Label","Primary Bearer Key 2026-Q2",note="Human-readable name for this key (stored locally only)")}
+{sl("KEY TYPE")}
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;">
+  {"".join(f'<div style="padding:11px 14px;background:{"' + ACC_GLO + '" if i==0 else SURF_HI};border:1px solid {"' + ACCENT + '" if i==0 else BORDER};border-radius:8px;cursor:pointer;text-align:center;">'
+           f'<div style="font-size:13px;font-weight:600;color:{TXT_PRI};margin-bottom:2px;">{t}</div>'
+           f'<div style="font-size:11px;color:{TXT_MUT};">{d}</div></div>'
+           for i,(t,d) in enumerate([("Bearer","Hold .bounty files"),("Judge","Sign verdicts"),("Wallet","Send/receive crypto")]))}
+</div>
+{div()}
+{sl("PASSPHRASE")}
+{inp("Passphrase","",pw=True,note="Minimum 16 characters. Not stored anywhere. You must remember this.")}
+{inp("Confirm Passphrase","",pw=True)}
+{strength_bar(88,"Strong",SUCCESS)}
+{div()}
+{sl("ALGORITHM")}
+<div style="padding:10px 14px;background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;margin-bottom:18px;font-size:13px;color:{TXT_MUT};">
+  Ed25519 (classical) &mdash; alg_epoch 0x00 &middot; Post-quantum slot reserved for v3 migration</div>
+<div style="display:flex;gap:12px;">{btn_o("Cancel")} {btn("Generate Keypair",color=SUCCESS)}</div>"""
+    right=f"""<div style="background:{SURF};border:1px solid {BORDER};border-radius:10px;padding:18px 20px;">
+  {sl("SECURITY CHECKLIST")}
+  {"".join(f'<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">'
+           f'<div style="flex:0 0 16px;height:16px;border-radius:4px;background:{"' + SUCCESS + '" if ok else BORDER};'
+           f'display:flex;align-items:center;justify-content:center;font-size:10px;color:{BG};margin-top:1px;">{"&#10003;" if ok else ""}</div>'
+           f'<span style="font-size:12px;color:{TXT_PRI};">{t}</span></div>'
+           for t,ok in [("Use a unique passphrase not used elsewhere",True),
+                        ("Write passphrase on paper; store offline",False),
+                        ("Generate on air-gapped machine for bearer keys",False),
+                        ("Back up keystore before first use",False),
+                        ("Test recovery before locking collateral",False)])}
+  {div()}
+	  <div style="font-size:11px;color:{TXT_MUT};">Keys are stored in <span style="font-family:monospace;">~/.nyx/keys/</span> as .nfkey files encrypted with NyxEnvelope (Argon2id + XChaCha20-Poly1305).</div>
+</div>"""
+    body=f'<div style="display:flex;gap:20px;align-items:flex-start;"><div style="flex:1;">{left}</div><div style="flex:0 0 280px;">{right}</div></div>'
+    return frame("KEY MANAGER / GENERATE","Generate New Keypair",body)
+
+def f3():
+    opts=f"""<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px;">
+  {"".join(f'<div style="padding:18px 20px;background:{"' + ACC_GLO + '" if i==0 else SURF_HI};border:1px solid {"' + ACCENT + '" if i==0 else BORDER};border-radius:10px;cursor:pointer;">'
+           f'<div style="font-size:24px;margin-bottom:8px;">{ic}</div>'
+           f'<div style="font-size:14px;font-weight:700;color:{TXT_PRI};margin-bottom:4px;">{t}</div>'
+           f'<div style="font-size:12px;color:{TXT_MUT};">{d}</div></div>'
+	           for i,(ic,t,d) in enumerate([("&#x1F4BE;","Import from File","PEM, raw hex, or .nfkey file"),
+                                        ("&#x1F4F2;","Hardware Wallet","Ledger or Trezor via USB"),
+                                        ("&#x1F522;","Enter Raw Key","Paste hex or base58 private key"),
+                                        ("&#x1F5A5;","Air-Gap QR Scan","Scan QR from offline machine")]))}
+</div>"""
+    file_form=f"""
+{sl("IMPORT FROM FILE")}
+{inp("Key File","~/.nyx/keys/bearer-2025-backup.nfkey",mono=True,note="Supports .pem, .hex, .nfkey")}
+{inp("Decryption Passphrase","",pw=True)}
+{inp("Label for imported key","Restored Bearer Key Q1-2025")}
+<div style="display:flex;gap:12px;margin-top:8px;">{btn_o("Cancel")} {btn("Import",color=ACCENT,text_color=TXT_PRI)}</div>"""
+    return frame("KEY MANAGER / IMPORT","Import Key",opts+div()+file_form)
+
+def f4():
+    warn=f"""<div style="padding:14px 16px;background:{DANGER_RGBA};border:1px solid {DANGER};
+             border-radius:8px;margin-bottom:20px;">
+  <div style="font-size:12px;font-weight:700;color:{DANGER};margin-bottom:4px;">Keep exports secure</div>
+  <div style="font-size:12px;color:{TXT_SEC};">The exported file contains your private key. Anyone with
+  the file and passphrase can redeem bounties and transfer collateral. Store offline or on hardware.</div></div>"""
+    body=f"""
+{sl("SELECT KEY TO EXPORT")}
+{inp("Key","7Ab2...88Fc  —  Primary Bearer Key",mono=True)}
+{div()}
+{sl("EXPORT FORMAT")}
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px;">
+  {"".join(f'<div style="padding:11px 14px;background:{"' + ACC_GLO + '" if i==0 else SURF_HI};border:1px solid {"' + ACCENT + '" if i==0 else BORDER};border-radius:8px;cursor:pointer;text-align:center;">'
+           f'<div style="font-size:13px;font-weight:600;color:{TXT_PRI};margin-bottom:2px;">{t}</div>'
+           f'<div style="font-size:11px;color:{TXT_MUT};">{d}</div></div>'
+	           for i,(t,d) in enumerate([(".nfkey Encrypted","NyxEnvelope"),("PEM","PKCS#8 standard"),("QR Code","Offline paper backup")]))}
+</div>
+{sl("PASSPHRASE")}
+{inp("Export Passphrase","",pw=True,note="Used to decrypt this export. Can differ from your vault passphrase.")}
+{inp("Confirm Passphrase","",pw=True)}
+{inp("Output Path","~/Desktop/bearer-backup-2026-04-23.enc",mono=True)}
+{warn}
+<div style="display:flex;gap:12px;">{btn_o("Cancel")} {btn("Export Key",color=ACCENT,text_color=TXT_PRI)}</div>"""
+    return frame("KEY MANAGER / EXPORT","Export Key",body)
+
+def f5():
+    warn=f"""<div style="padding:14px 16px;background:{WARN_RGBA};border-left:3px solid {WARN};
+             border-radius:0 6px 6px 0;font-size:12px;color:{TXT_SEC};margin-bottom:20px;">
+  Key rotation rewrites the bearer key embedded in the .bounty file. The old key is invalidated.
+  You must be the current bearer to rotate. The DLEQ proof is recomputed automatically.</div>"""
+    body=f"""
+{sl("BOUNTY FILE TO ROTATE")}
+{inp("Bounty File","archer-mwangi-2036-001.bounty  (NYX-7F3A)",mono=True)}
+<div style="padding:11px 14px;background:{SURF_HI};border:1px solid {BORDER};border-radius:7px;margin-bottom:18px;">
+  <div style="display:flex;justify-content:space-between;"><span style="font-size:12px;color:{TXT_MUT};">Current bearer</span><span style="font-size:12px;font-family:monospace;color:{DANGER};">7Ab2...88Fc (COMPROMISED)</span></div>
+</div>
+{div()}
+{sl("NEW BEARER KEY")}
+{inp("New Bearer Public Key","Select from vault or paste new pubkey...",mono=True,note="The new key becomes the sole bearer. Old key loses all rights immediately.")}
+{inp("Authorize with current key passphrase","",pw=True,note="Proves you control the current key before rotation is allowed.")}
+{warn}
+<div style="display:flex;gap:12px;">{btn_o("Cancel")} {btn("Rotate Bearer Key",color=DANGER,text_color=TXT_PRI)}</div>"""
+    return frame("KEY MANAGER / ROTATE","Rotate Compromised Key",body)
+
+FRAMES=[("Key Vault",f1),("Generate",f2),("Import",f3),("Export",f4),("Rotate",f5)]
+
+def build():
+    tabs="".join(f'<button data-idx="{i}" aria-selected="{"true" if i==0 else "false"}" role="tab" '
+                 f'style="padding:8px 18px;background:none;border:none;cursor:pointer;font-size:13px;'
+                 f'font-weight:600;color:{"' + ACCENT + '" if i==0 else "' + TXT_MUT + '"};'
+                 f'border-bottom:2px solid {"' + ACCENT + '" if i==0 else "transparent"};">'
+                 f'{l}</button>' for i,(l,_) in enumerate(FRAMES))
+    bodies="".join(f'<div data-frame="{i}" style="display:{"block" if i==0 else "none"};">{fn()}</div>'
+                   for i,(_,fn) in enumerate(FRAMES))
+    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NyxForge Key Manager</title>
+<style>*,*::before,*::after{{box-sizing:border-box;margin:0;padding:0}}
+body{{background:{BG};color:{TXT_PRI};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}}
+::-webkit-scrollbar{{width:6px}}::-webkit-scrollbar-track{{background:{SURF}}}
+::-webkit-scrollbar-thumb{{background:{INACT};border-radius:3px}}</style></head>
+<body>
+<div style="background:{SURF};border-bottom:1px solid {BORDER};padding:0 24px;position:sticky;top:0;z-index:100;">
+  <div style="max-width:{FW+64}px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;">
+    <div style="padding:12px 0;display:flex;align-items:center;gap:12px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:{ACC_GLO};display:flex;align-items:center;justify-content:center;font-size:16px;">&#x1F511;</div>
+      <div style="font-size:14px;font-weight:700;color:{TXT_PRI};">Key Manager</div>
+    </div>
+    <div style="display:flex;gap:0;" role="tablist">{tabs}</div>
+    <div style="width:80px;"></div>
+  </div>
+</div>
+<div style="position:fixed;bottom:20px;right:24px;z-index:200;display:flex;gap:8px;">
+  <button onclick="nav(-1)" style="padding:8px 16px;background:{SURF_HI};border:1px solid {BORDER};border-radius:7px;color:{TXT_SEC};font-size:13px;cursor:pointer;">&larr; Prev</button>
+  <button onclick="nav(1)"  style="padding:8px 16px;background:{SURF_HI};border:1px solid {BORDER};border-radius:7px;color:{TXT_SEC};font-size:13px;cursor:pointer;">Next &rarr;</button>
+</div>
+<div id="frames">{bodies}</div>
+<script>
+let cur=0;const tot={len(FRAMES)};
+const fr=document.querySelectorAll('[data-frame]'),tb=document.querySelectorAll('[data-idx]');
+function show(i){{fr[cur].style.display='none';tb[cur].style.color='{TXT_MUT}';tb[cur].style.borderBottomColor='transparent';
+  cur=i;fr[cur].style.display='block';tb[cur].style.color='{ACCENT}';tb[cur].style.borderBottomColor='{ACCENT}';window.scrollTo(0,0);}}
+function nav(d){{show((cur+d+tot)%tot);}}
+tb.forEach(t=>t.addEventListener('click',()=>show(+t.dataset.idx)));
+document.addEventListener('keydown',e=>{{if(e.key==='ArrowRight')nav(1);if(e.key==='ArrowLeft')nav(-1);}});
+</script></body></html>"""
+
+if __name__=="__main__":
+    os.makedirs(OUTDIR,exist_ok=True)
+    html=build()
+    with open(OUTFILE,"w") as f: f.write(html)
+    print(f"Written: {OUTFILE}  ({len(html):,} bytes)")

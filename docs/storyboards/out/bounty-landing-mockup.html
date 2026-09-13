@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>NyxForge Lifebond Landing Mockup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #080a12; font-family: Inter, system-ui, sans-serif;
+          display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+  #tabs { display: flex; gap: 2px; background: #0d0f1a; padding: 8px 16px 0;
+           border-bottom: 1px solid #2a2d3e; flex-shrink: 0; overflow-x: auto; }
+  .tab { padding: 8px 16px; font-size: 12px; color: #6b7280; cursor: pointer;
+          border-radius: 6px 6px 0 0; border: 1px solid transparent;
+          border-bottom: none; user-select: none; white-space: nowrap; }
+  .tab:hover { color: #e8eaf0; background: #131524; }
+  .tab.active { color: #e8eaf0; background: #131524; border-color: #2a2d3e; }
+  #viewport { flex: 1; display: flex; align-items: flex-start; justify-content: center;
+               overflow: auto; padding: 32px; }
+  #frame-wrap { position: relative; flex-shrink: 0; }
+  #frame { position: relative; overflow: hidden; border: 1px solid #2a2d3e; }
+  #nav { display: flex; align-items: center; justify-content: space-between;
+          padding: 10px 16px; background: #0d0f1a; border-top: 1px solid #2a2d3e;
+          flex-shrink: 0; }
+  #nav button { background: #1a1d2e; color: #e8eaf0; border: 1px solid #3a3d5c;
+                 padding: 6px 20px; border-radius: 6px; font-size: 12px;
+                 cursor: pointer; font-family: inherit; }
+  #nav button:hover { background: #2a2d3e; }
+  #nav button:disabled { opacity: 0.3; cursor: default; }
+  #counter { font-size: 12px; color: #6b7280; }
+</style>
+</head><body>
+
+<div id="tabs"></div>
+<div id="viewport"><div id="frame-wrap"><div id="frame"></div></div></div>
+<div id="nav">
+  <button id="btn-prev" onclick="go(-1)">&#8592; Prev</button>
+  <span id="counter"></span>
+  <button id="btn-next" onclick="go(1)">Next &#8594;</button>
+</div>
+
+<script>
+const FRAMES = [
+  { label: `1 -- Landing Page`, bg: `#0d0f1a`, w: 900, h: 1080, html: `
+<div style="width:900px;height:1080px;overflow:hidden;background:#0d0f1a;font-family:Inter,system-ui,sans-serif;color:#e8eaf0;">
+
+  <!-- NGO header bar -->
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:0 24px;height:52px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="width:32px;height:32px;border-radius:6px;background:#2d3068;
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:13px;font-weight:700;color:#5e6ad2;">ARA</div>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#e8eaf0;">Alzheimer's Research Alliance</div>
+        <div style="font-size:11px;color:#8b95b0;">Bounty Campaign</div>
+      </div>
+    </div>
+    <div style="font-size:10px;color:#3a3d5c;">Powered by NyxForge</div>
+  </div>
+
+  <!-- Hero -->
+  <div style="padding:16px 24px 10px;">
+    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:#5e6ad2;margin-bottom:5px;">BOUNTY</div>
+    <div style="font-size:22px;font-weight:700;color:#e8eaf0;margin-bottom:4px;">Alzheimer's Cure Bounty By 2045</div>
+    <div style="font-size:13px;color:#8b95b0;margin-bottom:6px;">
+      Fund the research that ends Alzheimer's disease.
+      Your collateral is returned in full if the goal is not met by the deadline.
+    </div>
+    <!-- How bounties work link -- immediately after tagline -->
+    <span style="font-size:13px;color:#5e6ad2;text-decoration:underline;cursor:pointer;">
+      How do the bounties work?
+    </span>
+  </div>
+
+  <!-- Progress bar -->
+  <div style="padding:8px 24px 12px;">
+    <div style="background:#1a1d2e;border-radius:4px;height:8px;margin-bottom:7px;overflow:hidden;">
+      <div style="background:#4ade80;width:14.2%;height:100%;border-radius:4px;"></div>
+    </div>
+    <div style="display:flex;align-items:center;">
+      <span style="font-size:14px;font-weight:700;color:#4ade80;">14.2 XMR</span>
+      <span style="font-size:12px;color:#8b95b0;margin-left:6px;">backed of 100 XMR goal</span>
+      <span style="margin-left:auto;font-size:12px;color:#8b95b0;">37 backers &nbsp;|&nbsp; Deadline: 2045-12-31</span>
+    </div>
+  </div>
+
+  <div style="height:1px;background:#2a2d3e;margin:0 24px 12px;"></div>
+
+  <!-- Terms -->
+  <div style="padding:0 24px 10px;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">TERMS (all must be met)</div>
+    <div style="display:flex;flex-direction:column;gap:7px;">
+      <div style="display:flex;gap:10px;align-items:flex-start;">
+        <div style="width:18px;height:18px;border-radius:9px;border:1px solid #2a2d3e;background:#1a1d2e;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:#5e6ad2;">1</div>
+        <span style="font-size:13px;color:#b8c0d8;">FDA approves a treatment reducing new Alzheimer's diagnoses by 50% before 2045-12-31.</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start;">
+        <div style="width:18px;height:18px;border-radius:9px;border:1px solid #2a2d3e;background:#1a1d2e;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:#5e6ad2;">2</div>
+        <span style="font-size:13px;color:#b8c0d8;">Verified by at least 2 of 3 pre-approved independent bounty judges.</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:1px;background:#2a2d3e;margin:0 24px 12px;"></div>
+
+  <!-- Judges -->
+  <div style="padding:0 24px 10px;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">JUDGES</div>
+    
+    <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;
+                padding:14px;margin-bottom:10px;">
+      <div style="display:flex;gap:14px;align-items:flex-start;">
+        <img src="https://i.pravatar.cc/88?img=16" width="44" height="44"
+             style="border-radius:22px;flex-shrink:0;object-fit:cover;"
+             alt="Judge portrait">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:700;color:#e8eaf0;margin-bottom:2px;">Dr. Sarah Chen</div>
+          <div style="font-size:12px;color:#b8c0d8;margin-bottom:1px;">World Health Organization</div>
+          <div style="font-size:12px;color:#8b95b0;">Lead Epidemiologist, Neurological Diseases</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#8b95b0;margin-top:10px;line-height:1.5;">20+ years in Alzheimer's epidemiology. Leads the WHO Global Dementia Observatory and previously served as a consultant to the NIH National Institute on Aging.</div>
+      <div style="display:flex;gap:20px;margin-top:8px;">
+        <span style="font-size:12px;color:#5e6ad2;text-decoration:underline;cursor:pointer;">who.int/dementia</span>
+        <span style="font-size:12px;color:#5e6ad2;text-decoration:underline;cursor:pointer;">Judgment Record: 4 bounties, 0 disputes</span>
+      </div>
+    </div>
+    <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;
+                padding:14px;margin-bottom:10px;">
+      <div style="display:flex;gap:14px;align-items:flex-start;">
+        <img src="https://i.pravatar.cc/88?img=51" width="44" height="44"
+             style="border-radius:22px;flex-shrink:0;object-fit:cover;"
+             alt="Judge portrait">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:700;color:#e8eaf0;margin-bottom:2px;">Dr. Marcus Webb</div>
+          <div style="font-size:12px;color:#b8c0d8;margin-bottom:1px;">FDA Office of Neuroscience (Algorithmic)</div>
+          <div style="font-size:12px;color:#8b95b0;">Automated Data Feed Administrator</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#8b95b0;margin-top:10px;line-height:1.5;">Administers the FDA drug-approval database feed. Judgment is made algorithmically from official approval records; Dr. Webb is personally responsible for feed integrity and audit.</div>
+      <div style="display:flex;gap:20px;margin-top:8px;">
+        <span style="font-size:12px;color:#5e6ad2;text-decoration:underline;cursor:pointer;">fda.gov/neuroscience</span>
+        <span style="font-size:12px;color:#5e6ad2;text-decoration:underline;cursor:pointer;">Judgment Record: 12 bounties, 2 disputes</span>
+      </div>
+    </div>
+    <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;
+                padding:14px;margin-bottom:10px;">
+      <div style="display:flex;gap:14px;align-items:flex-start;">
+        <img src="https://i.pravatar.cc/88?img=47" width="44" height="44"
+             style="border-radius:22px;flex-shrink:0;object-fit:cover;"
+             alt="Judge portrait">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:700;color:#e8eaf0;margin-bottom:2px;">Dr. Elena Marchetti</div>
+          <div style="font-size:12px;color:#b8c0d8;margin-bottom:1px;">Cochrane Collaboration</div>
+          <div style="font-size:12px;color:#8b95b0;">Systematic Review Coordinator, Dementia</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#8b95b0;margin-top:10px;line-height:1.5;">Coordinates independent systematic reviews of clinical trial data. Alzheimer's specialist with 15 published meta-analyses and a 12-year track record at Cochrane.</div>
+      <div style="display:flex;gap:20px;margin-top:8px;">
+        <span style="font-size:12px;color:#5e6ad2;text-decoration:underline;cursor:pointer;">cochrane.org/dementia</span>
+        <span style="font-size:12px;color:#5e6ad2;text-decoration:underline;cursor:pointer;">Judgment Record: 7 bounties, 1 dispute</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Amount selector -->
+  <div style="padding:0 24px 10px;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">YOUR CONTRIBUTION</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;">
+      <div style="padding:7px 14px;border:1px solid #2a2d3e;border-radius:6px;font-size:13px;color:#8b95b0;background:#131524;">$1</div><div style="padding:7px 14px;border:1px solid #2a2d3e;border-radius:6px;font-size:13px;color:#8b95b0;background:#131524;">$10</div><div style="padding:7px 14px;border:1px solid #2a2d3e;border-radius:6px;font-size:13px;color:#8b95b0;background:#131524;">$20</div><div style="padding:7px 14px;border:1px solid #2a2d3e;border-radius:6px;font-size:13px;color:#8b95b0;background:#131524;">$50</div><div style="padding:7px 14px;border:2px solid #5e6ad2;border-radius:6px;font-size:13px;font-weight:700;color:#e8eaf0;background:#2d3068;">$100</div><div style="padding:7px 14px;border:1px solid #2a2d3e;border-radius:6px;font-size:13px;color:#8b95b0;background:#131524;">$200</div><div style="padding:7px 14px;border:1px solid #2a2d3e;border-radius:6px;font-size:13px;color:#8b95b0;background:#131524;">$500</div><div style="padding:7px 14px;border:1px solid #2a2d3e;border-radius:6px;font-size:13px;color:#8b95b0;background:#131524;">$1000</div><div style="padding:7px 14px;border:1px solid #2a2d3e;border-radius:6px;font-size:13px;color:#8b95b0;background:#131524;">Custom</div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div style="padding:10px 24px 20px;">
+    <div style="background:#4ade80;border-radius:8px;padding:14px;text-align:center;
+                font-size:15px;font-weight:700;color:#0d0f1a;letter-spacing:0.5px;">
+      BACK THIS BOUNTY
+    </div>
+  </div>
+
+</div>
+` },
+  { label: `2 -- Checkout`, bg: `#0d0f1a`, w: 900, h: 760, html: `
+<div style="width:900px;height:760px;overflow:hidden;background:#0d0f1a;font-family:Inter,system-ui,sans-serif;color:#e8eaf0;">
+
+  <!-- Header -->
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:14px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="font-size:18px;color:#5e6ad2;">&larr;</span>
+      <span style="font-size:16px;font-weight:700;color:#e8eaf0;">Complete Your Backing</span>
+    </div>
+    <span style="font-size:12px;color:#8b95b0;">Step 1 of 2</span>
+  </div>
+
+  <!-- Summary card -->
+  <div style="margin:14px 24px 0;background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px;
+              display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <div style="font-size:11px;color:#8b95b0;margin-bottom:3px;">Alzheimer's Research Alliance</div>
+      <div style="font-size:14px;font-weight:600;color:#e8eaf0;margin-bottom:5px;">Alzheimer's Cure Bounty By 2045</div>
+      <div style="font-size:12px;color:#8b95b0;">Deadline: 2045-12-31</div>
+    </div>
+    <div style="text-align:right;flex-shrink:0;margin-left:16px;">
+      <div style="font-size:20px;font-weight:700;color:#e8eaf0;">$100</div>
+    </div>
+  </div>
+
+  <!-- Fee breakdown card -->
+  <div style="margin:10px 24px 14px;background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;padding:12px;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">BOUNTY ALLOCATION</div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+      <span style="font-size:13px;color:#b8c0d8;">Bounty units (10 x $10)</span>
+      <span style="font-size:13px;font-weight:600;color:#e8eaf0;">$100.00</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+      <span style="font-size:13px;color:#b8c0d8;">ARA processing fee (3%)</span>
+      <span style="font-size:13px;color:#8b95b0;">$3.00</span>
+    </div>
+    <div style="height:1px;background:#2a2d3e;margin:6px 0;"></div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+      <span style="font-size:13px;font-weight:700;color:#e8eaf0;">Total charged to card</span>
+      <span style="font-size:14px;font-weight:700;color:#e8eaf0;">$103.00</span>
+    </div>
+    <div style="font-size:11px;color:#8b95b0;line-height:1.5;">
+      Bounty units are issued in $10 increments so each unit can be independently traded.
+      Any remainder above the nearest increment is applied to the ARA processing fee.
+    </div>
+  </div>
+
+  <!-- Payment form -->
+  <div style="padding:0 24px 12px;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">PAYMENT</div>
+    <div style="margin-bottom:8px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Name on card</div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:6px;padding:10px 14px;font-size:13px;color:#8b95b0;font-family:inherit;">Jane Smith</div></div>
+    <div style="margin-bottom:8px;">
+      <div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Card number</div>
+      <div style="background:#131524;border:1px solid #2a2d3e;border-radius:6px;padding:10px 14px;
+                  font-size:13px;color:#8b95b0;display:flex;justify-content:space-between;">
+        <span>4242  4242  4242  4242</span>
+        <span style="font-size:12px;color:#3a3d5c;">VISA</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;">
+      <div style="flex:1;"><div style="margin-bottom:8px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">Expiry</div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:6px;padding:10px 14px;font-size:13px;color:#8b95b0;font-family:inherit;">12 / 28</div></div></div>
+      <div style="flex:1;"><div style="margin-bottom:8px;"><div style="font-size:12px;color:#8b95b0;margin-bottom:4px;">CVC</div><div style="background:#131524;border:1px solid #2a2d3e;border-radius:6px;padding:10px 14px;font-size:13px;color:#8b95b0;font-family:inherit;">&bull;&bull;&bull;</div></div></div>
+    </div>
+  </div>
+
+  <!-- Next CTA -->
+  <div style="padding:0 24px;">
+    <div style="text-align:center;margin-bottom:12px;">
+      <span style="font-size:13px;color:#5e6ad2;text-decoration:underline;cursor:pointer;">
+        I prefer to donate with crypto
+      </span>
+    </div>
+    <div style="background:#4ade80;border-radius:8px;padding:14px;text-align:center;
+                font-size:15px;font-weight:700;color:#0d0f1a;">NEXT</div>
+    <div style="font-size:11px;color:#8b95b0;text-align:center;margin-top:7px;">
+      Your card will not be charged until you confirm on the next step.
+    </div>
+  </div>
+
+</div>
+` },
+  { label: `3 -- Checkout #2`, bg: `#0d0f1a`, w: 900, h: 760, html: `
+<div style="width:900px;height:760px;overflow:hidden;background:#0d0f1a;font-family:Inter,system-ui,sans-serif;color:#e8eaf0;">
+
+  <!-- Header -->
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:14px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="font-size:18px;color:#5e6ad2;">&larr;</span>
+      <span style="font-size:16px;font-weight:700;color:#e8eaf0;">Collateral Preferences</span>
+    </div>
+    <span style="font-size:12px;color:#8b95b0;">Step 2 of 2</span>
+  </div>
+
+  <!-- Collateral currency -->
+  <div style="padding:14px 24px 10px;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">COLLATERAL CURRENCY</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;">
+      <div style="padding:5px 14px;border:2px solid #5e6ad2;border-radius:6px;font-size:12px;font-weight:700;color:#e8eaf0;background:#2d3068;">XMR</div><div style="padding:5px 14px;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#8b95b0;background:#131524;">BTC</div><div style="padding:5px 14px;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#8b95b0;background:#131524;">ZEC</div><div style="padding:5px 14px;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#8b95b0;background:#131524;">ETH</div><div style="padding:5px 14px;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#8b95b0;background:#131524;">TARI</div><div style="padding:5px 14px;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#8b95b0;background:#131524;">NYX</div>
+    </div>
+    <div style="font-size:11px;color:#8b95b0;margin-top:6px;">
+      Your dollars will be used to purchase the selected cryptocurrency, which is locked as bounty collateral.
+    </div>
+  </div>
+
+  <div style="height:1px;background:#2a2d3e;margin:0 24px 12px;"></div>
+
+  <!-- Expiry options -->
+  <div style="padding:0 24px 12px;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">WHAT DO YOU WANT US TO DO IF THE TERMS OF THE BOUNTY AREN'T MET BY THE DEADLINE?</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+
+      <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+        <div style="width:16px;height:16px;border-radius:8px;border:2px solid #5e6ad2;background:#2d3068;flex-shrink:0;display:flex;align-items:center;justify-content:center;"><div style="width:7px;height:7px;border-radius:4px;background:#5e6ad2;"></div></div>
+        <div style="flex:1;">
+          <div style="font-size:13px;color:#e8eaf0;margin-bottom:6px;">
+            1. Return the crypto collateral to you directly.
+            Enter the return address of the wallet you would like us to use below:
+          </div>
+          <div style="background:#131524;border:1px solid #5e6ad2;border-radius:6px;
+                      padding:9px 12px;font-size:12px;color:#e8eaf0;font-family:monospace;">
+            89cMd7bXvLp4Q2Rz8nFwYkT3mJsHeD6A...
+          </div>
+          <div style="font-size:11px;color:#8b95b0;margin-top:5px;line-height:1.5;">
+            Note: the collateral may be worth more or less than your original donation
+            depending on how the price of XMR changes over time.
+          </div>
+        </div>
+      </label>
+
+      <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+        <div style="width:16px;height:16px;border-radius:8px;border:2px solid #3a3d5c;background:#131524;flex-shrink:0;"></div>
+        <div style="flex:1;">
+          <div style="font-size:13px;color:#8b95b0;margin-bottom:6px;">
+            2. Return the money to my PayPal address:
+          </div>
+          <div style="background:#131524;border:1px solid #2a2d3e;border-radius:6px;
+                      padding:9px 12px;font-size:12px;color:#8b95b0;">
+            jane.smith@example.com
+          </div>
+        </div>
+      </label>
+
+      <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+        <div style="width:16px;height:16px;border-radius:8px;border:2px solid #3a3d5c;background:#131524;flex-shrink:0;"></div>
+        <span style="font-size:13px;color:#8b95b0;padding-top:1px;">
+          3. Gift the collateral to Alzheimer's Research Alliance.
+        </span>
+      </label>
+
+      <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+        <div style="width:16px;height:16px;border-radius:8px;border:2px solid #3a3d5c;background:#131524;flex-shrink:0;"></div>
+        <span style="font-size:13px;color:#8b95b0;padding-top:1px;">
+          4. Auto-roll the collateral into the next bounty campaign (if available).
+        </span>
+      </label>
+
+    </div>
+  </div>
+
+  <div style="height:1px;background:#2a2d3e;margin:0 24px 12px;"></div>
+
+  <!-- Confirm CTA -->
+  <div style="padding:0 24px;">
+    <div style="background:#4ade80;border-radius:8px;padding:14px;text-align:center;
+                font-size:15px;font-weight:700;color:#0d0f1a;">CONFIRM</div>
+  </div>
+
+</div>
+` },
+  { label: `4 -- Success`, bg: `#0d0f1a`, w: 900, h: 760, html: `
+<div style="width:900px;height:760px;overflow:hidden;background:#0d0f1a;font-family:Inter,system-ui,sans-serif;color:#e8eaf0;">
+
+  <div style="padding:36px 24px 20px;display:flex;flex-direction:column;align-items:center;text-align:center;">
+    <div style="width:72px;height:72px;border-radius:36px;border:2px solid #4ade80;
+                background:rgba(74,222,128,0.10);display:flex;align-items:center;
+                justify-content:center;margin-bottom:14px;">
+      <span style="font-size:32px;font-weight:700;color:#4ade80;">&#10003;</span>
+    </div>
+    <div style="font-size:24px;font-weight:700;color:#4ade80;margin-bottom:7px;">Bounty Backed!</div>
+    <div style="font-size:13px;color:#8b95b0;max-width:520px;line-height:1.6;">
+      Your collateral has been locked with the pre-approved bounty judges and
+      the bounty has been gifted to Alzheimer's Research Alliance.
+    </div>
+  </div>
+
+  <div style="margin:0 24px 18px;background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:16px;">
+    <div style="font-size:11px;color:#8b95b0;margin-bottom:4px;">BOUNTY ID</div>
+    <div style="font-family:monospace;font-size:12px;color:#5e6ad2;margin-bottom:14px;">alzheimer-cure-bounty-2045-0038</div>
+    <div style="display:flex;justify-content:space-between;">
+      <div>
+        <div style="font-size:11px;color:#8b95b0;">Locked</div>
+        <div style="font-size:14px;font-weight:600;color:#e8eaf0;">1.24 XMR</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#8b95b0;">Recipient</div>
+        <div style="font-size:14px;font-weight:600;color:#e8eaf0;">ARA</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#8b95b0;">Deadline</div>
+        <div style="font-size:14px;font-weight:600;color:#e8eaf0;">2045-12-31</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#8b95b0;">If terms unmet</div>
+        <div style="font-size:14px;font-weight:600;color:#4ade80;">XMR returned</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:0 24px 18px;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">WHAT HAPPENS NEXT</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;gap:12px;align-items:flex-start;">
+        <div style="width:24px;height:24px;border-radius:12px;background:#2d3068;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#5e6ad2;">1</div>
+        <span style="font-size:13px;color:#b8c0d8;">Bounty judges monitor research progress automatically until 2045-12-31.</span>
+      </div>
+      <div style="display:flex;gap:12px;align-items:flex-start;">
+        <div style="width:24px;height:24px;border-radius:12px;background:#2d3068;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#5e6ad2;">2</div>
+        <span style="font-size:13px;color:#b8c0d8;">If the goal is met: Alzheimer's Research Alliance redeems 1.24 XMR.</span>
+      </div>
+      <div style="display:flex;gap:12px;align-items:flex-start;">
+        <div style="width:24px;height:24px;border-radius:12px;background:#2d3068;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#5e6ad2;">3</div>
+        <span style="font-size:13px;color:#b8c0d8;">If the deadline passes without verification: 1.24 XMR is returned to your wallet.</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:0 24px;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">SPREAD THE WORD</div>
+    <div style="display:flex;gap:8px;">
+      <div style="padding:10px 20px;background:#131524;border:1px solid #2a2d3e;
+                  border-radius:6px;font-size:13px;color:#e8eaf0;cursor:pointer;">Share on X</div>
+      <div style="padding:10px 20px;background:#131524;border:1px solid #2a2d3e;
+                  border-radius:6px;font-size:13px;color:#e8eaf0;cursor:pointer;">Share on Nostr</div>
+      <div style="padding:10px 20px;background:#131524;border:1px solid #2a2d3e;
+                  border-radius:6px;font-size:13px;color:#e8eaf0;cursor:pointer;">View on NyxForge</div>
+    </div>
+  </div>
+
+</div>
+` },
+  { label: `5 -- How Bounties Work`, bg: `#0d0f1a`, w: 900, h: 760, html: `
+<div style="width:900px;height:760px;overflow:hidden;background:#0d0f1a;font-family:Inter,system-ui,sans-serif;color:#e8eaf0;">
+
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:14px 24px;
+              display:flex;align-items:center;gap:12px;">
+    <span style="font-size:18px;color:#5e6ad2;">&larr;</span>
+    <div>
+      <div style="font-size:16px;font-weight:700;color:#e8eaf0;">How Bounties Work</div>
+      <div style="font-size:11px;color:#8b95b0;">Alzheimer's Cure Bounty By 2045</div>
+    </div>
+  </div>
+
+  <div style="padding:20px 24px 0;">
+
+    
+    <div style="margin-bottom:20px;">
+      <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:8px;">
+        <div style="width:24px;height:24px;border-radius:12px;background:#2d3068;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#5e6ad2;">1</div>
+        <div style="font-size:14px;font-weight:700;color:#e8eaf0;padding-top:3px;">How This Bounty Will Help Cure Alzheimer's</div>
+      </div>
+      <div style="margin-left:36px;font-size:13px;color:#b8c0d8;line-height:1.65;">This bounty creates a financial prize for curing Alzheimer's disease. Supporters like
+      you lock collateral (cryptocurrency) that goes to the Alzheimer's Research Alliance
+      <em>only if</em> the stated goal is achieved by the deadline.<br><br>
+      <strong style="color:#e8eaf0;">Example:</strong> Suppose a biotech company develops a drug
+      reducing new Alzheimer's diagnoses by 60%. Once the FDA approves it and at least 2 of our
+      3 independent bounty judges confirm the result, the ARA receives all locked collateral.
+      If no qualifying treatment is approved by 2045-12-31, every backer's collateral is
+      returned automatically &mdash; no questions asked.</div>
+    </div>
+
+    <div style="height:1px;background:#2a2d3e;margin:0 24px 20px;"></div>
+
+    
+    <div style="margin-bottom:20px;">
+      <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:8px;">
+        <div style="width:24px;height:24px;border-radius:12px;background:#2d3068;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#5e6ad2;">2</div>
+        <div style="font-size:14px;font-weight:700;color:#e8eaf0;padding-top:3px;">How Judges Decide Whether the Terms Are Met</div>
+      </div>
+      <div style="margin-left:36px;font-size:13px;color:#b8c0d8;line-height:1.65;">Each judge independently evaluates whether the bounty terms were satisfied.
+      A 2-of-3 majority is required for a verdict. Judges may rely on automated data
+      feeds (e.g. the FDA approval database) or their own expert review of published
+      trial data. Each judge must submit a signed record of their decision.<br><br>
+      The judgment window opens on the deadline (2045-12-31) and closes 90 days later.
+      If fewer than 2 judges respond within that window, the bounty is deemed unmet
+      and all collateral is returned.</div>
+    </div>
+
+    <div style="height:1px;background:#2a2d3e;margin:0 24px 20px;"></div>
+
+    
+    <div style="margin-bottom:20px;">
+      <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:8px;">
+        <div style="width:24px;height:24px;border-radius:12px;background:#2d3068;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#5e6ad2;">3</div>
+        <div style="font-size:14px;font-weight:700;color:#e8eaf0;padding-top:3px;">How Disputes Are Resolved</div>
+      </div>
+      <div style="margin-left:36px;font-size:13px;color:#b8c0d8;line-height:1.65;">If you believe a verdict is incorrect, you may file a dispute within 30 days
+      by staking an equal amount of collateral. The dispute escalates to a NyxForge
+      arbitration panel of 5 neutral reviewers drawn randomly from the registered
+      judge pool. The panel reviews all evidence and issues a binding majority decision
+      within 60 days. The losing party forfeits their staked collateral to the winning
+      party. All dispute records are permanently archived on Arweave for public audit.</div>
+    </div>
+
+  </div>
+
+</div>
+` },
+  { label: `6 -- Crypto Checkout`, bg: `#0d0f1a`, w: 900, h: 760, html: `
+<div style="width:900px;height:760px;overflow:hidden;background:#0d0f1a;font-family:Inter,system-ui,sans-serif;color:#e8eaf0;">
+
+  <!-- Header -->
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:14px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="font-size:18px;color:#5e6ad2;">&larr;</span>
+      <span style="font-size:16px;font-weight:700;color:#e8eaf0;">Donate with Crypto</span>
+    </div>
+    <span style="font-size:12px;color:#8b95b0;">Step 1 of 2</span>
+  </div>
+
+  <!-- Summary card -->
+  <div style="margin:14px 24px 0;background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px;
+              display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <div style="font-size:11px;color:#8b95b0;margin-bottom:3px;">Alzheimer's Research Alliance</div>
+      <div style="font-size:14px;font-weight:600;color:#e8eaf0;margin-bottom:5px;">Alzheimer's Cure Bounty By 2045</div>
+      <div style="font-size:12px;color:#8b95b0;">Deadline: 2045-12-31</div>
+    </div>
+    <div style="text-align:right;flex-shrink:0;margin-left:16px;">
+      <div style="font-size:20px;font-weight:700;color:#e8eaf0;">$100</div>
+    </div>
+  </div>
+
+  <!-- Currency selector -->
+  <div style="padding:14px 24px 10px;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">SELECT CURRENCY</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;">
+      <div style="padding:5px 14px;border:2px solid #5e6ad2;border-radius:6px;font-size:12px;font-weight:700;color:#e8eaf0;background:#2d3068;">XMR</div><div style="padding:5px 14px;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#8b95b0;background:#131524;">BTC</div><div style="padding:5px 14px;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#8b95b0;background:#131524;">ZEC</div><div style="padding:5px 14px;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#8b95b0;background:#131524;">ETH</div><div style="padding:5px 14px;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#8b95b0;background:#131524;">TARI</div><div style="padding:5px 14px;border:1px solid #2a2d3e;border-radius:6px;font-size:12px;color:#8b95b0;background:#131524;">NYX</div>
+    </div>
+  </div>
+
+  <div style="height:1px;background:#2a2d3e;margin:0 24px 12px;"></div>
+
+  <!-- Send instructions -->
+  <div style="padding:0 24px 14px;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">SEND EXACTLY</div>
+    <div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;padding:16px;margin-bottom:12px;">
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px;">
+        <span style="font-size:28px;font-weight:700;color:#e8eaf0;">1.2400</span>
+        <span style="font-size:16px;color:#8b95b0;">XMR</span>
+      </div>
+      <div style="font-size:12px;color:#8b95b0;">&asymp; $100.00 at current rate &nbsp;&mdash;&nbsp; rate locked for 15 min</div>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">TO THIS ADDRESS</div>
+    <div style="background:#131524;border:1px solid #2a2d3e;border-radius:8px;padding:14px;
+                display:flex;align-items:center;gap:14px;">
+      <!-- QR placeholder -->
+      <div style="width:80px;height:80px;flex-shrink:0;border:1px solid #2a2d3e;border-radius:6px;
+                  background:#1a1d2e;display:flex;align-items:center;justify-content:center;">
+        <div style="display:grid;grid-template-columns:repeat(7,8px);grid-template-rows:repeat(7,8px);gap:2px;">
+          <div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#1a1d2e;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#1a1d2e;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#1a1d2e;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#1a1d2e;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#1a1d2e;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#1a1d2e;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#1a1d2e;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#1a1d2e;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#1a1d2e;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#1a1d2e;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#1a1d2e;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#1a1d2e;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#1a1d2e;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#1a1d2e;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#1a1d2e;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#1a1d2e;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div><div style="background:#5e6ad2;border-radius:1px;"></div>
+        </div>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-family:monospace;font-size:11px;color:#5e6ad2;word-break:break-all;
+                    line-height:1.5;margin-bottom:8px;">
+          89cMd7bXvLp4Q2Rz8nFwYkT3mJsHeD6A<br>uNgCiVoBxPaWdE5yUjQtZrKf9MsL1cHv
+        </div>
+        <div style="display:flex;gap:8px;">
+          <span style="font-size:12px;padding:5px 12px;background:#1a1d2e;border:1px solid #2a2d3e;
+                       border-radius:5px;color:#b8c0d8;cursor:pointer;">Copy address</span>
+          <span style="font-size:12px;padding:5px 12px;background:#1a1d2e;border:1px solid #2a2d3e;
+                       border-radius:5px;color:#b8c0d8;cursor:pointer;">Open in wallet</span>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#8b95b0;margin-top:8px;line-height:1.5;">
+      Send the exact amount in a single transaction. This address is unique to your bounty
+      and expires in 15 minutes.
+    </div>
+  </div>
+
+  <!-- Waiting indicator -->
+  <div style="margin:0 24px;background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;
+              padding:12px 16px;display:flex;align-items:center;gap:12px;">
+    <div style="width:10px;height:10px;border-radius:5px;background:#5e6ad2;flex-shrink:0;
+                animation:pulse 1.5s infinite;"></div>
+    <span style="font-size:13px;color:#8b95b0;">Waiting for payment&hellip; confirmations: 0 / 10</span>
+  </div>
+
+</div>
+` },
+  { label: `7 -- Invalid Address`, bg: `#0d0f1a`, w: 900, h: 760, html: `
+<div style="width:900px;height:760px;overflow:hidden;background:#0d0f1a;font-family:Inter,system-ui,sans-serif;color:#e8eaf0;">
+
+  <!-- Header -->
+  <div style="background:#131524;border-bottom:1px solid #2a2d3e;padding:14px 24px;
+              display:flex;align-items:center;gap:12px;">
+    <span style="font-size:18px;color:#5e6ad2;">&larr;</span>
+    <span style="font-size:16px;font-weight:700;color:#e8eaf0;">Collateral Preferences</span>
+  </div>
+
+  <!-- Error banner -->
+  <div style="margin:20px 24px 0;background:rgba(248,113,113,0.10);border:1px solid #f87171;
+              border-radius:8px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;">
+    <div style="font-size:18px;color:#f87171;flex-shrink:0;line-height:1;">&#9888;</div>
+    <div>
+      <div style="font-size:14px;font-weight:700;color:#f87171;margin-bottom:4px;">
+        Invalid XMR Return Address
+      </div>
+      <div style="font-size:13px;color:#b8c0d8;line-height:1.55;">
+        The address you entered does not appear to be a valid Monero (XMR) address.
+        Please check that you copied the full address and try again.
+      </div>
+    </div>
+  </div>
+
+  <!-- What you entered -->
+  <div style="margin:16px 24px 0;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">YOU ENTERED</div>
+    <div style="background:#131524;border:1px solid #f87171;border-radius:6px;
+                padding:10px 14px;font-family:monospace;font-size:12px;color:#f87171;
+                word-break:break-all;line-height:1.5;">
+      89cMd7bXvLp4Q2Rz8nFw  &larr; too short / invalid checksum
+    </div>
+  </div>
+
+  <!-- What a valid address looks like -->
+  <div style="margin:16px 24px 0;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:#5e6ad2;margin-bottom:8px;">WHAT A VALID XMR ADDRESS LOOKS LIKE</div>
+    <div style="background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;padding:14px;">
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div>
+          <div style="font-size:11px;color:#8b95b0;margin-bottom:4px;">Standard address (95 characters, starts with 4)</div>
+          <div style="font-family:monospace;font-size:11px;color:#b8c0d8;word-break:break-all;line-height:1.5;">
+            4AdUndXHHZ9pfQpHMDqE5ZLqmJMEpFnsMC7oJnzRPqPGEGME<br>kzYPQaGZAGXksBFkAGMCQgARKvnWCqABMvGgJg1mfwkEN3h
+          </div>
+        </div>
+        <div style="height:1px;background:#2a2d3e;"></div>
+        <div>
+          <div style="font-size:11px;color:#8b95b0;margin-bottom:4px;">Subaddress (95 characters, starts with 8)</div>
+          <div style="font-family:monospace;font-size:11px;color:#b8c0d8;word-break:break-all;line-height:1.5;">
+            8BVqzBH4RhBNMCDGQXpJjhAFKkJwomhWQ7WDCWvHsBaHNZfM<br>JhLmQxhQtLFGxkVbGeG7bQdHYSiDfLeZMq3nVm2RV1qPrPN
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#8b95b0;margin-top:8px;line-height:1.5;">
+      XMR addresses are 95 characters long and consist of letters and numbers.
+      Make sure you have not accidentally omitted characters from the beginning or end.
+    </div>
+  </div>
+
+  <!-- Other currencies note -->
+  <div style="margin:14px 24px 0;background:#1a1d2e;border:1px solid #2a2d3e;border-radius:8px;
+              padding:12px 16px;">
+    <div style="font-size:12px;color:#8b95b0;line-height:1.55;">
+      If you do not have an XMR wallet, you can change your collateral currency on the
+      previous step and enter a BTC, ZEC, ETH, TARI, or NYX address instead.
+      Or choose "Return the money to my PayPal address" to receive a fiat refund.
+    </div>
+  </div>
+
+  <!-- Fix it CTA -->
+  <div style="padding:18px 24px 0;">
+    <div style="background:#4ade80;border-radius:8px;padding:14px;text-align:center;
+                font-size:15px;font-weight:700;color:#0d0f1a;">FIX MY ADDRESS</div>
+  </div>
+
+</div>
+` }
+];
+let cur = 0;
+
+function render(i) {
+  cur = i;
+  const f = FRAMES[i];
+  const frame = document.getElementById('frame');
+  frame.style.width  = f.w + 'px';
+  frame.style.height = f.h + 'px';
+  frame.style.background = f.bg;
+  frame.innerHTML = f.html;
+  document.getElementById('counter').textContent = (i+1) + ' / ' + FRAMES.length + '  --  ' + f.label;
+  document.getElementById('btn-prev').disabled = (i === 0);
+  document.getElementById('btn-next').disabled = (i === FRAMES.length - 1);
+  document.querySelectorAll('.tab').forEach((t, ti) =>
+    t.classList.toggle('active', ti === i));
+}
+
+function go(d) { render(Math.max(0, Math.min(FRAMES.length-1, cur+d))); }
+
+const tabs = document.getElementById('tabs');
+FRAMES.forEach((f, i) => {
+  const t = document.createElement('div');
+  t.className = 'tab';
+  t.textContent = f.label;
+  t.onclick = () => render(i);
+  tabs.appendChild(t);
+});
+
+render(0);
+</script>
+</body></html>

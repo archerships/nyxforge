@@ -1,0 +1,961 @@
+#!/usr/bin/env python3
+"""
+Create NyxForge bond-creation wizard mockup in Penpot via the JSON RPC API.
+All shapes use plain JSON (no Transit encoding) since the API has a decode/json path.
+"""
+
+import json, uuid, sys, math
+import http.cookiejar, urllib.request, urllib.error
+
+# ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
+
+BASE      = "http://localhost:9001"
+EMAIL     = "archerships@protonmail.ch"
+PASSWORD  = "Moonwalk1-Crabbing-Leverage"
+FILE_ID   = "f69c5cfb-ecd7-8001-8007-e63bb61c39b3"
+PAGE_ID   = "f69c5cfb-ecd7-8001-8007-e63bb61c39b4"
+ROOT_ID   = "00000000-0000-0000-0000-000000000000"
+
+# Cyber-noir palette (plain hex strings)
+BG         = "#0d0f1a"
+SURFACE    = "#131524"
+SURF_HI    = "#1a1d2e"
+ACCENT     = "#5e6ad2"
+ACC_GLOW   = "#2d3068"
+TXT_PRI    = "#e8eaf0"
+TXT_SEC    = "#b8c0d8"   # brighter (was #9ba3bc)
+TXT_MUT    = "#8b95b0"   # brighter (was #6b7280)
+SUCCESS    = "#4ade80"
+DANGER     = "#f87171"
+BORDER     = "#2a2d3e"
+INACTIVE   = "#3a3d5c"
+
+# Font sizes (accessibility: readable at arm's length by older users)
+F_TITLE    = 22
+F_SUBTITLE = 14
+F_LABEL    = 13
+F_INPUT    = 14
+F_BUTTON   = 14
+F_HINT     = 13
+F_SI_NUM   = 12
+F_SI_LBL   = 11
+F_SMALL    = 12
+F_SECTION  = 13
+
+STEP_LABELS = ["Description", "Terms", "Timing", "Collateral", "Oracles", "Review"]
+FW, FH     = 900, 760
+GAP        = 100
+
+# ---------------------------------------------------------------------------
+# Geometry helpers
+# ---------------------------------------------------------------------------
+
+IDENTITY_MATRIX = {"a": 1.0, "b": 0.0, "c": 0.0, "d": 1.0, "e": 0.0, "f": 0.0}
+
+def selrect(x, y, w, h):
+    return {"x": float(x), "y": float(y),
+            "width": float(w), "height": float(h),
+            "x1": float(x), "y1": float(y),
+            "x2": float(x + w), "y2": float(y + h)}
+
+def points(x, y, w, h):
+    return [{"x": float(x),     "y": float(y)},
+            {"x": float(x + w), "y": float(y)},
+            {"x": float(x + w), "y": float(y + h)},
+            {"x": float(x),     "y": float(y + h)}]
+
+def new_id():
+    return str(uuid.uuid4())
+
+# ---------------------------------------------------------------------------
+# Fill / stroke helpers
+# ---------------------------------------------------------------------------
+
+def fill(color, opacity=1.0):
+    return {"fill-color": color, "fill-opacity": opacity}
+
+def outline_stroke(color, width=1):
+    return {"stroke-color": color, "stroke-opacity": 1.0,
+            "stroke-width": float(width), "stroke-alignment": "inner",
+            "stroke-style": "solid"}
+
+# ---------------------------------------------------------------------------
+# Base shape fields (shared by all shapes)
+# ---------------------------------------------------------------------------
+
+def base(sid, name, shape_type, x, y, w, h, parent_id, frame_id):
+    return {
+        "id":               sid,
+        "name":             name,
+        "type":             shape_type,
+        "parent-id":        parent_id,
+        "frame-id":         frame_id,
+        "x":                float(x),
+        "y":                float(y),
+        "width":            float(w),
+        "height":           float(h),
+        "rotation":         0.0,
+        "selrect":          selrect(x, y, w, h),
+        "points":           points(x, y, w, h),
+        "transform":        IDENTITY_MATRIX,
+        "transform-inverse": IDENTITY_MATRIX,
+        "fills":            [],
+        "strokes":          [],
+        "constraints-h":    "left",
+        "constraints-v":    "top",
+        "blocked":          False,
+        "collapsed":        False,
+        "hidden":           False,
+        "locked":           False,
+    }
+
+# ---------------------------------------------------------------------------
+# Shape builders
+# ---------------------------------------------------------------------------
+
+def mk_frame(x, y, w, h, name, sid=None):
+    sid = sid or new_id()
+    s = base(sid, name, "frame", x, y, w, h, ROOT_ID, ROOT_ID)
+    s.update({
+        "fills":        [fill(BG)],
+        "shapes":       [],
+        "clip-content": True,
+        "show-content": True,
+        "hide-in-viewer": False,
+    })
+    return s
+
+def mk_rect(x, y, w, h, name, color, parent_id, frame_id, rx=6, opacity=1.0, sid=None):
+    sid = sid or new_id()
+    s = base(sid, name, "rect", x, y, w, h, parent_id, frame_id)
+    s["fills"]  = [fill(color, opacity)]
+    s["rx"]     = float(rx)
+    s["ry"]     = float(rx)
+    return s
+
+def mk_text(x, y, w, h, name, text_str, font_size, color, parent_id, frame_id,
+            weight=400, align="left", sid=None):
+    sid = sid or new_id()
+    s = base(sid, name, "text", x, y, w, h, parent_id, frame_id)
+    s["grow-type"] = "fixed"
+    s["content"] = {
+        "type": "root",
+        "children": [{
+            "type": "paragraph-set",
+            "children": [{
+                "type": "paragraph",
+                "text-align": align,
+                "children": [{
+                    "text":         text_str,
+                    "font-size":    str(font_size),
+                    "font-weight":  str(weight),
+                    "fill-color":   color,
+                    "fill-opacity": 1.0,
+                }]
+            }]
+        }]
+    }
+    return s
+
+# ---------------------------------------------------------------------------
+# add-obj change
+# ---------------------------------------------------------------------------
+
+def add_shape(shape):
+    return {
+        "type":           "add-obj",
+        "id":             shape["id"],
+        "page-id":        PAGE_ID,
+        "frame-id":       shape.get("frame-id", ROOT_ID),
+        "parent-id":      shape.get("parent-id", ROOT_ID),
+        "ignore-touched": True,
+        "obj":            shape,
+    }
+
+# ---------------------------------------------------------------------------
+# Compound widgets
+# ---------------------------------------------------------------------------
+
+def step_indicator(active, parent_id, frame_id, fx, fy, fw):
+    shapes = []
+    n = len(STEP_LABELS)
+    cell_w = (fw - 48) / n
+    y = fy + 16
+    for i, label in enumerate(STEP_LABELS):
+        cx = fx + 24 + i * cell_w + cell_w / 2 - 12
+        is_active = (i == active)
+        is_done   = (i < active)
+        circ_color = ACCENT if is_active else (ACC_GLOW if is_done else SURF_HI)
+        shapes.append(mk_rect(cx, y, 24, 24, f"si-circ-{i}", circ_color,
+                               parent_id, frame_id, rx=12))
+        # Text div same size as circle so flex centering aligns correctly
+        num_color = TXT_PRI if (is_active or is_done) else TXT_MUT
+        shapes.append(mk_text(cx, y, 24, 24, f"si-num-{i}", str(i + 1),
+                               F_SI_NUM, num_color, parent_id, frame_id, weight=700, align="center"))
+        lbl = label  # all current labels fit at F_SI_LBL in cell_w
+        lbl_color  = TXT_PRI if is_active else TXT_MUT
+        lbl_weight = 700 if is_active else 400
+        shapes.append(mk_text(cx - cell_w / 2 + 12, y + 28, cell_w, 16, f"si-lbl-{i}",
+                               lbl, F_SI_LBL, lbl_color, parent_id, frame_id,
+                               weight=lbl_weight, align="center"))
+        if i < n - 1:
+            line_x = cx + 24
+            shapes.append(mk_rect(line_x, y + 10, cell_w - 24, 3,
+                                   f"si-line-{i}", BORDER, parent_id, frame_id, rx=0))
+    return shapes
+
+def input_field(x, y, w, h, name, label, hint, parent_id, frame_id, help_tip=None):
+    shapes = []
+    # Label row: text left, [?] icon right
+    shapes.append(mk_text(x, y, w - 22, 16, f"{name}-lbl", label, F_LABEL, TXT_MUT, parent_id, frame_id))
+    if help_tip:
+        hbx = x + w - 18
+        shapes.append(mk_rect(hbx, y, 16, 16, f"{name}-hbg", ACC_GLOW, parent_id, frame_id, rx=8))
+        help_icon = mk_rect(hbx, y, 16, 16, f"{name}-hbrd", ACCENT, parent_id, frame_id, rx=8)
+        help_icon["fills"] = []; help_icon["strokes"] = [outline_stroke(ACCENT, 1)]
+        shapes.append(help_icon)
+        shapes.append(mk_text(hbx, y, 16, 16, f"{name}-hico", "?", F_SMALL, ACCENT,
+                               parent_id, frame_id, weight=700, align="center"))
+    # Input box
+    shapes.append(mk_rect(x, y + 20, w, h, f"{name}-bg", SURF_HI, parent_id, frame_id, rx=6))
+    box_border = mk_rect(x, y + 20, w, h, f"{name}-brd", BORDER, parent_id, frame_id, rx=6)
+    box_border["fills"] = []; box_border["strokes"] = [outline_stroke(BORDER, 1)]
+    shapes.append(box_border)
+    if hint:
+        shapes.append(mk_text(x + 14, y + 20, w - 28, h, f"{name}-hint",
+                               hint, F_HINT, TXT_MUT, parent_id, frame_id))
+    return shapes
+
+def button(x, y, w, h, name, label, parent_id, frame_id, primary=True):
+    bg = mk_rect(x, y, w, h, f"{name}-bg", ACCENT if primary else SURF_HI,
+                 parent_id, frame_id, rx=6)
+    if not primary:
+        bg["fills"]   = []
+        bg["strokes"] = [outline_stroke(INACTIVE, 1)]
+    return [
+        bg,
+        # Text div spans full button height so flex align-items:center works correctly
+        mk_text(x, y, w, h, f"{name}-lbl", label, F_BUTTON,
+                TXT_PRI, parent_id, frame_id, weight=600, align="center"),
+    ]
+
+def header(fx, fy, fw, title, subtitle, parent_id, frame_id):
+    shapes = [
+        mk_text(fx + 24, fy + 12, fw - 48, 44, "hdr-title", title, F_TITLE,
+                TXT_PRI, parent_id, frame_id, weight=700),
+        mk_text(fx + 24, fy + 58, fw - 48, 20, "hdr-sub", subtitle, F_SUBTITLE,
+                TXT_MUT, parent_id, frame_id),
+        mk_rect(fx, fy + 86, fw, 1, "hdr-div", BORDER, parent_id, frame_id, rx=0),
+    ]
+    return shapes
+
+def nav(fx, fy, fw, fh, parent_id, frame_id, show_back=True, confirm=False):
+    shapes = [mk_rect(fx, fy + fh - 68, fw, 1, "nav-div", BORDER, parent_id, frame_id, rx=0)]
+    if show_back:
+        shapes += button(fx + 24, fy + fh - 52, 100, 38, "btn-back", "BACK",
+                         parent_id, frame_id, primary=False)
+    next_label = "CONFIRM" if confirm else "NEXT"
+    next_color = SUCCESS if confirm else ACCENT
+    shapes.append(mk_rect(fx + fw - 124, fy + fh - 52, 100, 38,
+                           "btn-next-bg", next_color, parent_id, frame_id, rx=6))
+    # Full-height text div for correct vertical centering
+    shapes.append(mk_text(fx + fw - 124, fy + fh - 52, 100, 38, "btn-next-lbl",
+                           next_label, F_BUTTON, "#0d0f1a" if confirm else TXT_PRI,
+                           parent_id, frame_id, weight=700, align="center"))
+    return shapes
+
+# ---------------------------------------------------------------------------
+# Step content builders
+# ---------------------------------------------------------------------------
+
+def step_description(frame_id, fx, fy):
+    pid = frame_id; fid = frame_id
+    shapes = []
+    shapes += header(fx, fy, FW, "Create Bond",
+                     "Step 1 of 6: Give your bond a title and description.",
+                     pid, fid)
+    shapes += step_indicator(0, pid, fid, fx, fy + 94, FW)
+    y = fy + 210
+    shapes += input_field(fx + 24, y, FW - 48, 46, "title", "Bond Title",
+                          "Example: US Federal Spending Reduction 2030",
+                          pid, fid, help_tip=True)
+    shapes += input_field(fx + 24, y + 92, FW - 48, 110, "desc", "Description (optional)",
+                          "Example: Reduce total US federal outlays as a percentage of GDP "
+                          "from the 2025 baseline of 24.5% to below 20% by 2030.",
+                          pid, fid, help_tip=True)
+    # Bearer bond warning panel
+    ip_y = y + 92 + 130 + 20
+    shapes.append(mk_rect(fx + 24, ip_y, FW - 48, 104, "warn-bg", SURF_HI, pid, fid, rx=8))
+    warn_border = mk_rect(fx + 24, ip_y, FW - 48, 104, "warn-brd", BORDER, pid, fid, rx=8)
+    warn_border["fills"] = []; warn_border["strokes"] = [outline_stroke(BORDER, 1)]
+    shapes.append(warn_border)
+    shapes.append(mk_text(fx + 36, ip_y + 12, FW - 72, 18, "warn-h",
+                           "Treat this file like cash.", F_SECTION, TXT_SEC, pid, fid, weight=700))
+    shapes.append(mk_text(fx + 36, ip_y + 34, FW - 72, 20, "warn-1",
+                           "Lose the .bond file or its private key and the bond is permanently lost.",
+                           F_SMALL, TXT_MUT, pid, fid))
+    shapes.append(mk_text(fx + 36, ip_y + 58, FW - 72, 36, "warn-2",
+                           "Whoever possesses the .bond file and its private key can redeem the "
+                           "collateral once the oracle panel attests that the bond terms have been met.",
+                           F_SMALL, TXT_MUT, pid, fid))
+    shapes += nav(fx, fy, FW, FH, pid, fid, show_back=False)
+    return shapes
+
+def step_terms(frame_id, fx, fy):
+    pid = frame_id; fid = frame_id
+    shapes = []
+    shapes += header(fx, fy, FW, "Define Terms",
+                     "Each term is one measurable condition that must be satisfied.", pid, fid)
+    shapes += step_indicator(1, pid, fid, fx, fy + 94, FW)
+    y = fy + 180
+    # Term type explainer (two pills side by side)
+    shapes.append(mk_text(fx + 24, y, FW - 48, 16, "type-hdr", "Term type", F_LABEL, TXT_MUT, pid, fid))
+    quant_x = fx + 24; qual_x = fx + 24 + (FW - 48) // 2 + 8
+    half_w = (FW - 48) // 2 - 8
+    for bx, sel, label, note in [
+        (quant_x, True,  "Quantitative",
+         "Measured by a data feed: a number crosses a threshold.  Example: US CPI < 3% for 12 months."),
+        (qual_x,  False, "Qualitative",
+         "Judged by an oracle panel: a stated outcome is achieved.  Example: Drug X approved by FDA.")]:
+        shapes.append(mk_rect(bx, y + 20, half_w, 36, f"tt-{label}-bg",
+                               ACCENT if sel else SURF_HI, pid, fid, rx=6))
+        if not sel:
+            tt_brd = mk_rect(bx, y + 20, half_w, 36, f"tt-{label}-brd", BORDER, pid, fid, rx=6)
+            tt_brd["fills"] = []; tt_brd["strokes"] = [outline_stroke(BORDER, 1)]
+            shapes.append(tt_brd)
+        shapes.append(mk_text(bx, y + 20, half_w, 36, f"tt-{label}-lbl", label, F_BUTTON,
+                               TXT_PRI, pid, fid, weight=600, align="center"))
+        shapes.append(mk_text(bx, y + 60, half_w, 32, f"tt-{label}-note", note,
+                               10, TXT_MUT, pid, fid))
+    y2 = y + 96
+    # Term card
+    shapes.append(mk_rect(fx + 24, y2, FW - 48, 220, "term-card", SURFACE, pid, fid, rx=8))
+    border_rect = mk_rect(fx + 24, y2, FW - 48, 220, "term-card-border", BORDER, pid, fid, rx=8)
+    border_rect["fills"] = []; border_rect["strokes"] = [outline_stroke(BORDER, 1)]
+    shapes.append(border_rect)
+    shapes.append(mk_text(fx + 36, y2 + 12, 120, 16, "term-hdr", "TERM 1", F_SMALL,
+                           TXT_MUT, pid, fid, weight=700))
+    # Goal type dropdown
+    shapes.append(mk_text(fx + 36, y2 + 32, 160, 16, "gt-lbl", "Goal type", F_LABEL, TXT_MUT, pid, fid))
+    shapes.append(mk_rect(fx + 36, y2 + 52, FW - 96, 38, "gt-bg", SURF_HI, pid, fid, rx=4))
+    shapes.append(mk_text(fx + 50, y2 + 52, 200, 38, "gt-val", "quantitative", F_INPUT, TXT_PRI, pid, fid))
+    shapes.append(mk_text(fx + FW - 100, y2 + 52, 30, 38, "gt-arr", "v", F_SMALL, TXT_MUT, pid, fid))
+    # Criterion
+    shapes += input_field(fx + 36, y2 + 102, FW - 96, 42, "crit", "Criterion",
+                          "Example: US federal outlays fall below 20% of GDP", pid, fid, help_tip=True)
+    # Threshold + operator
+    shapes += input_field(fx + 36, y2 + 166, 180, 38, "thresh", "Threshold", "0.20", pid, fid, help_tip=True)
+    shapes.append(mk_rect(fx + 232, y2 + 186, 72, 38, "op-bg", ACC_GLOW, pid, fid, rx=4))
+    shapes.append(mk_text(fx + 232, y2 + 186, 72, 38, "op-val", "<=", F_INPUT, ACCENT, pid, fid,
+                           weight=700, align="center"))
+    # All terms required note
+    shapes.append(mk_text(fx + 24, y2 + 228, FW - 48, 16, "agg-hint",
+                           "All terms must be satisfied. Add as many terms as needed.",
+                           F_SMALL, TXT_MUT, pid, fid))
+    shapes.append(mk_rect(fx + 24, y2 + 248, FW - 48, 38, "add-term-bg", SURF_HI, pid, fid, rx=6))
+    at_brd = mk_rect(fx + 24, y2 + 248, FW - 48, 38, "add-term-brd", BORDER, pid, fid, rx=6)
+    at_brd["fills"] = []; at_brd["strokes"] = [outline_stroke(BORDER, 1)]
+    shapes.append(at_brd)
+    shapes.append(mk_text(fx + 24, y2 + 248, FW - 48, 38, "add-term-lbl", "+ ADD TERM",
+                           F_BUTTON, ACCENT, pid, fid, weight=600, align="center"))
+    shapes += nav(fx, fy, FW, FH, pid, fid)
+    return shapes
+
+def step_timing(frame_id, fx, fy):
+    pid = frame_id; fid = frame_id
+    shapes = []
+    shapes += header(fx, fy, FW, "Set Timing",
+                     "Expiry must be after deadline. Grace period delays timelock maturity.", pid, fid)
+    shapes += step_indicator(2, pid, fid, fx, fy + 94, FW)
+    y = fy + 180
+    half = (FW - 72) // 2
+    shapes += input_field(fx + 24, y, half, 46, "ddl", "Deadline",
+                          "2030-01-01 00:00:00", pid, fid, help_tip=True)
+    shapes += input_field(fx + 24 + half + 24, y, half, 46, "exp", "Expiry",
+                          "2030-04-01 23:59:59", pid, fid, help_tip=True)
+    shapes.append(mk_text(fx + 24, y + 90, FW - 48, 16, "ts-note",
+                           "Enter date only (example: 2030-01-01) to default to 23:59:59 on that day.",
+                           F_SMALL, TXT_MUT, pid, fid))
+    shapes += input_field(fx + 24, y + 118, 160, 46, "grace", "Grace period (days)",
+                          "30", pid, fid, help_tip=True)
+    shapes.append(mk_text(fx + 200, y + 134, FW - 232, 36,
+                           "grace-note", "Days after expiry before timelock matures and "
+                           "collateral can be reclaimed.", F_SMALL, TXT_MUT, pid, fid))
+    # Example timeline (6 events)
+    tl_lines = [
+        ("2026-01-15", "Bond drafted by issuer."),
+        ("2026-02-01", "Oracle panel accepts the bond."),
+        ("2026-03-01", "Bond auctioned; first holders acquire .bond files."),
+        ("2030-01-01", "Deadline: oracle evaluates whether terms are met."),
+        ("2030-04-01", "Expiry: bond can no longer settle; challenge window closes."),
+        ("2030-05-01", "Timelock matures (30-day grace): issuer may reclaim collateral."),
+    ]
+    ex_h = 14 + len(tl_lines) * 20 + 16
+    ex_y = y + 118 + 66 + 20
+    shapes.append(mk_rect(fx + 24, ex_y, FW - 48, ex_h, "tl-bg", SURF_HI, pid, fid, rx=8))
+    tl_border = mk_rect(fx + 24, ex_y, FW - 48, ex_h, "tl-brd", BORDER, pid, fid, rx=8)
+    tl_border["fills"] = []; tl_border["strokes"] = [outline_stroke(BORDER, 1)]
+    shapes.append(tl_border)
+    shapes.append(mk_text(fx + 36, ex_y + 10, FW - 72, 16, "tl-hdr",
+                           "Example timeline", F_SMALL, TXT_MUT, pid, fid, weight=700))
+    for li, (date, event) in enumerate(tl_lines):
+        shapes.append(mk_text(fx + 36, ex_y + 28 + li * 20, 120, 16, f"tl-d-{li}",
+                               date, F_SMALL, TXT_MUT, pid, fid, weight=600))
+        shapes.append(mk_text(fx + 164, ex_y + 28 + li * 20, FW - 210, 16, f"tl-e-{li}",
+                               event, F_SMALL, TXT_SEC, pid, fid))
+    shapes += nav(fx, fy, FW, FH, pid, fid)
+    return shapes
+
+def step_collateral(frame_id, fx, fy):
+    pid = frame_id; fid = frame_id
+    shapes = []
+    shapes += header(fx, fy, FW, "Set Collateral",
+                     "Choose currency and lock amount. One file is one bearer unit.", pid, fid)
+    shapes += step_indicator(3, pid, fid, fx, fy + 94, FW)
+    y = fy + 180
+    # Currency selector
+    shapes.append(mk_text(fx + 24, y, 160, 16, "cur-lbl", "Currency", F_LABEL, TXT_MUT, pid, fid))
+    currencies = [("XMR",  "Monero",   "dleq_xmr"),
+                  ("ZEC",  "Zcash",    "dleq_zec"),
+                  ("BTC",  "Bitcoin",  "ptlc_btc"),
+                  ("ETH",  "Ethereum", "eth_escrow"),
+                  ("TARI", "Tari",     "tari_adaptor"),
+                  ("NYX",  "Nyx",      "nyx_escrow")]
+    cur_btn_w = 88
+    cur_gap   = 8
+    for i, (sym, _, _) in enumerate(currencies):
+        bx = fx + 24 + i * (cur_btn_w + cur_gap)
+        is_sel = (i == 0)
+        shapes.append(mk_rect(bx, y + 20, cur_btn_w, 38, f"cur-{sym}", ACCENT if is_sel else SURF_HI,
+                               pid, fid, rx=6))
+        if not is_sel:
+            cur_brd = mk_rect(bx, y + 20, cur_btn_w, 38, f"cur-{sym}-brd", BORDER, pid, fid, rx=6)
+            cur_brd["fills"] = []; cur_brd["strokes"] = [outline_stroke(BORDER, 1)]
+            shapes.append(cur_brd)
+        shapes.append(mk_text(bx, y + 20, cur_btn_w, 38, f"cur-{sym}-lbl", sym, F_BUTTON,
+                               TXT_PRI if is_sel else TXT_MUT, pid, fid,
+                               weight=700 if is_sel else 400, align="center"))
+    shapes.append(mk_text(fx + 24, y + 66, FW - 48, 16, "lock-note",
+                           "Lock mechanism: dleq_xmr  (changes automatically with currency selection)",
+                           F_SMALL, TXT_MUT, pid, fid))
+    # Amount + unit + USD equivalent
+    shapes += input_field(fx + 24, y + 90, 200, 46, "amount", "Amount per file",
+                          "1.0", pid, fid, help_tip=True)
+    shapes.append(mk_text(fx + 234, y + 110, 50, 16, "amt-unit", "XMR", F_INPUT, TXT_SEC, pid, fid, weight=600))
+    shapes.append(mk_text(fx + 290, y + 110, 200, 16, "amt-usd", "(USD 165)", F_SMALL, TXT_MUT, pid, fid))
+    shapes += input_field(fx + 24, y + 156, 200, 46, "units", "Number of files in series",
+                          "1", pid, fid, help_tip=True)
+    shapes += input_field(fx + 24, y + 220, FW - 48, 46, "redeem",
+                           "Redemption value (optional)", "Example: USD 10,000", pid, fid, help_tip=True)
+    # Summary
+    sp_y = y + 220 + 66 + 12
+    shapes.append(mk_rect(fx + 24, sp_y, FW - 48, 52, "summ-bg", ACC_GLOW, pid, fid, rx=6))
+    shapes.append(mk_text(fx + 36, sp_y + 8, 200, 16, "summ-lbl",
+                           "Collateral summary", F_SMALL, ACCENT, pid, fid, weight=700))
+    shapes.append(mk_text(fx + 36, sp_y + 26, FW - 72, 16, "summ-val",
+                           "1.0 XMR x 1 file  =  1.0 XMR total  (USD 165)  |  lock: dleq_xmr",
+                           F_SMALL, TXT_SEC, pid, fid))
+    shapes += nav(fx, fy, FW, FH, pid, fid)
+    return shapes
+
+def step_oracles(frame_id, fx, fy):
+    pid = frame_id; fid = frame_id
+    shapes = []
+    shapes += header(fx, fy, FW, "Appoint Oracles",
+                     "Oracles attest to term outcomes. Minimum quorum required for settlement.",
+                     pid, fid)
+    shapes += step_indicator(4, pid, fid, fx, fy + 94, FW)
+    y = fy + 180
+    # Oracle card
+    card_h = 168
+    shapes.append(mk_rect(fx + 24, y, FW - 48, card_h, "oracle-card", SURFACE, pid, fid, rx=8))
+    card_brd = mk_rect(fx + 24, y, FW - 48, card_h, "oracle-brd", BORDER, pid, fid, rx=8)
+    card_brd["fills"] = []; card_brd["strokes"] = [outline_stroke(BORDER, 1)]
+    shapes.append(card_brd)
+    shapes.append(mk_text(fx + 36, y + 12, 120, 16, "oracle-hdr", "ORACLE 1", F_SMALL,
+                           TXT_MUT, pid, fid, weight=700))
+    shapes += input_field(fx + 36, y + 32, FW - 96, 42, "pubkey",
+                           "Public key (64 hex chars)", "a1b2c3d4...  (32 bytes)",
+                           pid, fid, help_tip=True)
+    # Role buttons
+    shapes.append(mk_text(fx + 36, y + 90, 80, 16, "role-lbl", "Role", F_LABEL, TXT_MUT, pid, fid))
+    for i, (role, tip) in enumerate([
+            ("Quantitative", False), ("Qualitative", False), ("Both", True)]):
+        is_sel = tip
+        bx = fx + 36 + i * 116
+        shapes.append(mk_rect(bx, y + 110, 108, 32, f"role-{i}", ACCENT if is_sel else SURF_HI,
+                               pid, fid, rx=4))
+        if not is_sel:
+            r_brd = mk_rect(bx, y + 110, 108, 32, f"role-{i}-brd", BORDER, pid, fid, rx=4)
+            r_brd["fills"] = []; r_brd["strokes"] = [outline_stroke(BORDER, 1)]
+            shapes.append(r_brd)
+        shapes.append(mk_text(bx, y + 110, 108, 32, f"role-{i}-lbl", role, F_SMALL,
+                               TXT_PRI if is_sel else TXT_MUT, pid, fid, align="center"))
+    # Quorum + challenge
+    shapes += input_field(fx + 24, y + card_h + 16, 160, 46, "quorum",
+                           "Min signatures", "2", pid, fid, help_tip=True)
+    shapes += input_field(fx + 200, y + card_h + 16, 220, 46, "challenge",
+                           "Challenge period (days)", "7", pid, fid, help_tip=True)
+    # Add oracle
+    ao_y = y + card_h + 82
+    shapes.append(mk_rect(fx + 24, ao_y, FW - 48, 40, "add-oracle-bg", SURF_HI, pid, fid, rx=6))
+    ao_brd = mk_rect(fx + 24, ao_y, FW - 48, 40, "add-oracle-brd", BORDER, pid, fid, rx=6)
+    ao_brd["fills"] = []; ao_brd["strokes"] = [outline_stroke(BORDER, 1)]
+    shapes.append(ao_brd)
+    shapes.append(mk_text(fx + 24, ao_y, FW - 48, 40, "add-oracle-lbl", "+ ADD ORACLE",
+                           F_BUTTON, ACCENT, pid, fid, weight=600, align="center"))
+    # Settlement flow note
+    sn_y = ao_y + 56
+    shapes.append(mk_rect(fx + 24, sn_y, FW - 48, 68, "settle-bg", SURF_HI, pid, fid, rx=8))
+    sn_brd = mk_rect(fx + 24, sn_y, FW - 48, 68, "settle-brd", BORDER, pid, fid, rx=8)
+    sn_brd["fills"] = []; sn_brd["strokes"] = [outline_stroke(BORDER, 1)]
+    shapes.append(sn_brd)
+    shapes.append(mk_text(fx + 36, sn_y + 10, FW - 72, 16, "settle-hdr",
+                           "Settlement flow", F_SMALL, TXT_MUT, pid, fid, weight=700))
+    shapes.append(mk_text(fx + 36, sn_y + 30, FW - 72, 30, "settle-val",
+                           "Oracle quorum signs attestation  -->"
+                           "  holder presents proof  -->  timelock releases",
+                           F_SMALL, TXT_SEC, pid, fid))
+    shapes += nav(fx, fy, FW, FH, pid, fid)
+    return shapes
+
+def step_review(frame_id, fx, fy):
+    pid = frame_id; fid = frame_id
+    shapes = []
+    shapes += header(fx, fy, FW, "Review & Confirm",
+                     "Verify all parameters before writing .bond files.", pid, fid)
+    shapes += step_indicator(5, pid, fid, fx, fy + 94, FW)
+    y = fy + 180
+    RH = 22
+    half_w = (FW - 56) // 2
+
+    def section(bx, bw, cy, label, rows_kv):
+        out = []
+        out.append(mk_text(bx, cy, bw, 18, f"rv-{label}-hdr", label,
+                            F_SECTION, ACCENT, pid, fid, weight=700))
+        for ri, (k, v) in enumerate(rows_kv):
+            ry = cy + 22 + ri * RH
+            out.append(mk_text(bx,       ry, 130, 18, f"rv-{label}-{ri}-k", k,
+                                F_SMALL, TXT_MUT, pid, fid))
+            out.append(mk_text(bx + 135, ry, bw - 135, 18, f"rv-{label}-{ri}-v", v,
+                                F_SMALL, TXT_PRI, pid, fid))
+        return out, cy + 22 + len(rows_kv) * RH + 16
+
+    # Left column: DESCRIPTION + COLLATERAL
+    lx = fx + 24
+    cy = y
+    s, cy = section(lx, half_w, cy, "DESCRIPTION", [
+        ("Title",       "US Federal Spending Reduction 2030"),
+        ("Description", "Reduce federal outlays..."),
+    ])
+    shapes += s
+    s, cy = section(lx, half_w, cy, "COLLATERAL", [
+        ("Currency",        "XMR"),
+        ("Lock mechanism",  "dleq_xmr"),
+        ("Amount / file",   "1.0 XMR  (USD 165)"),
+        ("Files in series", "1"),
+        ("Total",           "1.0 XMR"),
+    ])
+    shapes += s
+
+    # Right column: TIMING + ORACLE PANEL
+    rx = fx + 24 + half_w + 8
+    cy2 = y
+    s, cy2 = section(rx, half_w, cy2, "TIMING", [
+        ("Deadline",     "2030-01-01 00:00:00"),
+        ("Expiry",       "2030-04-01 23:59:59"),
+        ("Grace period", "30 days"),
+    ])
+    shapes += s
+    s, cy2 = section(rx, half_w, cy2, "ORACLE PANEL", [
+        ("Oracle 1",  "a1b2c3d4..."),
+        ("Role",      "Both"),
+        ("Quorum",    "2 of 3"),
+        ("Challenge", "7 days"),
+    ])
+    shapes += s
+
+    # Full-width TERMS section at bottom
+    terms_y = max(cy, cy2)
+    shapes.append(mk_text(fx + 24, terms_y, FW - 48, 18, "rv-TERMS-hdr",
+                           "TERMS  (all must be satisfied)",
+                           F_SECTION, ACCENT, pid, fid, weight=700))
+    terms_y += 22
+    # Column header row
+    col_defs = [(40, "#"), (130, "Type"), (490, "Criterion"), (148, "Op / Threshold")]
+    cx = fx + 24
+    for cw, ch in col_defs:
+        shapes.append(mk_text(cx, terms_y, cw, 16, f"rv-th-{ch}",
+                               ch, F_SMALL, TXT_MUT, pid, fid, weight=600))
+        cx += cw
+    terms_y += 18
+    shapes.append(mk_rect(fx + 24, terms_y, FW - 48, 1, "rv-terms-div", BORDER, pid, fid, rx=0))
+    terms_y += 6
+
+    term_rows = [
+        ("1", "Quantitative", "US federal outlays < 20% of GDP", "<= 0.20"),
+        ("2", "Qualitative",  "CBO confirms reduction",          "(oracle attestation)"),
+    ]
+    for ti, (num, ttype, crit, op_thresh) in enumerate(term_rows):
+        ry = terms_y + ti * RH
+        row_vals = [(40, num), (130, ttype), (490, crit), (148, op_thresh)]
+        cx = fx + 24
+        for cw, val in row_vals:
+            shapes.append(mk_text(cx, ry, cw, 18, f"rv-term-{ti}-c{cx}",
+                                   val, F_SMALL, TXT_PRI, pid, fid))
+            cx += cw
+
+    # Phase 3 notice
+    ny = fy + FH - 112
+    shapes.append(mk_rect(fx + 24, ny, FW - 48, 34, "notice-bg", ACC_GLOW, pid, fid, rx=4))
+    shapes.append(mk_text(fx + 36, ny, FW - 72, 34, "notice-txt",
+                           "Phase 3: .bond files written once Rust backend is complete.",
+                           F_SMALL, TXT_SEC, pid, fid))
+    shapes += nav(fx, fy, FW, FH, pid, fid, confirm=True)
+    return shapes
+
+STEP_BUILDERS = [step_description, step_terms, step_timing,
+                 step_collateral, step_oracles, step_review]
+
+# ---------------------------------------------------------------------------
+# HTML preview renderer
+# ---------------------------------------------------------------------------
+
+def _css_text_align(align):
+    return {"left": "left", "center": "center", "right": "right"}.get(align, "left")
+
+def shape_to_css(s, frame_x=0, frame_y=0):
+    """Return an HTML div string for one shape, offsetting by the frame origin."""
+    x = s["x"] - frame_x
+    y = s["y"] - frame_y
+    w = s["width"]
+    h = s["height"]
+    t = s["type"]
+    css = (f"position:absolute;left:{x:.0f}px;top:{y:.0f}px;"
+           f"width:{w:.0f}px;height:{h:.0f}px;box-sizing:border-box;")
+
+    if t in ("rect", "frame"):
+        fills = s.get("fills", [])
+        bg = fills[0]["fill-color"] if fills else "transparent"
+        op = fills[0].get("fill-opacity", 1.0) if fills else 1.0
+        rx = s.get("rx", 0)
+        css += f"background:{bg};opacity:{op};"
+        if rx:
+            css += f"border-radius:{rx:.0f}px;"
+        strokes = s.get("strokes", [])
+        if strokes:
+            sc = strokes[0].get("stroke-color", "#fff")
+            sw = strokes[0].get("stroke-width", 1)
+            css += f"border:{sw:.0f}px solid {sc};"
+        return f'<div style="{css}"></div>\n'
+
+    if t == "text":
+        content = s.get("content", {})
+        paras = (content.get("children", [{}])[0]
+                        .get("children", [{}]))
+        html_parts = []
+        for para in paras:
+            for child in para.get("children", []):
+                txt  = child.get("text", "").replace("\n", "<br>")
+                size = child.get("font-size", "13")
+                wt   = child.get("font-weight", "400")
+                col  = child.get("fill-color", TXT_PRI)
+                aln  = _css_text_align(para.get("text-align", "left"))
+                html_parts.append(
+                    f'<span style="font-size:{size}px;font-weight:{wt};'
+                    f'color:{col};font-family:Inter,sans-serif;">{txt}</span>')
+        inner = "".join(html_parts)
+        # derive text-align from first paragraph
+        first_para = paras[0] if paras else {}
+        aln = _css_text_align(first_para.get("text-align", "left"))
+        jc  = "center" if aln == "center" else "flex-start"
+        css += (f"text-align:{aln};overflow:hidden;"
+                f"display:flex;align-items:center;justify-content:{jc};")
+        return f'<div style="{css}">{inner}</div>\n'
+
+    return ""
+
+def build_html_preview(all_frames_shapes):
+    """
+    Generates a single-frame viewer with a tab bar and prev/next navigation.
+    all_frames_shapes: list of (frame_shape, [child_shapes])
+    Returns full HTML string.
+    """
+    frames_js = []
+    for frame, children in all_frames_shapes:
+        fx, fy = frame["x"], frame["y"]
+        fw, fh = frame["width"], frame["height"]
+        bg = frame["fills"][0]["fill-color"] if frame.get("fills") else BG
+        label = frame["name"]
+        inner = ""
+        for s in children:
+            inner += shape_to_css(s, fx, fy)
+        # Escape backticks for JS template literal
+        inner_escaped = inner.replace('`', '\\`').replace('${', '\\${')
+        frames_js.append(
+            f'{{ label: `{label}`, bg: `{bg}`, w: {fw:.0f}, h: {fh:.0f}, '
+            f'html: `{inner_escaped}` }}'
+        )
+
+    frames_array = "[\n  " + ",\n  ".join(frames_js) + "\n]"
+
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>NyxForge Wizard Mockup</title>
+<style>
+  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  body {{ background: #080a12; font-family: Inter, system-ui, sans-serif;
+          display: flex; flex-direction: column; height: 100vh; overflow: hidden; }}
+
+  /* Tab bar */
+  #tabs {{ display: flex; gap: 2px; background: #0d0f1a; padding: 8px 16px 0;
+           border-bottom: 1px solid #2a2d3e; flex-shrink: 0; }}
+  .tab {{ padding: 8px 16px; font-size: 12px; color: #6b7280; cursor: pointer;
+          border-radius: 6px 6px 0 0; border: 1px solid transparent;
+          border-bottom: none; user-select: none; }}
+  .tab:hover {{ color: #e8eaf0; background: #131524; }}
+  .tab.active {{ color: #e8eaf0; background: #131524;
+                 border-color: #2a2d3e; }}
+
+  /* Frame area */
+  #viewport {{ flex: 1; display: flex; align-items: flex-start; justify-content: center;
+               overflow: auto; padding: 32px; }}
+  #frame-wrap {{ position: relative; flex-shrink: 0; }}
+  #frame {{ position: relative; overflow: hidden; border: 1px solid #2a2d3e; }}
+
+  /* Nav */
+  #nav {{ display: flex; align-items: center; justify-content: space-between;
+          padding: 10px 16px; background: #0d0f1a; border-top: 1px solid #2a2d3e;
+          flex-shrink: 0; }}
+  #nav button {{ background: #1a1d2e; color: #e8eaf0; border: 1px solid #3a3d5c;
+                 padding: 6px 20px; border-radius: 6px; font-size: 12px;
+                 cursor: pointer; font-family: inherit; }}
+  #nav button:hover {{ background: #2a2d3e; }}
+  #nav button:disabled {{ opacity: 0.3; cursor: default; }}
+  #counter {{ font-size: 12px; color: #6b7280; }}
+</style>
+</head><body>
+
+<div id="tabs"></div>
+<div id="viewport"><div id="frame-wrap"><div id="frame"></div></div></div>
+<div id="nav">
+  <button id="btn-prev" onclick="go(-1)">&#8592; Prev</button>
+  <span id="counter"></span>
+  <button id="btn-next" onclick="go(1)">Next &#8594;</button>
+</div>
+
+<script>
+const FRAMES = {frames_array};
+let cur = 0;
+
+function render(i) {{
+  cur = i;
+  const f = FRAMES[i];
+  const frame = document.getElementById('frame');
+  frame.style.width  = f.w + 'px';
+  frame.style.height = f.h + 'px';
+  frame.style.background = f.bg;
+  frame.innerHTML = f.html;
+  document.getElementById('counter').textContent = (i+1) + ' / ' + FRAMES.length + '  —  ' + f.label;
+  document.getElementById('btn-prev').disabled = (i === 0);
+  document.getElementById('btn-next').disabled = (i === FRAMES.length - 1);
+  document.querySelectorAll('.tab').forEach((t, ti) =>
+    t.classList.toggle('active', ti === i));
+}}
+
+function go(d) {{ render(Math.max(0, Math.min(FRAMES.length-1, cur+d))); }}
+
+// Build tabs
+const tabBar = document.getElementById('tabs');
+FRAMES.forEach((f, i) => {{
+  const t = document.createElement('div');
+  t.className = 'tab' + (i===0?' active':'');
+  t.textContent = f.label.replace(/^Step \\d+ \u2014 /, '');
+  t.onclick = () => render(i);
+  tabBar.appendChild(t);
+}});
+
+// Keyboard nav
+document.addEventListener('keydown', e => {{
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(1);
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   go(-1);
+}});
+
+render(0);
+</script>
+</body></html>"""
+
+# ---------------------------------------------------------------------------
+# HTTP (cookie session)
+# ---------------------------------------------------------------------------
+
+jar    = http.cookiejar.CookieJar()
+opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+
+def rpc(command, data):
+    body = json.dumps(data).encode()
+    req  = urllib.request.Request(
+        f"{BASE}/api/rpc/command/{command}", data=body,
+        headers={"Content-Type": "application/json"})
+    try:
+        with opener.open(req) as resp:
+            return json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()
+        print(f"  HTTP {e.code}: {body[:1000]}")
+        raise
+
+def transit_decode(v):
+    if isinstance(v, list):
+        if v and v[0] == "^ ":
+            d = {}
+            it = iter(v[1:])
+            for k in it:
+                val = next(it)
+                key = k[2:] if isinstance(k, str) and k.startswith("~:") else k
+                d[key] = transit_decode(val)
+            return d
+        return [transit_decode(x) for x in v]
+    if isinstance(v, str) and v.startswith("~u"):
+        return v[2:]
+    if isinstance(v, str) and v.startswith("~:"):
+        return v[2:]
+    return v
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+import os, subprocess, tempfile
+UPLOAD = "--upload" in sys.argv
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PREVIEW_PATH = os.path.join(_REPO_ROOT, "docs/storyboards/out/bond-wizard-mockup.html")
+
+print("Building frames...")
+all_changes   = []
+preview_data  = []  # (frame_shape, [child_shapes])
+
+for i, builder in enumerate(STEP_BUILDERS):
+    fx  = i * (FW + GAP)
+    fy  = 0
+    fid = new_id()
+    frame    = mk_frame(fx, fy, FW, FH, f"Step {i+1} \u2014 {STEP_LABELS[i]}", sid=fid)
+    children = builder(fid, fx, fy)
+    all_changes.append(add_shape(frame))
+    for shape in children:
+        all_changes.append(add_shape(shape))
+    preview_data.append((frame, children))
+
+print(f"  {len(all_changes)} shapes across 6 frames")
+
+# ---------------------------------------------------------------------------
+# HTML preview (always)
+# ---------------------------------------------------------------------------
+
+print("Rendering HTML preview...")
+html = build_html_preview(preview_data)
+with open(PREVIEW_PATH, "w") as f:
+    f.write(html)
+CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+
+def render_frame_png(frame_idx, frame, children, out_path):
+    """Render one frame as a standalone PNG via headless Chrome."""
+    fx, fy = frame["x"], frame["y"]
+    fw, fh = int(frame["width"]), int(frame["height"])
+    bg = frame["fills"][0]["fill-color"] if frame.get("fills") else BG
+    inner = ""
+    for s in children:
+        inner += shape_to_css(s, fx, fy)
+    # Render 200px taller than content to avoid Chrome's bottom-clip quirk,
+    # then PIL-crop back to the correct frame height.
+    render_h = fh + 200
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>*{{box-sizing:border-box;margin:0;padding:0;}}
+body{{background:{bg};width:{fw}px;min-height:{fh}px;
+     font-family:Inter,system-ui,sans-serif;}}</style>
+</head><body>
+<div style="position:relative;width:{fw}px;height:{fh}px;background:{bg};">{inner}</div>
+</body></html>"""
+    tmp = f"/tmp/wiz-frame-{frame_idx+1}.html"
+    with open(tmp, "w") as f:
+        f.write(html)
+    raw = f"/tmp/wiz-raw-{frame_idx+1}.png"
+    subprocess.run([
+        CHROME, "--headless", "--disable-gpu",
+        "--force-device-scale-factor=1",
+        f"--screenshot={raw}",
+        f"--window-size={fw},{render_h}",
+        f"file://{tmp}",
+    ], check=True, capture_output=True)
+    # Crop to exact frame height
+    from PIL import Image
+    img = Image.open(raw)
+    img.crop((0, 0, fw, min(fh, img.height))).save(out_path)
+
+for i, (frame, children) in enumerate(preview_data):
+    out = f"/tmp/wiz-step-{i+1}.png"
+    render_frame_png(i, frame, children, out)
+    print(f"  Frame {i+1}: {out}")
+
+# ---------------------------------------------------------------------------
+# Penpot upload (--upload only)
+# ---------------------------------------------------------------------------
+
+if not UPLOAD:
+    print()
+    print("Preview mode. Run with --upload to push to Penpot.")
+    sys.exit(0)
+
+print("Logging in to Penpot...")
+raw_profile = rpc("login-with-password", {"email": EMAIL, "password": PASSWORD})
+profile = transit_decode(raw_profile)
+if isinstance(profile, dict) and profile.get("type") == "validation":
+    print("Login failed:", profile.get("code"))
+    sys.exit(1)
+print(f"  OK: {profile.get('fullname', '?') if isinstance(profile, dict) else '?'}")
+
+# Delete old file and create fresh to avoid revn conflicts
+PROJECT_ID = "f69c5cfb-ecd7-8001-8007-e62eac1ad288"
+print("Replacing Penpot file...")
+try:
+    rpc("delete-file", {"id": FILE_ID})
+    print("  Deleted old file.")
+except Exception:
+    pass  # may not exist
+
+new_file = transit_decode(rpc("create-file", {
+    "name":       "NyxForge UI",
+    "project-id": PROJECT_ID,
+}))
+new_file_id  = new_file.get("id", FILE_ID) if isinstance(new_file, dict) else FILE_ID
+# get the page id from the new file
+raw_file = rpc("get-file", {"id": new_file_id})
+page_ids = [v[2:] for v in str(raw_file).split('"') if v.startswith("~u") and v[2:] != new_file_id and v[2:] != PROJECT_ID and "0000" not in v]
+new_page_id = page_ids[0] if page_ids else PAGE_ID
+print(f"  New file: {new_file_id}  page: {new_page_id}")
+
+# patch page-id in all changes
+for c in all_changes:
+    c["page-id"] = new_page_id
+
+session_id = str(uuid.uuid4())
+result = transit_decode(rpc("update-file", {
+    "id":         new_file_id,
+    "page-id":    new_page_id,
+    "revn":       0,
+    "vern":       0,
+    "session-id": session_id,
+    "changes":    all_changes,
+    "save-undo":  False,
+}))
+
+if isinstance(result, dict) and result.get("type") == "validation":
+    print("ERROR:", result)
+    sys.exit(1)
+
+revn = result.get("revn", "?") if isinstance(result, dict) else result
+print(f"  Done. revn={revn}")
+print("Open Penpot:  http://localhost:9001  ->  NyxForge UI")

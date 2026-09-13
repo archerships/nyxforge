@@ -1,0 +1,306 @@
+#!/usr/bin/env python3
+"""
+NyxForge Bounty Claim mockup generator (claimant side).
+Generates docs/storyboards/out/bounty-claim-mockup.html
+
+5 frames:
+  1. My Claims     -- list of claims filed by this holder
+  2. File Claim    -- select .bounty, claim type, narrative
+  3. Attach Evidence -- upload PDF/video/JSON attestation docs
+  4. Claim Status  -- live status, judge messages, timeline
+  5. Withdraw      -- cancel a pending claim before verdict
+"""
+import os
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTDIR     = os.path.join(os.environ.get("NYXFORGE_ROOT", os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "docs/storyboards/out")
+OUTFILE    = os.path.join(OUTDIR, "bounty-claim-mockup.html")
+
+BG      = "#0d0f1a"; SURF    = "#131524"; SURF_HI = "#1a1d2e"
+ACCENT  = "#5e6ad2"; ACC_GLO = "#2d3068"; TXT_PRI = "#e8eaf0"
+TXT_SEC = "#b8c0d8"; TXT_MUT = "#8b95b0"; SUCCESS = "#4ade80"
+DANGER  = "#f87171"; WARN    = "#fbbf24"; BORDER  = "#2a2d3e"
+INACT   = "#3a3d5c"
+SUCCESS_RGBA = "rgba(74,222,128,0.10)"; WARN_RGBA = "rgba(251,191,36,0.10)"
+ACCENT_RGBA  = "rgba(94,106,210,0.12)"; DANGER_RGBA = "rgba(248,113,113,0.10)"
+FW = 920
+
+def sl(t):
+    return f'<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:{ACCENT};margin-bottom:8px;">{t}</div>'
+def div(mb=12):
+    return f'<div style="height:1px;background:{BORDER};margin:0 0 {mb}px;"></div>'
+def pill(t, c, bg):
+    return f'<span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:{c};background:{bg};">{t}</span>'
+def btn(l, color=SUCCESS, text_color=BG, small=False, full=False):
+    p = "7px 16px" if small else "13px 28px"; fs = "12px" if small else "14px"
+    w = "width:100%;display:block;text-align:center;" if full else "display:inline-block;"
+    return f'<div style="{w}padding:{p};background:{color};border-radius:7px;font-size:{fs};font-weight:700;color:{text_color};cursor:pointer;">{l}</div>'
+def btn_o(l, small=False, color=None, full=False):
+    p = "6px 14px" if small else "12px 27px"; fs = "12px" if small else "14px"
+    col = color or TXT_SEC; brd = color or BORDER
+    w = "width:100%;display:block;text-align:center;" if full else "display:inline-block;"
+    return f'<div style="{w}padding:{p};background:transparent;border:1px solid {brd};border-radius:7px;font-size:{fs};color:{col};cursor:pointer;">{l}</div>'
+def inp(label, val, mono=False, note=None):
+    f = "monospace" if mono else "inherit"
+    n = f'<div style="font-size:11px;color:{TXT_MUT};margin-top:4px;">{note}</div>' if note else ""
+    return (f'<div style="margin-bottom:12px;">'
+            f'<div style="font-size:12px;color:{TXT_MUT};margin-bottom:4px;">{label}</div>'
+            f'<div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;'
+            f'padding:9px 13px;font-size:13px;color:{TXT_MUT};font-family:{f};">{val}</div>{n}</div>')
+def hdr():
+    return f"""<div style="background:{SURF};border-bottom:1px solid {BORDER};padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:{ACC_GLO};display:flex;align-items:center;
+                  justify-content:center;font-size:11px;font-weight:700;color:{ACCENT};">NYX</div>
+      <div><div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Claim Filing</div>
+           <div style="font-size:11px;color:{TXT_MUT};">Submit and track bounty claims</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="font-size:12px;font-family:monospace;color:{TXT_MUT};">7Ab2...88Fc</div>
+      {btn("+ File Claim", color=ACCENT, text_color=TXT_PRI, small=True)}
+    </div></div>"""
+
+def frame(title, sub, body):
+    return f"""<div style="background:{BG};min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  {hdr()}
+  <div style="max-width:{FW}px;margin:0 auto;padding:28px 32px;">
+    <div style="margin-bottom:22px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:{ACCENT};margin-bottom:4px;text-transform:uppercase;">{title}</div>
+      <div style="font-size:22px;font-weight:700;color:{TXT_PRI};">{sub}</div>
+    </div>
+    {body}
+  </div></div>"""
+
+def claim_row(cid, bounty_id, bounty_subj, filed, status, sc, bg, deadline=""):
+    dl = f'<span style="font-size:11px;color:{TXT_MUT};">{deadline}</span>' if deadline else ""
+    return f"""<div style="display:grid;grid-template-columns:130px 140px 1fr 110px 130px 80px;
+              gap:12px;align-items:center;padding:12px 16px;background:{SURF};
+              border:1px solid {BORDER};border-radius:8px;margin-bottom:8px;">
+  <div style="font-family:monospace;font-size:12px;color:{ACCENT};">{cid}</div>
+  <div style="font-family:monospace;font-size:11px;color:{TXT_MUT};">{bounty_id}</div>
+  <div style="font-size:13px;color:{TXT_PRI};">{bounty_subj}</div>
+  <div style="font-size:12px;color:{TXT_MUT};">{filed}</div>
+  <div>{pill(status, sc, bg)}{dl}</div>
+  <div style="text-align:right;">{btn_o("View", small=True)}</div></div>"""
+
+def evidence_card(num, name, ftype, size, status, sc):
+    icon = {"PDF": "&#x1F4C4;", "MP4": "&#x1F3A5;", "JSON": "&#x7B7D;"}.get(ftype, "&#x1F4CE;")
+    return f"""<div style="display:flex;align-items:center;gap:14px;padding:12px 16px;
+              background:{SURF_HI};border:1px solid {BORDER};border-radius:8px;margin-bottom:8px;">
+  <div style="font-size:20px;">{icon}</div>
+  <div style="flex:1;">
+    <div style="font-size:13px;color:{TXT_PRI};font-weight:600;">[{num}] {name}</div>
+    <div style="font-size:11px;color:{TXT_MUT};margin-top:2px;">{ftype} &middot; {size}</div>
+  </div>
+  <div>{pill(status, sc, SUCCESS_RGBA if sc == SUCCESS else ACCENT_RGBA)}</div>
+  <div style="font-size:11px;color:{DANGER};cursor:pointer;">Remove</div></div>"""
+
+def timeline_step(label, date, done=True, active=False):
+    dot_c = SUCCESS if done else (ACCENT if active else INACT)
+    txt_c = TXT_PRI if (done or active) else TXT_MUT
+    return f"""<div style="display:flex;gap:14px;margin-bottom:16px;align-items:flex-start;">
+  <div style="flex:0 0 auto;width:12px;height:12px;border-radius:50%;background:{dot_c};margin-top:3px;"></div>
+  <div>
+    <div style="font-size:13px;color:{txt_c};font-weight:600;">{label}</div>
+    <div style="font-size:11px;color:{TXT_MUT};margin-top:2px;">{date}</div>
+  </div></div>"""
+
+# ---------------------------------------------------------------------------
+# Frames
+# ---------------------------------------------------------------------------
+
+def f1():
+    rows = (
+        claim_row("CLM-0044", "NYX-7F3A", "Archer Mwangi 2036",   "2026-04-23", "REVIEW",   WARN,    WARN_RGBA,   "30d left") +
+        claim_row("CLM-0038", "NYX-2B91", "Priya Nakamura 2034",  "2026-03-28", "EVIDENCE", ACCENT,  ACCENT_RGBA, "22d left") +
+        claim_row("CLM-0031", "NYX-44EF", "Kenji Oduya 2031",     "2026-02-14", "APPROVED", SUCCESS, SUCCESS_RGBA) +
+        claim_row("CLM-0022", "NYX-91C3", "Sofia Reinholt 2040",  "2025-11-10", "DENIED",   DANGER,  DANGER_RGBA)
+    )
+    stats = f"""<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;">
+  {"".join(f'<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:14px 16px;">'
+           f'<div style="font-size:11px;color:{TXT_MUT};margin-bottom:6px;">{l}</div>'
+           f'<div style="font-size:22px;font-weight:700;color:{c};">{v}</div></div>'
+           for l, v, c in [("Total Claims","4",TXT_PRI),("In Review","2",WARN),("Approved","1",SUCCESS),("Denied","1",DANGER)])}
+</div>"""
+    hdr_row = f'<div style="display:grid;grid-template-columns:130px 140px 1fr 110px 130px 80px;gap:12px;padding:8px 16px;margin-bottom:6px;"><div style="font-size:11px;color:{TXT_MUT};">CLAIM ID</div><div style="font-size:11px;color:{TXT_MUT};">BOUNTY ID</div><div style="font-size:11px;color:{TXT_MUT};">SUBJECT</div><div style="font-size:11px;color:{TXT_MUT};">FILED</div><div style="font-size:11px;color:{TXT_MUT};">STATUS</div><div></div></div>'
+    return frame("BOUNTY CLAIM / MY CLAIMS", "Claims Filed by You",
+                 stats + sl("ACTIVE CLAIMS") + hdr_row + rows)
+
+def f2():
+    left = f"""
+{sl("SELECT BOUNTY FILE")}
+{inp("Bounty File", "archer-mwangi-2036-001.bounty  (NYX-7F3A-C20B-E941)", mono=True,
+     note="The .bounty file you hold and wish to redeem")}
+<div style="padding:12px 16px;background:{SURF_HI};border:1px solid {BORDER};border-radius:8px;margin-bottom:18px;">
+  <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+    <span style="font-size:12px;color:{TXT_MUT};">Subject</span>
+    <span style="font-size:13px;color:{TXT_PRI};">Archer Mwangi</span></div>
+  <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+    <span style="font-size:12px;color:{TXT_MUT};">Collateral</span>
+    <span style="font-size:13px;color:{WARN};font-weight:700;">50,000 XMR</span></div>
+  <div style="display:flex;justify-content:space-between;">
+    <span style="font-size:12px;color:{TXT_MUT};">Judge</span>
+    <span style="font-size:12px;font-family:monospace;color:{ACCENT};">9dFk...3rPx</span></div>
+</div>
+{div()}
+{sl("CLAIM TYPE")}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;">
+  {"".join(f'<div style="padding:12px 14px;background:{"' + ACC_GLO + '" if i==0 else SURF_HI};border:1px solid {"' + ACCENT + '" if i==0 else BORDER};border-radius:8px;cursor:pointer;">'
+           f'<div style="font-size:13px;font-weight:600;color:{"' + TXT_PRI + '"};margin-bottom:3px;">{t}</div>'
+           f'<div style="font-size:11px;color:{TXT_MUT};">{d}</div></div>'
+           for i,(t,d) in enumerate([("Maturity Payout","Goal achieved, collateral due"),("Partial Payout","Terms partially met"),("Issuer Default","Issuer failed to lock collateral"),("Expired Unclaimed","Bounty expired without claim")]))}
+</div>
+{div()}
+{sl("CLAIM NARRATIVE")}
+<div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;padding:12px 14px;
+            font-size:13px;color:{TXT_PRI};min-height:90px;margin-bottom:18px;">
+  Subject has reached natural maturity per bounty terms. Presenting biometric attestation
+  BIO-9921 and DNA certification dated 2026-04-10.</div>"""
+    right = f"""
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:10px;padding:18px 20px;">
+  {sl("CLAIM CHECKLIST")}
+  {"".join(f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">'
+           f'<div style="width:16px;height:16px;border-radius:4px;background:{"' + SUCCESS + '" if ok else BORDER};'
+           f'display:flex;align-items:center;justify-content:center;font-size:10px;color:{"' + BG + '" if ok else TXT_MUT};">{"&#10003;" if ok else ""}</div>'
+           f'<span style="font-size:12px;color:{"' + TXT_PRI + '" if ok else TXT_MUT};">{t}</span></div>'
+           for t,ok in [(".bounty file selected",True),("DLEQ proof verified",True),("Claim type chosen",True),("Narrative written",True),("Evidence attached",False),("Signature applied",False)])}
+  {div()}
+  {btn("Continue to Evidence", color=ACCENT, text_color=TXT_PRI, full=True)}
+</div>"""
+    body = f'<div style="display:flex;gap:20px;align-items:flex-start;"><div style="flex:1;">{left}</div><div style="flex:0 0 280px;">{right}</div></div>'
+    return frame("BOUNTY CLAIM / FILE CLAIM", "New Claim Wizard", body)
+
+def f3():
+    cards = (evidence_card(1,"bio-attestation-9921.pdf","PDF","184 KB","VERIFIED",SUCCESS) +
+             evidence_card(2,"dna-cert-2026.pdf",       "PDF","92 KB", "VERIFIED",SUCCESS) +
+             evidence_card(3,"photo-id-2026.jpg",       "JPG","2.1 MB","PENDING", WARN))
+    upload = f"""<div style="border:2px dashed {BORDER};border-radius:10px;padding:32px;text-align:center;
+                margin-bottom:18px;cursor:pointer;background:{SURF_HI};">
+  <div style="font-size:28px;margin-bottom:8px;">&#x1F4E4;</div>
+  <div style="font-size:13px;color:{TXT_SEC};margin-bottom:4px;">Drop files here or click to browse</div>
+  <div style="font-size:11px;color:{TXT_MUT};">PDF, MP4, JSON, JPG &middot; max 50 MB per file</div></div>"""
+    note = f"""<div style="padding:12px 16px;background:{WARN_RGBA};border-left:3px solid {WARN};
+              border-radius:0 6px 6px 0;font-size:12px;color:{TXT_SEC};margin-bottom:18px;">
+  Evidence may be embedded in the .bounty file or referenced by IPFS/Arweave/HTTPS URI.
+  The judge verifies stored SHA-256 hashes before rendering a verdict.</div>"""
+    btns = f'<div style="display:flex;gap:12px;">{btn_o("Back")} {btn("Submit Claim", color=ACCENT, text_color=TXT_PRI)}</div>'
+    return frame("BOUNTY CLAIM / EVIDENCE", "Attach Supporting Evidence",
+                 sl("ATTACHED DOCUMENTS") + cards + upload + note + btns)
+
+def f4():
+    tl = (timeline_step("Claim Filed",               "2026-04-23 14:31 UTC", True) +
+          timeline_step("Evidence Verified",         "2026-04-23 14:45 UTC", True) +
+          timeline_step("Assigned to Judge 9dFk...", "2026-04-23 15:02 UTC", True) +
+          timeline_step("Judge Requested More Info", "2026-04-25 09:14 UTC", True) +
+          timeline_step("Additional Evidence Submitted","2026-04-26 11:30 UTC",True) +
+          timeline_step("Under Review",              "In progress",           False, True) +
+          timeline_step("Verdict",                   "Est. 2026-05-10",       False))
+    msg = f"""<div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:8px;padding:14px 16px;margin-bottom:12px;">
+  <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+    <span style="font-size:12px;font-weight:700;color:{ACCENT};">Judge 9dFk...3rPx</span>
+    <span style="font-size:11px;color:{TXT_MUT};">2026-04-25 09:14 UTC</span></div>
+  <div style="font-size:13px;color:{TXT_PRI};">Please provide the original biometric scan in DICOM format,
+  not the PDF summary. The PDF lacks the raw sensor data required for verification.</div></div>"""
+    left = f"""
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:10px;padding:18px 20px;margin-bottom:16px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+    <div><div style="font-size:15px;font-weight:700;color:{TXT_PRI};">CLM-0044</div>
+         <div style="font-size:11px;color:{TXT_MUT};">NYX-7F3A &middot; Archer Mwangi 2036</div></div>
+    {pill("UNDER REVIEW", WARN, WARN_RGBA)}
+  </div>
+  {div()}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+    {"".join(f'<div><div style="font-size:11px;color:{TXT_MUT};margin-bottom:3px;">{l}</div>'
+             f'<div style="font-size:13px;color:{c};font-weight:600;">{v}</div></div>'
+             for l,v,c in [("Filed","2026-04-23",TXT_PRI),("Deadline","2026-05-10",WARN),
+                           ("Collateral","50,000 XMR",WARN),("Judge","9dFk...3rPx",ACCENT)])}
+  </div>
+</div>
+{sl("JUDGE MESSAGES")}
+{msg}
+<div style="display:flex;gap:10px;margin-top:8px;">
+  <div style="flex:1;background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;padding:9px 13px;font-size:13px;color:{TXT_MUT};">Reply to judge...</div>
+  {btn("Send", color=ACCENT, text_color=TXT_PRI, small=True)}
+</div>"""
+    right = f"""<div style="background:{SURF};border:1px solid {BORDER};border-radius:10px;padding:18px 20px;">
+  {sl("TIMELINE")}
+  {tl}
+  {div()}
+  <div style="font-size:11px;color:{TXT_MUT};text-align:center;">30 days remaining for verdict</div>
+</div>"""
+    body = f'<div style="display:flex;gap:20px;align-items:flex-start;"><div style="flex:1;">{left}</div><div style="flex:0 0 260px;">{right}</div></div>'
+    return frame("BOUNTY CLAIM / STATUS", "Claim CLM-0044 Status", body)
+
+def f5():
+    warn_box = f"""<div style="padding:16px 18px;background:{DANGER_RGBA};border:1px solid {DANGER};
+              border-radius:8px;margin-bottom:20px;">
+  <div style="font-size:13px;font-weight:700;color:{DANGER};margin-bottom:6px;">Warning: Withdrawal is permanent</div>
+  <div style="font-size:13px;color:{TXT_SEC};">Withdrawing a claim before verdict returns your filing fee
+  but cannot be undone. You may re-file later, subject to the original deadline.</div></div>"""
+    body = f"""
+{sl("CLAIM TO WITHDRAW")}
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:10px;padding:18px 20px;margin-bottom:20px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div><div style="font-size:15px;font-weight:700;color:{TXT_PRI};">CLM-0044</div>
+         <div style="font-size:11px;color:{TXT_MUT};margin-top:2px;">NYX-7F3A &middot; Archer Mwangi 2036 &middot; Filed 2026-04-23</div></div>
+    {pill("UNDER REVIEW", WARN, WARN_RGBA)}
+  </div>
+</div>
+{warn_box}
+{inp("Reason for withdrawal (optional)", "Select reason...", note="Not shown to the judge; for your records only.")}
+{inp("Type WITHDRAW to confirm", "", mono=True)}
+<div style="display:flex;gap:12px;margin-top:18px;">
+  {btn_o("Cancel")} {btn("Withdraw Claim", color=DANGER, text_color=TXT_PRI)}
+</div>"""
+    return frame("BOUNTY CLAIM / WITHDRAW", "Withdraw Claim CLM-0044", body)
+
+FRAMES = [("My Claims",f1),("File Claim",f2),("Attach Evidence",f3),("Claim Status",f4),("Withdraw",f5)]
+
+def build():
+    tabs = "".join(f'<button data-idx="{i}" aria-selected="{"true" if i==0 else "false"}" role="tab" '
+                   f'style="padding:8px 18px;background:none;border:none;cursor:pointer;font-size:13px;'
+                   f'font-weight:600;color:{"' + ACCENT + '" if i==0 else "' + TXT_MUT + '"};'
+                   f'border-bottom:2px solid {"' + ACCENT + '" if i==0 else "transparent"};">'
+                   f'{l}</button>' for i,(l,_) in enumerate(FRAMES))
+    bodies = "".join(f'<div data-frame="{i}" style="display:{"block" if i==0 else "none"};">{fn()}</div>'
+                     for i,(_,fn) in enumerate(FRAMES))
+    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NyxForge Bounty Claim</title>
+<style>*,*::before,*::after{{box-sizing:border-box;margin:0;padding:0}}
+body{{background:{BG};color:{TXT_PRI};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}}
+::-webkit-scrollbar{{width:6px}}::-webkit-scrollbar-track{{background:{SURF}}}
+::-webkit-scrollbar-thumb{{background:{INACT};border-radius:3px}}</style></head>
+<body>
+<div style="background:{SURF};border-bottom:1px solid {BORDER};padding:0 24px;position:sticky;top:0;z-index:100;">
+  <div style="max-width:{FW+64}px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;">
+    <div style="padding:12px 0;display:flex;align-items:center;gap:12px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:{ACC_GLO};display:flex;align-items:center;
+                  justify-content:center;font-family:monospace;font-size:11px;font-weight:700;color:{ACCENT};">NYX</div>
+      <div style="font-size:14px;font-weight:700;color:{TXT_PRI};">Bounty Claims</div>
+    </div>
+    <div style="display:flex;gap:0;" role="tablist">{tabs}</div>
+    <div style="width:80px;"></div>
+  </div>
+</div>
+<div style="position:fixed;bottom:20px;right:24px;z-index:200;display:flex;gap:8px;">
+  <button onclick="nav(-1)" style="padding:8px 16px;background:{SURF_HI};border:1px solid {BORDER};border-radius:7px;color:{TXT_SEC};font-size:13px;cursor:pointer;">&larr; Prev</button>
+  <button onclick="nav(1)"  style="padding:8px 16px;background:{SURF_HI};border:1px solid {BORDER};border-radius:7px;color:{TXT_SEC};font-size:13px;cursor:pointer;">Next &rarr;</button>
+</div>
+<div id="frames">{bodies}</div>
+<script>
+let cur=0;const tot={len(FRAMES)};
+const fr=document.querySelectorAll('[data-frame]'),tb=document.querySelectorAll('[data-idx]');
+function show(i){{fr[cur].style.display='none';tb[cur].style.color='{TXT_MUT}';tb[cur].style.borderBottomColor='transparent';
+  cur=i;fr[cur].style.display='block';tb[cur].style.color='{ACCENT}';tb[cur].style.borderBottomColor='{ACCENT}';window.scrollTo(0,0);}}
+function nav(d){{show((cur+d+tot)%tot);}}
+tb.forEach(t=>t.addEventListener('click',()=>show(+t.dataset.idx)));
+document.addEventListener('keydown',e=>{{if(e.key==='ArrowRight')nav(1);if(e.key==='ArrowLeft')nav(-1);}});
+</script></body></html>"""
+
+if __name__ == "__main__":
+    os.makedirs(OUTDIR, exist_ok=True)
+    html = build()
+    with open(OUTFILE,"w") as f: f.write(html)
+    print(f"Written: {OUTFILE}  ({len(html):,} bytes)")

@@ -1,0 +1,1500 @@
+#!/usr/bin/env python3
+"""
+NyxForge CLI Suite mockup generator.
+Generates docs/storyboards/out/cli-suite-mockup.html
+
+Shows realistic terminal sessions for the `nyx` unified CLI tool,
+mirroring the functionality of all 8 NyxForge UI mockups.
+
+8 frames:
+  1. nyx bounty   -- create, list, inspect .bounty files
+  2. nyx auction  -- list auctions, place bid, settlement
+  3. nyx judge    -- list claims, review evidence, submit verdict
+  4. nyx dex      -- list offers, take offer, track trade
+  5. nyx wallet   -- balance, send, receive, mine
+  6. nyx swap     -- fiat-to-XMR (Haveno/Retoswap style)
+  7. nyx ngo      -- donation intake, auto-convert, treasury
+  8. nyx tax      -- generate 990/8949, export receipts
+"""
+import os
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTDIR     = os.path.join(os.environ.get("NYXFORGE_ROOT", os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "docs/storyboards/out")
+OUTFILE    = os.path.join(OUTDIR, "cli-suite-mockup.html")
+
+# ---------------------------------------------------------------------------
+# Palette
+# ---------------------------------------------------------------------------
+BG       = "#0d0f1a"
+SURF     = "#131524"
+SURF_HI  = "#1a1d2e"
+ACCENT   = "#5e6ad2"
+ACC_GLO  = "#2d3068"
+TXT_PRI  = "#e8eaf0"
+TXT_SEC  = "#b8c0d8"
+TXT_MUT  = "#8b95b0"
+SUCCESS  = "#4ade80"
+DANGER   = "#f87171"
+WARN     = "#fbbf24"
+BORDER   = "#2a2d3e"
+INACT    = "#3a3d5c"
+
+# Terminal-specific colors
+T_BG     = "#080a10"   # terminal window bg
+T_SURF   = "#0f1118"   # terminal inner
+T_GREEN  = "#4ade80"
+T_CYAN   = "#67e8f9"
+T_PURPLE = "#c084fc"
+T_YELLOW = "#fbbf24"
+T_RED    = "#f87171"
+T_BLUE   = "#818cf8"
+T_GRAY   = "#6b7280"
+T_WHITE  = "#e8eaf0"
+T_DIM    = "#4b5563"
+
+FW = 980
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def section_label(text):
+    return (f'<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;'
+            f'color:{ACCENT};margin-bottom:8px;">{text}</div>')
+
+def divider(mb=12):
+    return f'<div style="height:1px;background:{BORDER};margin:0 0 {mb}px;"></div>'
+
+def status_pill(text, color, bg):
+    return (f'<span style="font-size:10px;font-weight:700;letter-spacing:0.8px;'
+            f'padding:3px 9px;border-radius:4px;color:{color};background:{bg};">'
+            f'{text}</span>')
+
+def btn(label, color=SUCCESS, text_color=BG, small=False, full=False):
+    pad = "7px 16px" if small else "13px 28px"
+    fs  = "12px"    if small else "14px"
+    wid = "width:100%;display:block;text-align:center;" if full else "display:inline-block;"
+    return (f'<div style="{wid}padding:{pad};background:{color};'
+            f'border-radius:7px;font-size:{fs};font-weight:700;color:{text_color};'
+            f'cursor:pointer;letter-spacing:0.3px;">{label}</div>')
+
+def btn_outline(label, small=False, color=None, full=False):
+    pad = "6px 14px"  if small else "12px 27px"
+    fs  = "12px"      if small else "14px"
+    col = color or TXT_SEC
+    brd = color or BORDER
+    wid = "width:100%;display:block;text-align:center;" if full else "display:inline-block;"
+    return (f'<div style="{wid}padding:{pad};background:transparent;'
+            f'border:1px solid {brd};border-radius:7px;font-size:{fs};'
+            f'color:{col};cursor:pointer;">{label}</div>')
+
+# ---------------------------------------------------------------------------
+# Terminal rendering helpers
+# ---------------------------------------------------------------------------
+
+def c(text, color):
+    """Wrap text in a colored span."""
+    return f'<span style="color:{color};">{text}</span>'
+
+def prompt(path="~", user="archer"):
+    """Render a shell prompt line."""
+    return (f'<span style="color:{T_PURPLE};">{user}</span>'
+            f'<span style="color:{T_DIM};">@</span>'
+            f'<span style="color:{T_BLUE};">nyxnode</span>'
+            f'<span style="color:{T_DIM};">:</span>'
+            f'<span style="color:{T_CYAN};">{path}</span>'
+            f'<span style="color:{T_GREEN};"> $ </span>')
+
+def cmd(text):
+    """Render a typed command."""
+    return f'<span style="color:{T_WHITE};">{text}</span>'
+
+def comment(text):
+    return f'<span style="color:{T_DIM};"># {text}</span>'
+
+def kv(key, val, key_color=T_CYAN, val_color=T_WHITE, pad=22):
+    """Key-value output line, left-padded key."""
+    return (f'  <span style="color:{key_color};">{key.ljust(pad)}</span>'
+            f'<span style="color:{val_color};">{val}</span>')
+
+def header_line(text):
+    return f'<span style="color:{T_PURPLE};font-weight:700;">{text}</span>'
+
+def success_line(text):
+    return f'<span style="color:{T_GREEN};">{text}</span>'
+
+def warn_line(text):
+    return f'<span style="color:{T_YELLOW};">{text}</span>'
+
+def err_line(text):
+    return f'<span style="color:{T_RED};">{text}</span>'
+
+def dim_line(text):
+    return f'<span style="color:{T_DIM};">{text}</span>'
+
+def sep_line(char="-", width=72):
+    return f'<span style="color:{T_DIM};">{char * width}</span>'
+
+def blank():
+    return ""
+
+def cursor():
+    return f'<span style="background:{T_GREEN};color:{T_BG};">&nbsp;</span>'
+
+# ---------------------------------------------------------------------------
+# Terminal window wrapper
+# ---------------------------------------------------------------------------
+
+def terminal_window(title, lines, h=None):
+    """Render a macOS-style terminal window."""
+    height_style = f"height:{h}px;overflow:hidden;" if h else "min-height:200px;"
+    rows = "".join(f'<div style="line-height:1.7;min-height:1em;">{ln}</div>' for ln in lines)
+    return f"""
+<div style="border-radius:10px;overflow:hidden;border:1px solid {BORDER};
+            box-shadow:0 8px 32px rgba(0,0,0,0.6);">
+  <!-- title bar -->
+  <div style="background:#1c1e2a;padding:10px 14px;display:flex;align-items:center;gap:10px;
+              border-bottom:1px solid {BORDER};">
+    <div style="width:11px;height:11px;border-radius:50%;background:#ff5f56;"></div>
+    <div style="width:11px;height:11px;border-radius:50%;background:#ffbd2e;"></div>
+    <div style="width:11px;height:11px;border-radius:50%;background:#27c93f;"></div>
+    <div style="flex:1;text-align:center;font-size:11px;color:{T_DIM};letter-spacing:0.5px;">
+      {title}
+    </div>
+  </div>
+  <!-- terminal body -->
+  <div style="background:{T_BG};padding:16px 18px;font-family:'JetBrains Mono',
+              'Fira Code','Cascadia Code',monospace;font-size:12.5px;{height_style}
+              overflow-y:auto;">
+    {rows}
+  </div>
+</div>"""
+
+# ---------------------------------------------------------------------------
+# Side panel: command reference
+# ---------------------------------------------------------------------------
+
+def cmd_ref(title, entries):
+    """entries = list of (cmd_str, desc) tuples."""
+    rows = "".join(
+        f'<div style="display:flex;gap:10px;margin-bottom:6px;">'
+        f'<div style="flex:0 0 auto;font-family:monospace;font-size:11px;'
+        f'color:{ACCENT};white-space:nowrap;">{e[0]}</div>'
+        f'<div style="font-size:11px;color:{TXT_MUT};">{e[1]}</div>'
+        f'</div>'
+        for e in entries
+    )
+    return f"""
+<div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:8px;padding:14px 16px;">
+  <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:{TXT_MUT};
+              margin-bottom:10px;text-transform:uppercase;">{title}</div>
+  {rows}
+</div>"""
+
+# ---------------------------------------------------------------------------
+# Frame builder
+# ---------------------------------------------------------------------------
+
+def frame(title, subtitle, left_content, right_top=None, right_bot=None, note=None):
+    right = ""
+    if right_top or right_bot:
+        top = right_top or ""
+        bot = (f'<div style="margin-top:14px;">{right_bot}</div>') if right_bot else ""
+        right = f"""
+<div style="flex:0 0 300px;display:flex;flex-direction:column;gap:14px;">
+  {top}{bot}
+</div>"""
+    note_html = ""
+    if note:
+        note_html = (f'<div style="margin-top:14px;padding:10px 14px;background:{SURF_HI};'
+                     f'border-left:3px solid {ACCENT};border-radius:0 6px 6px 0;'
+                     f'font-size:12px;color:{TXT_SEC};">{note}</div>')
+    return f"""
+<div style="background:{BG};min-height:100vh;padding:28px 32px;
+            font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:{FW}px;margin:0 auto;">
+    <!-- page header -->
+    <div style="margin-bottom:22px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;
+                  color:{ACCENT};margin-bottom:4px;text-transform:uppercase;">{title}</div>
+      <div style="font-size:22px;font-weight:700;color:{TXT_PRI};">{subtitle}</div>
+    </div>
+    <!-- body -->
+    <div style="display:flex;gap:20px;align-items:flex-start;">
+      <div style="flex:1;min-width:0;">{left_content}{note_html}</div>
+      {right}
+    </div>
+  </div>
+</div>"""
+
+# ===========================================================================
+# Frame 1 — nyx bounty
+# ===========================================================================
+
+def frame_bounty():
+    term1 = terminal_window("nyx bounty -- create & inspect", [
+        comment("Create a new .bounty file"),
+        prompt() + cmd("nyx bounty create \\"),
+        dim_line("    --subject 'Archer Mwangi' \\"),
+        dim_line("    --collateral 50000 \\"),
+        dim_line("    --denom XMR \\"),
+        dim_line("    --deadline 2036-04-23 \\"),
+        dim_line("    --expiry 2036-05-23 \\"),
+        dim_line("    --judge 9dFk...3rPx \\"),
+        dim_line("    --out ./archer-mwangi-2036.bounty"),
+        blank(),
+        success_line("  Generating keypair ..."),
+        success_line("  Embedding DLEQ proof ..."),
+        success_line("  Writing SQLite bearer file ..."),
+        blank(),
+        kv("File", "archer-mwangi-2036.bounty", T_CYAN, T_WHITE),
+        kv("Size", "4.2 KB", T_CYAN, T_WHITE),
+        kv("Bounty ID", "NYX-7F3A-C20B-E941", T_CYAN, T_GREEN),
+        kv("Subject", "Archer Mwangi", T_CYAN, T_WHITE),
+        kv("Collateral", "50,000 XMR", T_CYAN, T_YELLOW),
+        kv("Deadline", "2036-04-23", T_CYAN, T_WHITE),
+        kv("Judge", "9dFk...3rPx", T_CYAN, T_PURPLE),
+        kv("Status", "UNISSUED", T_CYAN, T_DIM),
+        blank(),
+        success_line("  Created. Transfer file to backer to complete issuance."),
+        blank(),
+    ])
+
+    term2 = terminal_window("nyx bounty list / inspect", [
+        prompt() + cmd("nyx bounty list"),
+        blank(),
+        header_line("  ID             SUBJECT              COLLATERAL   DEADLINE     STATUS"),
+        sep_line(),
+        f'  {c("NYX-7F3A","#818cf8")}  Archer Mwangi        {c("50,000 XMR",T_YELLOW)}   2036-04-23   {c("ACTIVE",T_GREEN)}',
+        f'  {c("NYX-2B91","#818cf8")}  Priya Nakamura       {c("12,500 XMR",T_YELLOW)}   2034-11-01   {c("ACTIVE",T_GREEN)}',
+        f'  {c("NYX-44EF","#818cf8")}  Kenji Oduya          {c("8,000 XMR", T_YELLOW)}   2031-06-15   {c("CLAIMED",T_RED)}',
+        f'  {c("NYX-91C3","#818cf8")}  Sofia Reinholt       {c("25,000 XMR",T_YELLOW)}   2040-02-28   {c("PENDING",T_DIM)}',
+        blank(),
+        prompt() + cmd("nyx bounty inspect archer-mwangi-2036.bounty"),
+        blank(),
+        header_line("  === .bounty file — NYX-7F3A-C20B-E941 ==="),
+        blank(),
+        kv("Schema", "bounty-v1.0", T_CYAN, T_WHITE),
+        kv("Subject", "Archer Mwangi", T_CYAN, T_WHITE),
+        kv("Issuer", "NYX Foundation Vault #3", T_CYAN, T_WHITE),
+        kv("Collateral", "50,000 XMR", T_CYAN, T_YELLOW),
+        kv("Denomination", "XMR", T_CYAN, T_WHITE),
+        kv("Issued", "2026-04-23", T_CYAN, T_WHITE),
+        kv("Deadline", "2036-04-23", T_CYAN, T_WHITE),
+        kv("Judge key", "9dFk...3rPx (Ed25519)", T_CYAN, T_PURPLE),
+        kv("DLEQ proof", "valid", T_CYAN, T_GREEN),
+        kv("Bearer key", "7Ab2...88Fc (current holder)", T_CYAN, T_WHITE),
+        kv("Chain root", "0x3a9f...c1d2 (block 4,102,881)", T_CYAN, T_DIM),
+        blank(),
+        success_line("  Proof verification: PASS"),
+        prompt() + cursor(),
+    ])
+
+    ref = cmd_ref("nyx bounty", [
+        ("nyx bounty create",   "wizard: create a new .bounty file"),
+        ("nyx bounty list",     "list all known .bounty files"),
+        ("nyx bounty inspect",  "dump metadata + verify DLEQ proof"),
+        ("nyx bounty transfer", "change bearer key (possession transfer)"),
+        ("nyx bounty claim",    "initiate a claim against the issuer"),
+        ("nyx bounty lock",     "lock as collateral in a new .bounty"),
+        ("nyx bounty verify",   "offline proof check (no network)"),
+    ])
+
+    flags = cmd_ref("global flags", [
+        ("--network mainnet",   "mainnet / testnet / regtest"),
+        ("--keyfile path",      "path to Ed25519 keypair"),
+        ("--rpc http://...",    "custom node RPC endpoint"),
+        ("--json",              "output machine-readable JSON"),
+        ("--quiet",             "suppress progress messages"),
+    ])
+
+    left = term1 + f'<div style="margin-top:16px;">{term2}</div>'
+    right_top = ref
+    right_bot = flags
+    return frame(
+        "NYX CLI / nyx bounty",
+        "Create & manage .bounty bearer instruments",
+        left, right_top, right_bot,
+        note="Possession of the .bounty file plus the controlling .nfkey = claim rights. "
+             "The SQLite file stores holder_pubkey and encrypted scalar metadata, not private keys."
+    )
+
+# ===========================================================================
+# Frame 2 — nyx auction
+# ===========================================================================
+
+def frame_auction():
+    term1 = terminal_window("nyx auction list", [
+        prompt() + cmd("nyx auction list --live"),
+        blank(),
+        header_line("  Live Bounty Auctions  (Reverse Dutch)"),
+        sep_line(),
+        header_line("  ID       SUBJECT        UNITS  PRICE      FLOOR   FILLED  TIME LEFT"),
+        sep_line(),
+        f'  {c("AUC-001",T_BLUE)}  Archer Mwangi   20    {c("182 XMR",T_YELLOW)}   40      {c("61%",T_GREEN)}    4h 12m',
+        f'  {c("AUC-002",T_BLUE)}  Priya Nakamura   8    {c("95 XMR", T_YELLOW)}   20      {c("25%",T_DIM)}     9h 48m',
+        f'  {c("AUC-003",T_BLUE)}  Kenji Oduya     12    {c("140 XMR",T_YELLOW)}   30      {c("100%",T_GREEN)}   {c("CLOSED",T_RED)}',
+        blank(),
+        prompt() + cmd("nyx auction watch AUC-001"),
+        blank(),
+        header_line("  AUC-001 — Archer Mwangi 2036  [LIVE]"),
+        sep_line(),
+        kv("Current price", "182 XMR / unit", T_CYAN, T_YELLOW),
+        kv("Floor price", "40 XMR / unit", T_CYAN, T_WHITE),
+        kv("Units remaining", "8 of 20", T_CYAN, T_WHITE),
+        kv("Decay rate", "~2.1 XMR / hour", T_CYAN, T_WHITE),
+        kv("Time left", "4h 12m 08s", T_CYAN, T_GREEN),
+        blank(),
+        f'  {c("Watching ... (Ctrl+C to stop)",T_DIM)}',
+        f'  {c("[14:22:01]",T_DIM)} price drop  {c("183",T_RED)} -> {c("182 XMR",T_YELLOW)}',
+        f'  {c("[14:22:58]",T_DIM)} bid placed  {c("3 units @ 182 XMR",T_GREEN)} by 4aB...9c',
+        f'  {c("[14:23:55]",T_DIM)} price drop  {c("182",T_RED)} -> {c("181 XMR",T_YELLOW)}',
+    ], h=300)
+
+    term2 = terminal_window("nyx auction bid + settle", [
+        prompt() + cmd("nyx auction bid AUC-001 --units 3 --max-price 185"),
+        blank(),
+        header_line("  Confirm Bid"),
+        sep_line(),
+        kv("Auction", "AUC-001 (Archer Mwangi 2036)", T_CYAN, T_WHITE),
+        kv("Units", "3", T_CYAN, T_WHITE),
+        kv("Current price", "182 XMR / unit", T_CYAN, T_YELLOW),
+        kv("Total cost", "546 XMR", T_CYAN, T_YELLOW),
+        kv("Max price", "185 XMR (limit)", T_CYAN, T_DIM),
+        kv("Delivery key", "7Ab2...88Fc (your key)", T_CYAN, T_WHITE),
+        blank(),
+        f'  {warn_line("WARNING: .bounty files delivered to bearer key on-chain.")}',
+        f'  {warn_line("Ensure you control the private key before confirming.")}',
+        blank(),
+        dim_line("  Proceed? [y/N] ") + c("y", T_GREEN),
+        blank(),
+        success_line("  Broadcast bid TX ..."),
+        success_line("  Confirmed in block 4,102,884"),
+        success_line("  Bid placed. Awaiting auction close or price fill."),
+        blank(),
+        prompt() + cmd("nyx auction settle AUC-001"),
+        blank(),
+        success_line("  Auction AUC-001 closed. Clearing price: 182 XMR"),
+        kv("Units won", "3", T_CYAN, T_GREEN),
+        kv("Total paid", "546 XMR", T_CYAN, T_YELLOW),
+        dim_line("  Downloading .bounty files ..."),
+        success_line("  archer-mwangi-2036-001.bounty  saved"),
+        success_line("  archer-mwangi-2036-002.bounty  saved"),
+        success_line("  archer-mwangi-2036-003.bounty  saved"),
+        prompt() + cursor(),
+    ], h=340)
+
+    ref = cmd_ref("nyx auction", [
+        ("nyx auction list",    "list live and recent auctions"),
+        ("nyx auction watch",   "stream live price feed for an auction"),
+        ("nyx auction bid",     "place a bid at current or max price"),
+        ("nyx auction cancel",  "cancel an unfilled bid"),
+        ("nyx auction settle",  "claim .bounty files after auction closes"),
+        ("nyx auction create",  "create a new reverse Dutch auction (issuer)"),
+        ("nyx auction history", "past auctions with clearing prices"),
+    ])
+
+    left = term1 + f'<div style="margin-top:16px;">{term2}</div>'
+    return frame(
+        "NYX CLI / nyx auction",
+        "Reverse Dutch Auctions",
+        left, ref, None,
+        note="Price descends continuously. First backer to commit locks in "
+             "that price. Auction closes when all units fill or time expires."
+    )
+
+# ===========================================================================
+# Frame 3 — nyx judge
+# ===========================================================================
+
+def frame_judge():
+    term1 = terminal_window("nyx judge list-claims", [
+        prompt() + cmd("nyx judge list-claims --my-key"),
+        blank(),
+        header_line("  Claims assigned to your judge key  9dFk...3rPx"),
+        sep_line(),
+        header_line("  CLAIM ID    BOUNTY ID     CLAIMANT     FILED       STATUS     DEADLINE"),
+        sep_line(),
+        f'  {c("CLM-0041",T_BLUE)}  NYX-7F3A  Priya N.     2026-04-10   {c("REVIEW",T_YELLOW)}   2026-05-10',
+        f'  {c("CLM-0038",T_BLUE)}  NYX-2B91  Omari T.     2026-03-28   {c("EVIDENCE",T_CYAN)}  2026-04-28',
+        f'  {c("CLM-0031",T_BLUE)}  NYX-44EF  Kenji O.     2026-02-14   {c("DECIDED",T_GREEN)}   --',
+        f'  {c("CLM-0029",T_BLUE)}  NYX-91C3  Sofia R.     2026-01-30   {c("APPEAL",T_RED)}    2026-05-05',
+        blank(),
+        prompt() + cmd("nyx judge review CLM-0041"),
+        blank(),
+        header_line("  Claim CLM-0041  --  NYX-7F3A (Archer Mwangi 2036)"),
+        sep_line(),
+        kv("Claimant", "Priya Nakamura  (4aB...9c)", T_CYAN, T_WHITE),
+        kv("Bounty", "NYX-7F3A-C20B-E941  (50,000 XMR)", T_CYAN, T_YELLOW),
+        kv("Claim type", "Maturity payout", T_CYAN, T_WHITE),
+        kv("Filed", "2026-04-10", T_CYAN, T_WHITE),
+        kv("Deadline", "2026-05-10  (30 days remaining)", T_CYAN, T_GREEN),
+        blank(),
+        header_line("  Claim narrative:"),
+        f'  {c("Subject has reached natural maturity.",T_WHITE)}',
+        f'  {c("Presenting verified biometric attestation (ref: BIO-9921).",T_WHITE)}',
+        blank(),
+        header_line("  Evidence attachments  (3):"),
+        f'  {c("[1]",T_PURPLE)}  bio-attestation-9921.pdf   SHA256: 3fa8...c4d1   {c("VERIFIED",T_GREEN)}',
+        f'  {c("[2]",T_PURPLE)}  dna-cert-2026.pdf          SHA256: 8b2c...7e09   {c("VERIFIED",T_GREEN)}',
+        f'  {c("[3]",T_PURPLE)}  photo-id-2026.jpg          SHA256: 1d0f...aa3c   {c("VERIFIED",T_GREEN)}',
+    ], h=380)
+
+    term2 = terminal_window("nyx judge decide", [
+        prompt() + cmd("nyx judge decide CLM-0041 --verdict approve \\"),
+        dim_line("    --note 'Biometric + DNA evidence sufficient. Approve payout.'"),
+        blank(),
+        header_line("  Verdict Preview"),
+        sep_line(),
+        kv("Claim", "CLM-0041", T_CYAN, T_WHITE),
+        kv("Verdict", "APPROVE", T_CYAN, T_GREEN),
+        kv("Payout", "50,000 XMR to 4aB...9c", T_CYAN, T_YELLOW),
+        kv("Note", "'Biometric + DNA evidence sufficient.'", T_CYAN, T_DIM),
+        blank(),
+        dim_line("  Sign with judge key 9dFk...3rPx? [y/N] ") + c("y", T_GREEN),
+        blank(),
+        success_line("  Signing verdict ..."),
+        success_line("  Broadcasting verdict TX ..."),
+        success_line("  Confirmed in block 4,102,901"),
+        success_line("  Payout released: 50,000 XMR -> 4aB...9c"),
+        blank(),
+        kv("Verdict TX", "0xb3f9...22a1", T_CYAN, T_WHITE),
+        kv("Payout TX", "0xd014...c8b2", T_CYAN, T_WHITE),
+        blank(),
+        prompt() + cursor(),
+    ], h=270)
+
+    ref = cmd_ref("nyx judge", [
+        ("nyx judge list-claims",  "claims assigned to your judge key"),
+        ("nyx judge review",       "inspect claim + evidence"),
+        ("nyx judge request-info", "ask claimant for more evidence"),
+        ("nyx judge decide",       "sign and broadcast verdict"),
+        ("nyx judge appeal",       "escalate to panel (3-of-5)"),
+        ("nyx judge history",      "past verdicts signed by your key"),
+        ("nyx judge register",     "register as a judge on-chain"),
+    ])
+
+    left = term1 + f'<div style="margin-top:16px;">{term2}</div>'
+    return frame(
+        "NYX CLI / nyx judge",
+        "Claim Review & Verdict Signing",
+        left, ref, None,
+        note="Judge keys are Ed25519. Verdicts are signed off-chain and then "
+             "broadcast as on-chain TX. An APPROVE verdict releases collateral; "
+             "a DENY verdict returns it to the issuer."
+    )
+
+# ===========================================================================
+# Frame 4 — nyx dex
+# ===========================================================================
+
+def frame_dex():
+    term1 = terminal_window("nyx dex list + take offer", [
+        prompt() + cmd("nyx dex list --pair NYX/XMR --sort price"),
+        blank(),
+        header_line("  NYX / XMR Order Book"),
+        sep_line(),
+        header_line("  OFFER ID   SIDE  PRICE (XMR)  AMOUNT (NYX)   MIN        MAKER      TRADES"),
+        sep_line(),
+        f'  {c("OFF-8812",T_BLUE)}  SELL  {c("0.000182",T_RED)}     50,000         5,000     9dFk...     {c("247",T_DIM)}',
+        f'  {c("OFF-8799",T_BLUE)}  SELL  {c("0.000185",T_RED)}    120,000        10,000     4aB2...     {c("91",T_DIM)}',
+        f'  {c("OFF-8641",T_BLUE)}  BUY   {c("0.000178",T_GREEN)}   75,000         2,000     7cD9...     {c("512",T_DIM)}',
+        f'  {c("OFF-8589",T_BLUE)}  BUY   {c("0.000174",T_GREEN)}  200,000        20,000     2eF1...     {c("38",T_DIM)}',
+        blank(),
+        dim_line("  Spread: 0.000004 XMR  |  Mid: 0.000180  |  24h vol: 4.2M NYX"),
+        blank(),
+        prompt() + cmd("nyx dex take OFF-8812 --amount 20000"),
+        blank(),
+        header_line("  Take Offer OFF-8812"),
+        sep_line(),
+        kv("Side", "BUY 20,000 NYX", T_CYAN, T_GREEN),
+        kv("Price", "0.000182 XMR / NYX", T_CYAN, T_WHITE),
+        kv("Total cost", "3.640 XMR", T_CYAN, T_YELLOW),
+        kv("Maker", "9dFk...3rPx  (247 trades, 100%)", T_CYAN, T_WHITE),
+        kv("Settlement", "atomic swap, ~2 min", T_CYAN, T_WHITE),
+        blank(),
+        dim_line("  Proceed? [y/N] ") + c("y", T_GREEN),
+        success_line("  Initiating atomic swap ..."),
+        success_line("  HTLC published (block 4,102,908)"),
+        success_line("  Maker locked counterparty funds"),
+        success_line("  Swap complete. +20,000 NYX in wallet."),
+    ], h=380)
+
+    term2 = terminal_window("nyx dex create offer", [
+        prompt() + cmd("nyx dex create --pair NYX/XMR --side sell \\"),
+        dim_line("    --price 0.000190 --amount 500000 --min 10000"),
+        blank(),
+        success_line("  Offer created: OFF-8821"),
+        kv("Pair", "NYX / XMR", T_CYAN, T_WHITE),
+        kv("Side", "SELL", T_CYAN, T_RED),
+        kv("Price", "0.000190 XMR / NYX", T_CYAN, T_WHITE),
+        kv("Amount", "500,000 NYX", T_CYAN, T_WHITE),
+        kv("Min trade", "10,000 NYX", T_CYAN, T_WHITE),
+        kv("Locked", "500,000 NYX (escrowed)", T_CYAN, T_YELLOW),
+        blank(),
+        prompt() + cmd("nyx dex trades --open"),
+        blank(),
+        header_line("  Open Trades"),
+        sep_line(),
+        f'  {c("TRD-0041",T_BLUE)}  {c("SWAP",T_CYAN)}  20,000 NYX for 3.640 XMR  {c("CONFIRMING",T_YELLOW)}   1 min ago',
+        blank(),
+        prompt() + cmd("nyx dex trades --history --limit 3"),
+        blank(),
+        f'  {c("TRD-0040",T_BLUE)}  SWAP   5,000 NYX   {c("COMPLETE",T_GREEN)}  2026-04-22',
+        f'  {c("TRD-0039",T_BLUE)}  SWAP  80,000 NYX   {c("COMPLETE",T_GREEN)}  2026-04-21',
+        f'  {c("TRD-0037",T_BLUE)}  SWAP  12,500 NYX   {c("COMPLETE",T_GREEN)}  2026-04-19',
+        prompt() + cursor(),
+    ], h=290)
+
+    ref = cmd_ref("nyx dex", [
+        ("nyx dex list",    "show order book for a trading pair"),
+        ("nyx dex take",    "take an existing offer (atomic swap)"),
+        ("nyx dex create",  "post a new maker offer"),
+        ("nyx dex cancel",  "cancel an open offer"),
+        ("nyx dex trades",  "open and historical trades"),
+        ("nyx dex pairs",   "list all available trading pairs"),
+        ("nyx dex price",   "current mid price + 24h stats"),
+    ])
+
+    left = term1 + f'<div style="margin-top:16px;">{term2}</div>'
+    return frame(
+        "NYX CLI / nyx dex",
+        "Decentralized Exchange",
+        left, ref, None,
+        note="Trades settle via atomic swap (HTLC). No custodian. "
+             "NYX/XMR, NYX/TARI, and XMR/TARI pairs supported."
+    )
+
+# ===========================================================================
+# Frame 5 — nyx wallet
+# ===========================================================================
+
+def frame_wallet():
+    term1 = terminal_window("nyx wallet balance + history", [
+        prompt() + cmd("nyx wallet balance"),
+        blank(),
+        header_line("  Wallet  7Ab2...88Fc"),
+        sep_line(),
+        f'  {c("XMR",T_YELLOW)}   {c("24.8820",T_WHITE)} XMR    {c("~$3,980 USD",T_DIM)}',
+        f'  {c("NYX",T_BLUE)}   {c("842,000",T_WHITE)} NYX    {c("~$153 USD",T_DIM)}',
+        f'  {c("TARI",T_PURPLE)} {c("2,150",T_WHITE)} TARI   {c("~$22 USD",T_DIM)}',
+        sep_line(),
+        f'  {c("Total",T_WHITE)}                   {c("~$4,155 USD",T_YELLOW)}',
+        blank(),
+        prompt() + cmd("nyx wallet history --coin xmr --limit 5"),
+        blank(),
+        header_line("  XMR Transaction History"),
+        sep_line(),
+        f'  {c("2026-04-23",T_DIM)}  {c("+3.640",T_GREEN)}  DEX swap  OFF-8812           {c("24.882",T_WHITE)}',
+        f'  {c("2026-04-22",T_DIM)}  {c("-0.500",T_RED)}   Send to 9dFk...               {c("21.242",T_WHITE)}',
+        f'  {c("2026-04-21",T_DIM)}  {c("+0.221",T_GREEN)}  Mine reward (block 4,102,441) {c("21.742",T_WHITE)}',
+        f'  {c("2026-04-20",T_DIM)}  {c("+0.195",T_GREEN)}  Mine reward (block 4,101,880) {c("21.521",T_WHITE)}',
+        f'  {c("2026-04-19",T_DIM)}  {c("+5.000",T_GREEN)}  XMR swap  (nyx swap)          {c("21.326",T_WHITE)}',
+    ], h=290)
+
+    term2 = terminal_window("nyx wallet send + receive", [
+        prompt() + cmd("nyx wallet receive --coin xmr"),
+        blank(),
+        kv("Address", "48xNq7HpE...Mn9B (XMR stealth)", T_CYAN, T_WHITE),
+        kv("QR", "[QR saved to /tmp/xmr-recv.png]", T_CYAN, T_DIM),
+        blank(),
+        prompt() + cmd("nyx wallet send --coin xmr --to 9dFk...3rPx --amount 0.5"),
+        blank(),
+        header_line("  Confirm Send"),
+        kv("Coin", "XMR", T_CYAN, T_WHITE),
+        kv("To", "9dFk...3rPx", T_CYAN, T_WHITE),
+        kv("Amount", "0.5 XMR", T_CYAN, T_YELLOW),
+        kv("Fee", "0.0001 XMR (normal)", T_CYAN, T_DIM),
+        blank(),
+        dim_line("  Proceed? [y/N] ") + c("y", T_GREEN),
+        success_line("  TX broadcast: 0x7c3a...ff12"),
+        success_line("  Confirmed (block 4,102,892, 2 confirms)"),
+        blank(),
+        prompt() + cmd("nyx wallet mine --coins xmr,nyx,tari --threads 8"),
+        blank(),
+        header_line("  Merge Miner  [XMR + NYX + TARI]"),
+        sep_line(),
+        kv("Hashrate", "4,821 H/s  (8 threads)", T_CYAN, T_GREEN),
+        kv("Pool XMR", "pool.supportxmr.com:3333", T_CYAN, T_WHITE),
+        kv("Pool NYX", "pool.nyxforge.io:4444", T_CYAN, T_WHITE),
+        kv("Pool TARI", "pool.tari.com:18142", T_CYAN, T_WHITE),
+        kv("Session earn", "0.0021 XMR  |  8,400 NYX  |  1.2 TARI", T_CYAN, T_YELLOW),
+        f'  {c("[14:29:11]",T_DIM)} share accepted  +21 NYX',
+        f'  {c("[14:29:44]",T_DIM)} share accepted  +0.00008 XMR',
+        prompt() + cursor(),
+    ], h=360)
+
+    ref = cmd_ref("nyx wallet", [
+        ("nyx wallet balance",  "balances for all coins"),
+        ("nyx wallet receive",  "generate receive address / QR"),
+        ("nyx wallet send",     "send XMR / NYX / TARI"),
+        ("nyx wallet history",  "transaction history with filters"),
+        ("nyx wallet mine",     "start merge miner (XMR+NYX+TARI)"),
+        ("nyx wallet mine stop","stop miner and show session summary"),
+        ("nyx wallet export",   "export wallet keys (encrypted)"),
+    ])
+
+    left = term1 + f'<div style="margin-top:16px;">{term2}</div>'
+    return frame(
+        "NYX CLI / nyx wallet",
+        "Crypto Wallet & Merge Miner",
+        left, ref, None,
+        note="Mining NYX and TARI is merge-mined on top of XMR (RandomX). "
+             "No extra hash rate required. NYX emission: 10T tokens over 100 years, "
+             "exponential decay, k=0.055."
+    )
+
+# ===========================================================================
+# Frame 6 — nyx swap
+# ===========================================================================
+
+def frame_swap():
+    term1 = terminal_window("nyx swap list + take (Haveno-style)", [
+        prompt() + cmd("nyx swap list --method all --sort price"),
+        blank(),
+        header_line("  Fiat -> XMR Offer Book  (Haveno P2P)"),
+        sep_line(),
+        header_line("  OFFER ID   PAYMENT    PRICE (USD)  MIN     MAX      MAKER     TRADES"),
+        sep_line(),
+        f'  {c("SWP-2241",T_BLUE)}  {c("PayPal",T_CYAN)}     {c("$168.50",T_WHITE)}   $50    $2,000   4aB...   {c("183",T_DIM)}',
+        f'  {c("SWP-2238",T_BLUE)}  {c("Zelle",T_GREEN)}      {c("$167.80",T_WHITE)}  $100    $5,000   9dFk...  {c("412",T_DIM)}',
+        f'  {c("SWP-2230",T_BLUE)}  {c("Cash Mail",T_YELLOW)}  {c("$165.00",T_WHITE)}   $20     $500   7cD9...  {c("67",T_DIM)}',
+        f'  {c("SWP-2219",T_BLUE)}  {c("Bank Xfer",T_PURPLE)} {c("$168.00",T_WHITE)}  $500   $20,000  2eF1...  {c("921",T_DIM)}',
+        blank(),
+        prompt() + cmd("nyx swap take SWP-2238 --amount-usd 500"),
+        blank(),
+        header_line("  Take Offer SWP-2238"),
+        sep_line(),
+        kv("Payment", "Zelle", T_CYAN, T_GREEN),
+        kv("Price", "$167.80 / XMR", T_CYAN, T_WHITE),
+        kv("You send", "$500.00 USD (Zelle)", T_CYAN, T_YELLOW),
+        kv("You receive", "2.9797 XMR", T_CYAN, T_GREEN),
+        kv("Your deposit", "0.4470 XMR (15%)", T_CYAN, T_WHITE),
+        kv("Maker deposit", "0.4470 XMR (15%)", T_CYAN, T_WHITE),
+        kv("Escrow", "2-of-3 multisig + arbitrator", T_CYAN, T_DIM),
+        kv("Payment window", "4 hours", T_CYAN, T_WHITE),
+        blank(),
+        warn_line("  Your security deposit will be locked until trade completes."),
+        blank(),
+        dim_line("  Proceed? [y/N] ") + c("y", T_GREEN),
+        success_line("  Security deposits locked in multisig."),
+        success_line("  Trade TRD-P2P-0441 opened."),
+        success_line("  Maker: 9dFk...3rPx  |  Waiting for your Zelle payment."),
+    ], h=400)
+
+    term2 = terminal_window("nyx swap confirm payment + complete", [
+        prompt() + cmd("nyx swap status TRD-P2P-0441"),
+        blank(),
+        kv("Trade", "TRD-P2P-0441", T_CYAN, T_WHITE),
+        kv("Status", "AWAITING_PAYMENT", T_CYAN, T_YELLOW),
+        kv("Time left", "3h 41m", T_CYAN, T_GREEN),
+        blank(),
+        comment("Send Zelle to maker, then confirm:"),
+        prompt() + cmd("nyx swap confirm-sent TRD-P2P-0441"),
+        blank(),
+        success_line("  Payment marked sent. Notifying maker ..."),
+        dim_line("  Maker has 4h to confirm receipt."),
+        blank(),
+        comment("After maker confirms Zelle receipt:"),
+        prompt() + cmd("nyx swap status TRD-P2P-0441"),
+        blank(),
+        kv("Status", "COMPLETE", T_CYAN, T_GREEN),
+        kv("XMR received", "2.9797 XMR", T_CYAN, T_GREEN),
+        kv("Deposit returned", "0.4470 XMR", T_CYAN, T_WHITE),
+        success_line("  Trade complete. Deposits unlocked."),
+        blank(),
+        prompt() + cmd("nyx swap create --method zelle \\"),
+        dim_line("    --price-margin -1.5% --min 100 --max 3000"),
+        blank(),
+        success_line("  Offer created: SWP-2245"),
+        kv("Method", "Zelle", T_CYAN, T_GREEN),
+        kv("Margin", "-1.5% below market", T_CYAN, T_WHITE),
+        kv("Range", "$100 - $3,000", T_CYAN, T_WHITE),
+        prompt() + cursor(),
+    ], h=320)
+
+    ref = cmd_ref("nyx swap", [
+        ("nyx swap list",          "browse fiat-to-XMR offer book"),
+        ("nyx swap take",          "take offer, lock security deposits"),
+        ("nyx swap confirm-sent",  "mark fiat payment as sent"),
+        ("nyx swap dispute",       "open arbitration for stuck trade"),
+        ("nyx swap status",        "current trade state + time remaining"),
+        ("nyx swap create",        "post a new maker offer"),
+        ("nyx swap history",       "completed swap history"),
+    ])
+
+    left = term1 + f'<div style="margin-top:16px;">{term2}</div>'
+    return frame(
+        "NYX CLI / nyx swap",
+        "Fiat-to-XMR P2P Exchange (Haveno)",
+        left, ref, None,
+        note="Both parties post 15% security deposits into 2-of-3 multisig. "
+             "Disputes escalate to a randomly selected arbitrator. No KYC. "
+             "No central server."
+    )
+
+# ===========================================================================
+# Frame 7 — nyx ngo
+# ===========================================================================
+
+def frame_ngo():
+    term1 = terminal_window("nyx ngo dashboard + donations", [
+        prompt() + cmd("nyx ngo status"),
+        blank(),
+        header_line("  NyxForge Foundation NGO Admin"),
+        sep_line(),
+        header_line("  PROCESSOR        STATUS    BALANCE       THIS MONTH"),
+        sep_line(),
+        f'  {c("Stripe",T_BLUE)}           {c("ACTIVE",T_GREEN)}    {c("$12,440",T_WHITE)}       {c("$3,210",T_GREEN)}',
+        f'  {c("Square",T_PURPLE)}          {c("ACTIVE",T_GREEN)}     {c("$4,880",T_WHITE)}       {c("$1,050",T_GREEN)}',
+        f'  {c("Authorize.net",T_CYAN)}    {c("ACTIVE",T_GREEN)}     {c("$2,100",T_WHITE)}         {c("$720",T_GREEN)}',
+        sep_line(),
+        f'  {c("XMR Treasury",T_YELLOW)}   --         {c("48.220 XMR",T_YELLOW)}      {c("+8.41 XMR",T_GREEN)}',
+        blank(),
+        kv("Auto-convert", "ON (threshold: $500)", T_CYAN, T_GREEN),
+        kv("Primary route", "Kraken", T_CYAN, T_WHITE),
+        kv("Fallback route", "Onramper", T_CYAN, T_DIM),
+        blank(),
+        prompt() + cmd("nyx ngo donations --limit 5"),
+        blank(),
+        header_line("  Recent Donations"),
+        sep_line(),
+        f'  {c("2026-04-23",T_DIM)}  Stripe    {c("$2,500",T_GREEN)}   {c("Archer M.",T_WHITE)}         {c("converted",T_CYAN)}',
+        f'  {c("2026-04-22",T_DIM)}  Square    {c("$750",T_GREEN)}    {c("Anonymous",T_DIM)}          {c("pooling",T_YELLOW)}',
+        f'  {c("2026-04-22",T_DIM)}  Stripe    {c("$150",T_GREEN)}    {c("Priya N.",T_WHITE)}          {c("pooling",T_YELLOW)}',
+        f'  {c("2026-04-20",T_DIM)}  Auth.net  {c("$1,200",T_GREEN)}  {c("Kenji O.",T_WHITE)}          {c("converted",T_CYAN)}',
+        f'  {c("2026-04-19",T_DIM)}  Stripe    {c("$5,000",T_GREEN)}  {c("Sofia R.",T_WHITE)}          {c("converted",T_CYAN)}',
+    ], h=360)
+
+    term2 = terminal_window("nyx ngo convert + treasury", [
+        comment("Manual convert pooled fiat to XMR"),
+        prompt() + cmd("nyx ngo convert --amount-usd 900 --route kraken"),
+        blank(),
+        header_line("  Auto-Convert Preview"),
+        kv("Fiat pool", "$900.00 USD", T_CYAN, T_WHITE),
+        kv("Route", "Kraken (primary)", T_CYAN, T_WHITE),
+        kv("Est. XMR", "5.3571 XMR  (@$168.00)", T_CYAN, T_GREEN),
+        kv("Fee", "$2.70 (0.3%)", T_CYAN, T_DIM),
+        blank(),
+        dim_line("  Proceed? [y/N] ") + c("y", T_GREEN),
+        success_line("  Kraken order placed: ORD-KRK-0041"),
+        success_line("  Filled at $168.10 avg. +5.3505 XMR to treasury."),
+        blank(),
+        prompt() + cmd("nyx ngo treasury"),
+        blank(),
+        header_line("  XMR Treasury  48xNq7...Mn9B"),
+        sep_line(),
+        kv("Balance", "53.5705 XMR", T_CYAN, T_YELLOW),
+        kv("USD equiv", "~$9,001", T_CYAN, T_DIM),
+        kv("Inflows (30d)", "+14.82 XMR (8 purchases)", T_CYAN, T_GREEN),
+        kv("Outflows (30d)", "-2.40 XMR (grants)", T_CYAN, T_RED),
+        blank(),
+        prompt() + cmd("nyx ngo receipt --donor 'Archer M.' --amount 2500"),
+        blank(),
+        success_line("  501(c)(3) acknowledgment letter generated."),
+        kv("Saved", "receipts/2026-04-23-archer-m.pdf", T_CYAN, T_WHITE),
+        prompt() + cursor(),
+    ], h=330)
+
+    ref = cmd_ref("nyx ngo", [
+        ("nyx ngo status",    "processor balances + auto-convert state"),
+        ("nyx ngo donations", "list donations with convert status"),
+        ("nyx ngo convert",   "manually convert pooled fiat to XMR"),
+        ("nyx ngo treasury",  "XMR treasury balance + history"),
+        ("nyx ngo receipt",   "generate 501(c)(3) donor receipt"),
+        ("nyx ngo processor", "add/remove/test payment processors"),
+        ("nyx ngo config",    "set threshold, route, fallback"),
+    ])
+
+    left = term1 + f'<div style="margin-top:16px;">{term2}</div>'
+    return frame(
+        "NYX CLI / nyx ngo",
+        "NGO Donation Processing",
+        left, ref, None,
+        note="Fiat donations pool above the $500 threshold before triggering "
+             "auto-convert. Kraken is primary; Onramper is fallback. All XMR "
+             "flows to the cold-storage treasury address."
+    )
+
+# ===========================================================================
+# Frame 8 — nyx tax
+# ===========================================================================
+
+def frame_tax():
+    term1 = terminal_window("nyx tax overview + generate", [
+        prompt() + cmd("nyx tax status --year 2025"),
+        blank(),
+        header_line("  IRS Filing Status  --  NyxForge Foundation  FY 2025"),
+        sep_line(),
+        f'  {c("[DONE]",T_GREEN)}  Form 990               Annual return (filed 2026-03-15)',
+        f'  {c("[DONE]",T_GREEN)}  Schedule B             Major donors > $5,000',
+        f'  {c("[DONE]",T_GREEN)}  Form 8949              Crypto dispositions (XMR)',
+        f'  {c("[PEND]",T_YELLOW)}  Donor Receipts         12 of 14 issued',
+        f'  {c("[N/A] ",T_DIM)}   Form 990-T             No UBIT this year',
+        blank(),
+        kv("Total donations", "$142,800", T_CYAN, T_WHITE),
+        kv("XMR acquired", "94.82 XMR (8049 cost basis)", T_CYAN, T_YELLOW),
+        kv("XMR disposed", "14.40 XMR (grants / sales)", T_CYAN, T_WHITE),
+        kv("Net gain/loss", "+$1,204 (long-term)", T_CYAN, T_GREEN),
+        blank(),
+        prompt() + cmd("nyx tax generate --form 990 --year 2025"),
+        blank(),
+        success_line("  Generating Form 990 ..."),
+        kv("Revenue", "$142,800", T_CYAN, T_WHITE),
+        kv("Expenses", "$89,412", T_CYAN, T_WHITE),
+        kv("Net assets", "$53,388", T_CYAN, T_GREEN),
+        success_line("  Saved: tax/2025/form-990.pdf"),
+        blank(),
+        prompt() + cmd("nyx tax generate --form 8949 --year 2025"),
+        blank(),
+        success_line("  Building crypto ledger (Notice 2014-21) ..."),
+        kv("Acquisitions", "8 lots (XMR)", T_CYAN, T_WHITE),
+        kv("Dispositions", "6 lots", T_CYAN, T_WHITE),
+        kv("Short-term", "$0 gain", T_CYAN, T_DIM),
+        kv("Long-term", "+$1,204 gain", T_CYAN, T_GREEN),
+        success_line("  Saved: tax/2025/form-8949.pdf"),
+    ], h=400)
+
+    term2 = terminal_window("nyx tax receipts + export", [
+        prompt() + cmd("nyx tax receipts --year 2025 --pending"),
+        blank(),
+        header_line("  Pending Donor Receipts"),
+        sep_line(),
+        f'  {c("Yuki T.",T_WHITE)}      $8,500   2025-11-12   {c("pending",T_YELLOW)}',
+        f'  {c("Anonymous",T_DIM)}    $12,000   2025-12-01   {c("pending",T_YELLOW)}',
+        blank(),
+        prompt() + cmd("nyx tax receipt --donor 'Yuki T.' --amount 8500 --date 2025-11-12"),
+        blank(),
+        success_line("  501(c)(3) acknowledgment letter generated."),
+        kv("Saved", "tax/2025/receipts/yuki-t-8500.pdf", T_CYAN, T_WHITE),
+        blank(),
+        prompt() + cmd("nyx tax export --year 2025 --format zip"),
+        blank(),
+        success_line("  Packaging tax documents ..."),
+        f'  {c("  form-990.pdf",T_WHITE)}           {c("184 KB",T_DIM)}',
+        f'  {c("  schedule-b.pdf",T_WHITE)}         {c(" 41 KB",T_DIM)}',
+        f'  {c("  form-8949.pdf",T_WHITE)}          {c(" 28 KB",T_DIM)}',
+        f'  {c("  receipts/ (14 files)",T_WHITE)}   {c("210 KB",T_DIM)}',
+        success_line("  Saved: tax/2025/nyxforge-foundation-2025-tax.zip"),
+        blank(),
+        prompt() + cmd("nyx tax schedule-b --year 2025 --threshold 5000"),
+        blank(),
+        header_line("  Schedule B  --  Contributors >= $5,000"),
+        sep_line(),
+        f'  {c("Archer M.",T_WHITE)}    $50,000    Q1 2025',
+        f'  {c("Sofia R.",T_WHITE)}     $25,000    Q3 2025',
+        f'  {c("Anonymous",T_DIM)}    $12,000    Q4 2025',
+        f'  {c("Yuki T.",T_WHITE)}      $8,500    Q4 2025',
+        prompt() + cursor(),
+    ], h=370)
+
+    ref = cmd_ref("nyx tax", [
+        ("nyx tax status",     "filing checklist for the year"),
+        ("nyx tax generate",   "generate Form 990, 8949, Sched B"),
+        ("nyx tax receipts",   "list and issue donor receipts"),
+        ("nyx tax receipt",    "generate one 501(c)(3) letter"),
+        ("nyx tax schedule-b", "contributors above threshold"),
+        ("nyx tax export",     "zip all docs for tax year"),
+        ("nyx tax ledger",     "raw XMR acquisition/disposition log"),
+    ])
+
+    left = term1 + f'<div style="margin-top:16px;">{term2}</div>'
+    return frame(
+        "NYX CLI / nyx tax",
+        "Tax Reporting & IRS Compliance",
+        left, ref, None,
+        note="XMR is treated as property per IRS Notice 2014-21. Cost basis is "
+             "FMV at acquisition date. Dispositions (grants, sales) trigger 8949 "
+             "reporting. Schedule B required for contributors >= $5,000 / year."
+    )
+
+# ===========================================================================
+# Frame 9 -- nyx claim
+# ===========================================================================
+
+def frame_claim():
+    term1 = terminal_window("nyx claim file + attach evidence", [
+        comment("File a new claim against a .bounty issuer"),
+        prompt() + cmd("nyx claim file \\"),
+        dim_line("    --bounty NYX-7F3A-C20B-E941 \\"),
+        dim_line("    --type maturity \\"),
+        dim_line("    --narrative 'Subject has reached natural maturity.'"),
+        blank(),
+        success_line("  Claim filed: CLM-0042"),
+        kv("Bounty", "NYX-7F3A-C20B-E941", T_CYAN, T_WHITE),
+        kv("Type", "maturity", T_CYAN, T_WHITE),
+        kv("Judge", "9dFk...3rPx", T_CYAN, T_PURPLE),
+        kv("Deadline", "2026-05-23  (30 days)", T_CYAN, T_GREEN),
+        kv("Status", "FILED", T_CYAN, T_YELLOW),
+        blank(),
+        comment("Attach supporting evidence"),
+        prompt() + cmd("nyx claim attach \\"),
+        dim_line("    --claim CLM-0042 \\"),
+        dim_line("    --file bio-attestation-9921.pdf \\"),
+        dim_line("    --desc 'Biometric attestation'"),
+        blank(),
+        success_line("  Evidence attached: EVD-0001"),
+        kv("File", "bio-attestation-9921.pdf", T_CYAN, T_WHITE),
+        kv("SHA256", "3fa8...c4d1", T_CYAN, T_DIM),
+        kv("Stored", "embedded BLOB + ipfs://QmX9a...4bRc reference", T_CYAN, T_PURPLE),
+        blank(),
+        prompt() + cmd("nyx claim attach \\"),
+        dim_line("    --claim CLM-0042 --file dna-cert-2026.pdf"),
+        success_line("  Evidence attached: EVD-0002"),
+        blank(),
+        prompt() + cmd("nyx claim list"),
+        blank(),
+        header_line("  MY CLAIMS"),
+        sep_line(),
+        header_line("  CLAIM ID    BOUNTY         TYPE       FILED       STATUS"),
+        sep_line(),
+        f'  {c("CLM-0042",T_BLUE)}  NYX-7F3A  maturity   2026-04-23  {c("REVIEW",T_YELLOW)}',
+        f'  {c("CLM-0038",T_BLUE)}  NYX-2B91  maturity   2026-03-28  {c("DECIDED",T_GREEN)}',
+    ], h=420)
+
+    term2 = terminal_window("nyx claim status + withdraw", [
+        prompt() + cmd("nyx claim status --claim CLM-0042"),
+        blank(),
+        header_line("  Claim CLM-0042  [REVIEW]"),
+        sep_line(),
+        kv("Bounty", "NYX-7F3A-C20B-E941", T_CYAN, T_WHITE),
+        kv("Judge", "9dFk...3rPx", T_CYAN, T_PURPLE),
+        kv("Filed", "2026-04-23", T_CYAN, T_WHITE),
+        kv("Deadline", "2026-05-23", T_CYAN, T_GREEN),
+        kv("Evidence", "2 files attached", T_CYAN, T_WHITE),
+        blank(),
+        header_line("  Judge messages:"),
+        f'  {c("[2026-04-24]",T_DIM)} {c("Please provide DNA cert dated after 2026-01-01.",T_WHITE)}',
+        blank(),
+        comment("Withdraw a pending claim"),
+        prompt() + cmd("nyx claim withdraw --claim CLM-0042"),
+        blank(),
+        warn_line("  WARNING: Withdraw CLM-0042? This cannot be undone."),
+        dim_line("  Type WITHDRAW to confirm: ") + c("WITHDRAW", T_RED),
+        blank(),
+        success_line("  Claim CLM-0042 withdrawn."),
+        kv("Status", "WITHDRAWN", T_CYAN, T_DIM),
+        blank(),
+        prompt() + cursor(),
+    ], h=300)
+
+    ref = cmd_ref("nyx claim", [
+        ("nyx claim file",     "file a new claim against a bounty issuer"),
+        ("nyx claim attach",   "attach evidence to an open claim"),
+        ("nyx claim list",     "list your filed claims"),
+        ("nyx claim status",   "detailed status + judge messages"),
+        ("nyx claim withdraw", "withdraw a pending claim"),
+    ])
+
+    left = term1 + f'<div style="margin-top:16px;">{term2}</div>'
+    return frame(
+        "NYX CLI / nyx claim",
+        "File & Track Claims",
+        left, ref, None,
+        note="Claimant possesses the .bounty file plus controlling .nfkey. Evidence can be "
+             "embedded or referenced via IPFS/Arweave; SHA256 hashes in the .bounty "
+             "file bind judges to the same bytes."
+    )
+
+
+# ===========================================================================
+# Frame 10 -- nyx key
+# ===========================================================================
+
+def frame_key():
+    term1 = terminal_window("nyx key generate + list", [
+        comment("Generate a new Ed25519 keypair with Argon2id+AES-256-GCM keystore"),
+        prompt() + cmd("nyx key generate \\"),
+        dim_line("    --label 'judge-key-2026' \\"),
+        dim_line("    --passphrase '***' \\"),
+        dim_line("    --out ~/.nyx/keys/judge-2026.nyx"),
+        blank(),
+        success_line("  Generating Ed25519 keypair ..."),
+        success_line("  Deriving keystore key  (Argon2id, m=65536, t=3) ..."),
+        success_line("  Encrypting with AES-256-GCM ..."),
+        blank(),
+        kv("Label", "judge-key-2026", T_CYAN, T_WHITE),
+        kv("Fingerprint", "7A:B2:C4:D9:...:88:FC", T_CYAN, T_GREEN),
+        kv("Algorithm", "Ed25519  (alg_epoch=0x00)", T_CYAN, T_WHITE),
+        kv("Saved", "~/.nyx/keys/judge-2026.nyx", T_CYAN, T_WHITE),
+        blank(),
+        prompt() + cmd("nyx key list"),
+        blank(),
+        header_line("  LABEL                 FINGERPRINT       TYPE      USAGE     CREATED"),
+        sep_line(),
+        f'  judge-key-2026        {c("7A:B2...88:FC",T_GREEN)}  Ed25519   judge     2026-04-23',
+        f'  wallet-primary        {c("3C:D1...A4:0B",T_CYAN)}   Ed25519   wallet    2025-11-10',
+        f'  bounty-issuer-v1      {c("9E:F8...22:7D",T_PURPLE)} Ed25519   bounty    2025-06-01',
+        blank(),
+        comment("Export public key as PEM"),
+        prompt() + cmd("nyx key export --fingerprint 7A:B2 --format pem"),
+        blank(),
+        f'  {c("-----BEGIN PUBLIC KEY-----",T_DIM)}',
+        f'  {c("MCowBQYDK2VwAyEA...",T_DIM)}',
+        f'  {c("-----END PUBLIC KEY-----",T_DIM)}',
+    ], h=380)
+
+    term2 = terminal_window("nyx key rotate", [
+        comment("Rotate a compromised or expiring key"),
+        prompt() + cmd("nyx key rotate \\"),
+        dim_line("    --old-fingerprint 9E:F8 \\"),
+        dim_line("    --passphrase '***'"),
+        blank(),
+        header_line("  Key Rotation"),
+        sep_line(),
+        kv("Old key", "9E:F8...22:7D  (bounty-issuer-v1)", T_CYAN, T_RED),
+        kv("New key", "generating ...", T_CYAN, T_DIM),
+        blank(),
+        success_line("  New keypair generated: 4F:A3...C1:9E"),
+        success_line("  On-chain rotation TX broadcast ..."),
+        success_line("  Confirmed (block 4,102,944)"),
+        blank(),
+        kv("Old key", "9E:F8...22:7D", T_CYAN, T_DIM),
+        kv("Status", "REVOKED", T_CYAN, T_RED),
+        kv("New key", "4F:A3...C1:9E", T_CYAN, T_GREEN),
+        kv("Status", "ACTIVE", T_CYAN, T_GREEN),
+        blank(),
+        warn_line("  Update all .bounty files that reference the old key."),
+        warn_line("  Run: nyx bounty update-key --old 9E:F8 --new 4F:A3"),
+        blank(),
+        prompt() + cursor(),
+    ], h=290)
+
+    ref = cmd_ref("nyx key", [
+        ("nyx key generate", "new Ed25519 keypair, Argon2id keystore"),
+        ("nyx key list",     "all keys in vault"),
+        ("nyx key import",   "import from .nyx / PEM / raw / QR"),
+        ("nyx key export",   "export public key as PEM / QR"),
+        ("nyx key rotate",   "replace key on-chain, revoke old"),
+        ("nyx key sign",     "sign arbitrary data with a key"),
+        ("nyx key verify",   "verify a signature"),
+    ])
+
+    flags = cmd_ref("key formats", [
+        (".nyx file",   "AES-256-GCM encrypted keystore"),
+        ("PEM",         "PKCS#8 public key (no privkey)"),
+        ("raw hex",     "32-byte Ed25519 seed (dangerous)"),
+        ("QR code",     "PNG QR of .nyx file (air-gap)"),
+        ("alg_epoch 0", "classical Ed25519 (current)"),
+        ("alg_epoch 1", "PQ transition (future, Dilithium3)"),
+    ])
+
+    left = term1 + f'<div style="margin-top:16px;">{term2}</div>'
+    return frame(
+        "NYX CLI / nyx key",
+        "Ed25519 Keypair Management",
+        left, ref, flags,
+        note="Private keys never leave the encrypted .nyx keystore. "
+             "Argon2id (m=65536, t=3) derives the AES-256-GCM encryption key "
+             "from your passphrase. The alg_epoch field enables future PQ migration."
+    )
+
+
+# ===========================================================================
+# Frame 11 -- nyx node
+# ===========================================================================
+
+def frame_node():
+    term1 = terminal_window("nyx node status + peers", [
+        prompt() + cmd("nyx node status"),
+        blank(),
+        header_line("  NyxForge Node  v0.9.0-dev"),
+        sep_line(),
+        kv("Sync status", "SYNCED", T_CYAN, T_GREEN),
+        kv("Block height", "4,102,944", T_CYAN, T_WHITE),
+        kv("Peers", "18 connected  (6 inbound, 12 outbound)", T_CYAN, T_WHITE),
+        kv("Mempool", "142 pending TX  (0.4 MB)", T_CYAN, T_WHITE),
+        kv("Uptime", "3d 14h 22m", T_CYAN, T_WHITE),
+        kv("Network", "mainnet", T_CYAN, T_GREEN),
+        kv("RPC", "127.0.0.1:18081  (local only)", T_CYAN, T_DIM),
+        blank(),
+        prompt() + cmd("nyx node peers"),
+        blank(),
+        header_line("  CONNECTED PEERS  (18)"),
+        sep_line(),
+        header_line("  ADDRESS                    DIR       HEIGHT      LATENCY"),
+        sep_line(),
+        f'  192.0.2.41:18080           {c("outbound",T_CYAN)}  4,102,944   {c("12 ms",T_GREEN)}',
+        f'  192.0.2.77:18080           {c("outbound",T_CYAN)}  4,102,943   {c("28 ms",T_GREEN)}',
+        f'  192.0.2.103:18080          {c("inbound",T_PURPLE)} 4,102,944   {c("44 ms",T_GREEN)}',
+        f'  [2001:db8::1]:18080        {c("outbound",T_CYAN)}  4,102,944   {c("91 ms",T_YELLOW)}',
+        dim_line("  ... 14 more"),
+        blank(),
+        prompt() + cmd("nyx node peers add --address 192.0.2.200:18080"),
+        blank(),
+        success_line("  Peer added: 192.0.2.200:18080"),
+    ], h=360)
+
+    term2 = terminal_window("nyx node sync + health", [
+        prompt() + cmd("nyx node sync status"),
+        blank(),
+        kv("Current height", "4,102,944", T_CYAN, T_WHITE),
+        kv("Target height", "4,102,944", T_CYAN, T_WHITE),
+        kv("Sync status", "SYNCED  (100.0%)", T_CYAN, T_GREEN),
+        kv("Last block", "38 seconds ago", T_CYAN, T_WHITE),
+        blank(),
+        prompt() + cmd("nyx node health"),
+        blank(),
+        header_line("  Node Health"),
+        sep_line(),
+        f'  {c("[OK]",T_GREEN)}    Peer connectivity    18 peers',
+        f'  {c("[OK]",T_GREEN)}    Chain sync           4,102,944 / 4,102,944',
+        f'  {c("[OK]",T_GREEN)}    Mempool              142 TX',
+        f'  {c("[OK]",T_GREEN)}    RPC endpoint         responding',
+        f'  {c("[WARN]",T_YELLOW)}  Disk space           82% used  (18 GB free)',
+        blank(),
+        kv("Overall", "DEGRADED  (disk warning)", T_CYAN, T_YELLOW),
+        blank(),
+        prompt() + cmd("nyx node peers ban --address 192.0.2.55 --duration 24h"),
+        blank(),
+        success_line("  192.0.2.55 banned for 24 hours."),
+        blank(),
+        prompt() + cursor(),
+    ], h=320)
+
+    ref = cmd_ref("nyx node", [
+        ("nyx node status",     "sync state, peers, mempool, uptime"),
+        ("nyx node peers",      "list connected peers"),
+        ("nyx node peers add",  "add a specific peer"),
+        ("nyx node peers ban",  "ban a peer for a duration"),
+        ("nyx node sync status","block height + sync progress"),
+        ("nyx node sync resync","re-sync from genesis (destructive)"),
+        ("nyx node health",     "full health check with disk/CPU/net"),
+    ])
+
+    left = term1 + f'<div style="margin-top:16px;">{term2}</div>'
+    return frame(
+        "NYX CLI / nyx node",
+        "P2P Node Management",
+        left, ref, None,
+        note="The NyxForge node runs a RandomX chain and relays Waku order-book "
+             "messages. Peer discovery uses I2P + Tor for transport anonymity. "
+             "Default ports: 18080 (P2P), 18081 (RPC)."
+    )
+
+
+# ===========================================================================
+# Frame 12 -- nyx config
+# ===========================================================================
+
+def frame_config():
+    term1 = terminal_window("nyx config get + set", [
+        prompt() + cmd("nyx config get --all"),
+        blank(),
+        header_line("  Configuration  (profile: default)"),
+        sep_line(),
+        kv("network", "mainnet", T_CYAN, T_GREEN),
+        kv("rpc.endpoint", "http://127.0.0.1:18081", T_CYAN, T_WHITE),
+        kv("log.level", "info", T_CYAN, T_WHITE),
+        kv("wallet.default", "~/.nyx/wallet/primary", T_CYAN, T_WHITE),
+        kv("keystore.dir", "~/.nyx/keys/", T_CYAN, T_WHITE),
+        kv("dex.fee_tier", "standard", T_CYAN, T_WHITE),
+        kv("swap.deposit_pct", "15", T_CYAN, T_WHITE),
+        kv("ngo.convert_threshold", "500", T_CYAN, T_WHITE),
+        kv("ngo.convert_route", "kraken", T_CYAN, T_WHITE),
+        kv("node.tor_proxy", "socks5://127.0.0.1:9050", T_CYAN, T_DIM),
+        blank(),
+        prompt() + cmd("nyx config set network testnet"),
+        blank(),
+        success_line("  network = testnet"),
+        blank(),
+        prompt() + cmd("nyx config set log.level debug"),
+        blank(),
+        success_line("  log.level = debug"),
+        blank(),
+        prompt() + cmd("nyx config set rpc.endpoint http://127.0.0.1:28081"),
+        blank(),
+        success_line("  rpc.endpoint = http://127.0.0.1:28081"),
+        blank(),
+        prompt() + cmd("nyx config get network"),
+        blank(),
+        kv("network", "testnet", T_CYAN, T_YELLOW),
+    ], h=400)
+
+    term2 = terminal_window("nyx config profile + reset", [
+        comment("Create a named profile for testnet work"),
+        prompt() + cmd("nyx config profile create \\"),
+        dim_line("    --name my-testnet \\"),
+        dim_line("    --network testnet"),
+        blank(),
+        success_line("  Profile 'my-testnet' created."),
+        blank(),
+        prompt() + cmd("nyx config profile list"),
+        blank(),
+        f'  {c("default",T_WHITE)}    mainnet  {c("(active)",T_GREEN)}',
+        f'  {c("my-testnet",T_CYAN)}  testnet',
+        blank(),
+        prompt() + cmd("nyx config profile use my-testnet"),
+        blank(),
+        success_line("  Switched to profile: my-testnet"),
+        blank(),
+        comment("Reset a single key to default"),
+        prompt() + cmd("nyx config reset log.level"),
+        blank(),
+        success_line("  log.level reset to: info"),
+        blank(),
+        comment("Reset all config (requires confirmation)"),
+        prompt() + cmd("nyx config reset --all --dry-run"),
+        blank(),
+        warn_line("  DRY RUN: Would reset all config to defaults."),
+        kv("Keys affected", "10", T_CYAN, T_WHITE),
+        blank(),
+        prompt() + cursor(),
+    ], h=320)
+
+    ref = cmd_ref("nyx config", [
+        ("nyx config get",           "get one key or all keys"),
+        ("nyx config set",           "set a config value"),
+        ("nyx config reset",         "reset key(s) to default"),
+        ("nyx config profile list",  "list named profiles"),
+        ("nyx config profile create","create a new profile"),
+        ("nyx config profile use",   "switch active profile"),
+        ("nyx config profile delete","remove a profile"),
+    ])
+
+    keys = cmd_ref("key reference", [
+        ("network",             "mainnet / testnet / regtest"),
+        ("rpc.endpoint",        "node RPC URL"),
+        ("log.level",           "debug / info / warn / error"),
+        ("wallet.default",      "default wallet path"),
+        ("keystore.dir",        "directory for .nyx key files"),
+        ("swap.deposit_pct",    "security deposit % (default 15)"),
+        ("ngo.convert_threshold","USD pool threshold for auto-convert"),
+    ])
+
+    left = term1 + f'<div style="margin-top:16px;">{term2}</div>'
+    return frame(
+        "NYX CLI / nyx config",
+        "Configuration & Profiles",
+        left, ref, keys,
+        note="Config is stored in ~/.nyx/config.toml. Named profiles let you "
+             "switch between mainnet and testnet environments without re-entering "
+             "flags on every command."
+    )
+
+
+# ===========================================================================
+# Frame 13 -- nyx judge registry (v2+)
+# ===========================================================================
+
+def frame_judge_registry():
+    term1 = terminal_window("nyx judge registry list + profile", [
+        prompt() + cmd("nyx judge registry list --sort rating"),
+        blank(),
+        header_line("  Judge Registry"),
+        sep_line(),
+        header_line("  ID        NAME              SPECIALTY     RATING   DECISIONS  FEE (XMR)"),
+        sep_line(),
+        f'  {c("JDG-0001",T_BLUE)}  Dr. Yuki Tanaka   longevity     {c("4.9 *",T_YELLOW)}    {c("847",T_WHITE)}      {c("0.5",T_GREEN)}',
+        f'  {c("JDG-0007",T_BLUE)}  Priya Nakamura    actuarial     {c("4.7 *",T_YELLOW)}    {c("312",T_WHITE)}      {c("0.35",T_GREEN)}',
+        f'  {c("JDG-0012",T_BLUE)}  Marcus Webb       legal         {c("4.5 *",T_YELLOW)}    {c("201",T_WHITE)}      {c("0.8",T_GREEN)}',
+        f'  {c("JDG-0019",T_BLUE)}  Sofia Reinholt    medical       {c("4.3 *",T_YELLOW)}    {c("88",T_WHITE)}       {c("0.4",T_GREEN)}',
+        blank(),
+        prompt() + cmd("nyx judge registry profile --id JDG-0001"),
+        blank(),
+        header_line("  Judge JDG-0001 -- Dr. Yuki Tanaka"),
+        sep_line(),
+        kv("Specialty", "longevity, biometrics", T_CYAN, T_WHITE),
+        kv("Decisions", "847  (829 approve / 18 deny)", T_CYAN, T_WHITE),
+        kv("Rating", "4.9 / 5.0  (214 reviews)", T_CYAN, T_YELLOW),
+        kv("Fee", "0.5 XMR / decision", T_CYAN, T_WHITE),
+        kv("Active series", "14", T_CYAN, T_GREEN),
+        kv("Key", "3C:D1...A4:0B (Ed25519)", T_CYAN, T_PURPLE),
+        kv("Registered", "2024-09-01", T_CYAN, T_WHITE),
+        blank(),
+        header_line("  Recent verdicts:"),
+        f'  {c("CLM-0841",T_DIM)}  NYX-4A21  {c("APPROVE",T_GREEN)}  2026-04-20',
+        f'  {c("CLM-0837",T_DIM)}  NYX-8C3B  {c("APPROVE",T_GREEN)}  2026-04-18',
+        f'  {c("CLM-0831",T_DIM)}  NYX-1F9E  {c("DENY",T_RED)}     2026-04-12',
+    ], h=400)
+
+    term2 = terminal_window("nyx judge registry register + invite + rate", [
+        comment("Register yourself as a judge"),
+        prompt() + cmd("nyx judge registry register \\"),
+        dim_line("    --key 7A:B2...88:FC \\"),
+        dim_line("    --specialty longevity \\"),
+        dim_line("    --fee 0.3 \\"),
+        dim_line("    --bio 'Gerontologist, 20yr exp.'"),
+        blank(),
+        success_line("  Registered as judge: JDG-0041"),
+        kv("Key", "7A:B2...88:FC", T_CYAN, T_WHITE),
+        kv("Specialty", "longevity", T_CYAN, T_WHITE),
+        kv("Fee", "0.3 XMR / decision", T_CYAN, T_WHITE),
+        blank(),
+        comment("Invite a judge to review a bounty series"),
+        prompt() + cmd("nyx judge registry invite \\"),
+        dim_line("    --judge JDG-0001 \\"),
+        dim_line("    --series NYX-SERIES-A \\"),
+        dim_line("    --role primary"),
+        blank(),
+        success_line("  Invitation sent to JDG-0001 for NYX-SERIES-A (primary)."),
+        blank(),
+        comment("Rate a judge after a decision"),
+        prompt() + cmd("nyx judge registry rate \\"),
+        dim_line("    --id JDG-0001 \\"),
+        dim_line("    --claim CLM-0042 \\"),
+        dim_line("    --score 5 \\"),
+        dim_line("    --note 'Thorough, fast decision.'"),
+        blank(),
+        success_line("  Rating submitted. JDG-0001 new avg: 4.9"),
+        blank(),
+        prompt() + cursor(),
+    ], h=360)
+
+    ref = cmd_ref("nyx judge registry", [
+        ("nyx judge registry list",     "browse registry, filter by specialty"),
+        ("nyx judge registry profile",  "full judge profile + verdict history"),
+        ("nyx judge registry register", "become a judge (requires key on-chain)"),
+        ("nyx judge registry invite",   "assign judge to a bounty series"),
+        ("nyx judge registry rate",     "rate a judge 1-5 after a decision"),
+        ("nyx judge registry history",  "your verdicts as a judge"),
+        ("nyx judge registry resign",   "de-register from active series"),
+    ])
+
+    left = term1 + f'<div style="margin-top:16px;">{term2}</div>'
+    return frame(
+        "NYX CLI / nyx judge registry  [v2+]",
+        "Judge Registry & Ratings",
+        left, ref, None,
+        note="Judges are independent domain experts registered on-chain by Ed25519 key. "
+             "Ratings are aggregated from claimant feedback per decision. "
+             "Issuers select judges when creating a bounty series. "
+             "MVP uses direct pubkey selection in the bounty wizard."
+    )
+
+
+# ===========================================================================
+# HTML scaffold
+# ===========================================================================
+
+FRAMES = [
+    ("nyx bounty",  frame_bounty),
+    ("nyx auction", frame_auction),
+    ("nyx judge",   frame_judge),
+    ("nyx dex",     frame_dex),
+    ("nyx wallet",  frame_wallet),
+    ("nyx swap",    frame_swap),
+    ("nyx ngo",     frame_ngo),
+    ("nyx tax",     frame_tax),
+    ("nyx claim",   frame_claim),
+    ("nyx key",     frame_key),
+    ("nyx node",    frame_node),
+    ("nyx config",  frame_config),
+    ("nyx judge registry",  frame_judge_registry),
+]
+
+def build_html():
+    tabs = ""
+    for i, (label, _) in enumerate(FRAMES):
+        active = "true" if i == 0 else "false"
+        tabs += (f'<button data-idx="{i}" aria-selected="{active}" role="tab" '
+                 f'style="padding:8px 18px;background:none;border:none;cursor:pointer;'
+                 f'font-size:13px;font-family:monospace;font-weight:600;'
+                 f'color:{"' + ACCENT + '" if i == 0 else "' + TXT_MUT + '"};'
+                 f'border-bottom:2px solid {"' + ACCENT + '" if i == 0 else "transparent"};">'
+                 f'{label}</button>')
+
+    frame_bodies = ""
+    for i, (_, fn) in enumerate(FRAMES):
+        display = "block" if i == 0 else "none"
+        frame_bodies += (f'<div data-frame="{i}" style="display:{display};">'
+                         f'{fn()}</div>')
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>NyxForge CLI Suite</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{ background: {BG}; color: {TXT_PRI};
+           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }}
+    ::-webkit-scrollbar {{ width: 6px; height: 6px; }}
+    ::-webkit-scrollbar-track {{ background: {SURF}; }}
+    ::-webkit-scrollbar-thumb {{ background: {INACT}; border-radius: 3px; }}
+  </style>
+</head>
+<body>
+  <!-- nav bar -->
+  <div style="background:{SURF};border-bottom:1px solid {BORDER};
+              padding:0 24px;position:sticky;top:0;z-index:100;">
+    <div style="max-width:{FW + 64}px;margin:0 auto;
+                display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 0;">
+        <div style="width:28px;height:28px;border-radius:6px;background:{ACC_GLO};
+                    display:flex;align-items:center;justify-content:center;
+                    font-family:monospace;font-size:11px;font-weight:700;color:{ACCENT};">NYX</div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:{TXT_PRI};">NyxForge CLI Suite</div>
+          <div style="font-size:10px;color:{TXT_MUT};">nyx &mdash; unified command-line interface</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:0;" role="tablist">{tabs}</div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <div style="font-size:11px;font-family:monospace;color:{TXT_MUT};">v0.9.0-dev</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- prev / next -->
+  <div style="position:fixed;bottom:20px;right:24px;z-index:200;display:flex;gap:8px;">
+    <button id="prev-btn" onclick="navigate(-1)"
+            style="padding:8px 16px;background:{SURF_HI};border:1px solid {BORDER};
+                   border-radius:7px;color:{TXT_SEC};font-size:13px;cursor:pointer;">
+      &larr; Prev
+    </button>
+    <button id="next-btn" onclick="navigate(1)"
+            style="padding:8px 16px;background:{SURF_HI};border:1px solid {BORDER};
+                   border-radius:7px;color:{TXT_SEC};font-size:13px;cursor:pointer;">
+      Next &rarr;
+    </button>
+  </div>
+
+  <!-- frame content -->
+  <div id="frames">{frame_bodies}</div>
+
+  <script>
+    let cur = 0;
+    const total = {len(FRAMES)};
+    const frames = document.querySelectorAll('[data-frame]');
+    const tabs   = document.querySelectorAll('[data-idx]');
+    const ACCENT = '{ACCENT}', MUT = '{TXT_MUT}';
+
+    function show(idx) {{
+      frames[cur].style.display = 'none';
+      tabs[cur].style.color = MUT;
+      tabs[cur].style.borderBottomColor = 'transparent';
+      tabs[cur].setAttribute('aria-selected', 'false');
+      cur = idx;
+      frames[cur].style.display = 'block';
+      tabs[cur].style.color = ACCENT;
+      tabs[cur].style.borderBottomColor = ACCENT;
+      tabs[cur].setAttribute('aria-selected', 'true');
+      window.scrollTo(0, 0);
+    }}
+
+    function navigate(dir) {{
+      show((cur + dir + total) % total);
+    }}
+
+    tabs.forEach(t => t.addEventListener('click', () => show(+t.dataset.idx)));
+
+    document.addEventListener('keydown', e => {{
+      if (e.key === 'ArrowRight') navigate(1);
+      if (e.key === 'ArrowLeft')  navigate(-1);
+    }});
+  </script>
+</body>
+</html>"""
+
+
+if __name__ == "__main__":
+    os.makedirs(OUTDIR, exist_ok=True)
+    html = build_html()
+    with open(OUTFILE, "w") as f:
+        f.write(html)
+    print(f"Written: {OUTFILE}")
+    print(f"Size:    {len(html):,} bytes")

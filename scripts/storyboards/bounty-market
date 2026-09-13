@@ -1,0 +1,319 @@
+#!/usr/bin/env python3
+"""
+NyxForge Bounty Market mockup generator.
+Generates docs/storyboards/out/bounty-market-mockup.html
+
+5 frames:
+  1. Browse        -- searchable catalog with filters
+  2. Listing Detail -- public view: terms, collateral, judge rep, price history
+  3. Price History  -- sparkline chart of secondary market prices
+  4. Watchlist      -- saved/followed bounties
+  5. List Bounty    -- submit a .bounty file for public listing
+"""
+import os, math
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTDIR     = os.path.join(os.environ.get("NYXFORGE_ROOT", os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "docs/storyboards/out")
+OUTFILE    = os.path.join(OUTDIR, "bounty-market-mockup.html")
+
+BG=("#0d0f1a");SURF=("#131524");SURF_HI=("#1a1d2e")
+ACCENT=("#5e6ad2");ACC_GLO=("#2d3068");TXT_PRI=("#e8eaf0")
+TXT_SEC=("#b8c0d8");TXT_MUT=("#8b95b0");SUCCESS=("#4ade80")
+DANGER=("#f87171");WARN=("#fbbf24");BORDER=("#2a2d3e");INACT=("#3a3d5c")
+SUCCESS_RGBA="rgba(74,222,128,0.10)";WARN_RGBA="rgba(251,191,36,0.10)"
+ACCENT_RGBA="rgba(94,106,210,0.12)";DANGER_RGBA="rgba(248,113,113,0.10)"
+FW=1020
+
+def sl(t): return f'<div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:{ACCENT};margin-bottom:8px;">{t}</div>'
+def div(mb=12): return f'<div style="height:1px;background:{BORDER};margin:0 0 {mb}px;"></div>'
+def pill(t,c,bg): return f'<span style="font-size:10px;font-weight:700;letter-spacing:0.8px;padding:3px 9px;border-radius:4px;color:{c};background:{bg};">{t}</span>'
+def btn(l,color=SUCCESS,text_color=BG,small=False,full=False):
+    p="7px 16px" if small else "13px 28px";fs="12px" if small else "14px"
+    w="width:100%;display:block;text-align:center;" if full else "display:inline-block;"
+    return f'<div style="{w}padding:{p};background:{color};border-radius:7px;font-size:{fs};font-weight:700;color:{text_color};cursor:pointer;">{l}</div>'
+def btn_o(l,small=False,color=None,full=False):
+    p="6px 14px" if small else "12px 27px";fs="12px" if small else "14px"
+    col=color or TXT_SEC;brd=color or BORDER
+    w="width:100%;display:block;text-align:center;" if full else "display:inline-block;"
+    return f'<div style="{w}padding:{p};background:transparent;border:1px solid {brd};border-radius:7px;font-size:{fs};color:{col};cursor:pointer;">{l}</div>'
+def inp(label,val,mono=False,note=None):
+    f="monospace" if mono else "inherit"
+    n=f'<div style="font-size:11px;color:{TXT_MUT};margin-top:4px;">{note}</div>' if note else ""
+    return (f'<div style="margin-bottom:12px;"><div style="font-size:12px;color:{TXT_MUT};margin-bottom:4px;">{label}</div>'
+            f'<div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;padding:9px 13px;font-size:13px;color:{TXT_MUT};font-family:{f};">{val}</div>{n}</div>')
+def hdr():
+    return f"""<div style="background:{SURF};border-bottom:1px solid {BORDER};padding:13px 24px;
+              display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:{ACC_GLO};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:{ACCENT};">NYX</div>
+      <div><div style="font-size:15px;font-weight:700;color:{TXT_PRI};">Bounty Market</div>
+           <div style="font-size:11px;color:{TXT_MUT};">Public registry of active bounties</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;padding:7px 14px;font-size:13px;color:{TXT_MUT};">&#x1F50D; Search bounties...</div>
+      {btn("+ List Bounty",color=ACCENT,text_color=TXT_PRI,small=True)}
+    </div></div>"""
+def frame(title,sub,body):
+    return f"""<div style="background:{BG};min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  {hdr()}
+  <div style="max-width:{FW}px;margin:0 auto;padding:28px 32px;">
+    <div style="margin-bottom:22px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.2px;color:{ACCENT};margin-bottom:4px;text-transform:uppercase;">{title}</div>
+      <div style="font-size:22px;font-weight:700;color:{TXT_PRI};">{sub}</div>
+    </div>
+    {body}
+  </div></div>"""
+
+def sparkline(pts, w=100, h=32, c=SUCCESS):
+    lo,hi=min(pts),max(pts)
+    rng=hi-lo or 1
+    xs=[i/(len(pts)-1)*w for i in range(len(pts))]
+    ys=[(1-(p-lo)/rng)*(h-4)+2 for p in pts]
+    path="M "+(" L ".join(f"{x:.1f},{y:.1f}" for x,y in zip(xs,ys)))
+    fill_path=path+f" L {w},{ h} L 0,{h} Z"
+    return f'<svg width="{w}" height="{h}" viewBox="0 0 {w} {h}"><defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="{c}" stop-opacity="0.3"/><stop offset="100%" stop-color="{c}" stop-opacity="0"/></linearGradient></defs><path d="{fill_path}" fill="url(#sg)"/><path d="{path}" fill="none" stroke="{c}" stroke-width="1.5"/></svg>'
+
+def market_row(bid,subject,ctype,collateral,deadline,ask,last_px,chg,judge_rep,vol,pts_raw):
+    import json
+    pts=json.loads(pts_raw)
+    chg_c=SUCCESS if not chg.startswith("-") else DANGER
+    type_c={"qualitative":SUCCESS,"quantitative":ACCENT,"hybrid":WARN}.get(ctype,TXT_MUT)
+    return f"""<div style="display:grid;grid-template-columns:140px 1fr 100px 110px 90px 80px 110px 100px;
+              gap:12px;align-items:center;padding:12px 16px;background:{SURF};border:1px solid {BORDER};
+              border-radius:8px;margin-bottom:8px;cursor:pointer;">
+  <div style="font-family:monospace;font-size:11px;color:{ACCENT};">{bid}</div>
+  <div><div style="font-size:13px;color:{TXT_PRI};font-weight:600;">{subject}</div>
+       <div style="font-size:10px;color:{type_c};margin-top:2px;">{ctype.upper()}</div></div>
+  <div style="font-size:13px;color:{WARN};font-weight:600;">{collateral}</div>
+  <div style="font-size:12px;color:{TXT_MUT};">{deadline}</div>
+  <div style="font-size:13px;color:{TXT_PRI};">{ask} <span style="font-size:10px;color:{TXT_MUT};">XMR</span></div>
+  <div style="font-size:12px;color:{chg_c};">{chg}</div>
+  <div>{sparkline(pts,100,28,SUCCESS if not chg.startswith("-") else DANGER)}</div>
+  <div style="text-align:right;"><span style="font-size:11px;color:{TXT_MUT};">{judge_rep}</span></div>
+</div>"""
+
+def f1():
+    filters=f"""<div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
+	  {"".join(f'<div style="padding:6px 14px;background:{"' + ACC_GLO + '" if i==0 else SURF_HI};border:1px solid {"' + ACCENT + '" if i==0 else BORDER};border-radius:20px;font-size:12px;color:{"' + ACCENT + '" if i==0 else TXT_MUT};cursor:pointer;">{t}</div>'
+           for i,t in enumerate(["All","Qualitative","Quantitative","Hybrid","Deadline < 5yr","High Collateral","Recently Listed"]))}
+</div>"""
+    hdr_row=f'<div style="display:grid;grid-template-columns:140px 1fr 100px 110px 90px 80px 110px 100px;gap:12px;padding:8px 16px;margin-bottom:6px;"><div style="font-size:11px;color:{TXT_MUT};">BOUNTY ID</div><div style="font-size:11px;color:{TXT_MUT};">SUBJECT</div><div style="font-size:11px;color:{TXT_MUT};">COLLATERAL</div><div style="font-size:11px;color:{TXT_MUT};">DEADLINE</div><div style="font-size:11px;color:{TXT_MUT};">ASK</div><div style="font-size:11px;color:{TXT_MUT};">24H</div><div style="font-size:11px;color:{TXT_MUT};">7D PRICE</div><div style="font-size:11px;color:{TXT_MUT};">JUDGE REP</div></div>'
+    rows=(market_row("NYX-7F3A","Archer Mwangi 2036","qualitative","50k XMR","2036-04-23","182","178","+2.2%","9dFk (247)","8.4","[145,152,159,163,170,175,178,182]")+
+          market_row("NYX-2B91","Priya Nakamura 2034","hybrid","12.5k XMR","2034-11-01","95","98","-3.1%","7cD9 (512)","3.1","[104,101,99,97,98,96,98,95]")+
+          market_row("NYX-91C3","Sofia Reinholt 2040","qualitative","25k XMR","2040-02-28","140","138","+1.4%","2eF1 (921)","5.7","[128,131,133,135,136,138,137,140]")+
+          market_row("NYX-4401","Kenji Oduya Jr 2033","quantitative","5k XMR","2033-08-15","48","47","+2.1%","9dFk (247)","2.2","[40,42,43,44,45,46,47,48]")+
+          market_row("NYX-BB12","Ana Lima 2035","hybrid","8k XMR","2035-06-01","62","65","-4.6%","4aB2 (183)","1.8","[71,69,68,67,66,65,65,62]"))
+    stats=f"""<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;">
+  {"".join(f'<div style="background:{SURF};border:1px solid {BORDER};border-radius:8px;padding:14px 16px;">'
+           f'<div style="font-size:11px;color:{TXT_MUT};margin-bottom:6px;">{l}</div>'
+           f'<div style="font-size:20px;font-weight:700;color:{c};">{v}</div></div>'
+           for l,v,c in [("Listings","142",TXT_PRI),("Total Collateral","~2.8M XMR",WARN),("24h Volume","48.2k XMR",SUCCESS),("Active Judges","31",ACCENT)])}
+</div>"""
+    return frame("BOUNTY MARKET / BROWSE","Browse Bounties",stats+filters+hdr_row+rows)
+
+def f2():
+    left=f"""
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:10px;padding:18px 20px;margin-bottom:18px;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
+    <div>
+      <div style="font-family:monospace;font-size:12px;color:{ACCENT};">NYX-7F3A-C20B-E941</div>
+      <div style="font-size:20px;font-weight:700;color:{TXT_PRI};margin-top:2px;">Archer Mwangi 2036</div>
+      <div style="font-size:11px;color:{TXT_MUT};margin-top:2px;">Series SER-001 &middot; qualitative</div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:28px;font-weight:700;color:{TXT_PRI};">182 <span style="font-size:14px;color:{TXT_MUT};">XMR</span></div>
+      <div style="font-size:13px;color:{SUCCESS};">+2.2% today</div>
+    </div>
+  </div>
+  {div()}
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;">
+    {"".join(f'<div><div style="font-size:11px;color:{TXT_MUT};margin-bottom:3px;">{l}</div>'
+             f'<div style="font-size:13px;font-weight:600;color:{c};">{v}</div></div>'
+	             for l,v,c in [("Collateral","50,000 XMR",WARN),("Deadline","2036-04-23",TXT_PRI),
+                           ("Units listed","6 of 20",TXT_PRI),("DLEQ Proof","Valid",SUCCESS)])}
+  </div>
+</div>
+{sl("BOUNTY TERMS")}
+<div style="padding:12px 14px;background:{SURF_HI};border:1px solid {BORDER};border-radius:7px;margin-bottom:8px;">
+  <div style="font-size:11px;color:{SUCCESS};font-weight:700;margin-bottom:3px;">QUALITATIVE &middot; Term 1</div>
+  <div style="font-size:13px;color:{TXT_PRI};">Subject achieves biological age of 50 verified by independent biometric panel</div>
+</div>
+<div style="padding:12px 14px;background:{SURF_HI};border:1px solid {BORDER};border-radius:7px;margin-bottom:8px;">
+  <div style="font-size:11px;color:{ACCENT};font-weight:700;margin-bottom:3px;">QUANTITATIVE &middot; Term 2</div>
+  <div style="font-size:13px;color:{TXT_PRI};">VO2 max &ge; 45 mL/kg/min  <span style="font-family:monospace;font-size:11px;color:{TXT_MUT};">[bio.vo2max &gt;= 45]</span></div>
+</div>"""
+    right=f"""<div style="display:flex;flex-direction:column;gap:14px;">
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:10px;padding:18px 20px;">
+  {sl("ORDER BOOK")}
+  <div style="font-size:11px;color:{TXT_MUT};margin-bottom:8px;">ASKS</div>
+  {"".join(f'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid {BORDER};">'
+           f'<span style="font-size:13px;color:{DANGER};">{p} XMR</span>'
+           f'<span style="font-size:12px;color:{TXT_MUT};">{u} units</span></div>'
+           for p,u in [("185","2"),("183","1"),("182","3")])}
+  <div style="font-size:11px;color:{TXT_MUT};margin-top:10px;margin-bottom:8px;">BIDS</div>
+  {"".join(f'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid {BORDER};">'
+           f'<span style="font-size:13px;color:{SUCCESS};">{p} XMR</span>'
+           f'<span style="font-size:12px;color:{TXT_MUT};">{u} units</span></div>'
+           for p,u in [("180","1"),("178","2"),("175","4")])}
+  {div(14)}
+  {btn("Buy at 182 XMR",color=ACCENT,text_color=TXT_PRI,full=True)}
+  <div style="margin-top:8px;">{btn_o("Place Bid",full=True)}</div>
+</div>
+<div style="background:{SURF};border:1px solid {BORDER};border-radius:10px;padding:18px 20px;">
+  {sl("JUDGE PANEL")}
+  <div style="font-size:13px;font-family:monospace;color:{ACCENT};">9dFk...3rPx</div>
+  <div style="font-size:11px;color:{TXT_MUT};margin-top:2px;">247 verdicts &middot; 98.3% satisfaction</div>
+  <div style="font-size:11px;color:{TXT_MUT};margin-top:1px;">0.5 XMR / attestation</div>
+</div>
+</div>"""
+    body=f'<div style="display:flex;gap:20px;align-items:flex-start;"><div style="flex:1;">{left}</div><div style="flex:0 0 280px;">{right}</div></div>'
+    return frame("BOUNTY MARKET / DETAIL","NYX-7F3A Listing",body)
+
+def f3():
+    import math
+    def price_svg(w=640,h=200):
+        pts_raw=[145,148,152,155,158,160,163,161,165,168,170,172,175,173,176,178,180,178,181,182]
+        lo,hi=min(pts_raw),max(pts_raw);rng=hi-lo
+        pad_l,pad_r,pad_t,pad_b=44,16,14,36
+        cw=w-pad_l-pad_r;ch=h-pad_t-pad_b
+        pts=[(pad_l+i/(len(pts_raw)-1)*cw, pad_t+(1-(p-lo)/rng)*ch) for i,p in enumerate(pts_raw)]
+        path="M "+" L ".join(f"{x:.1f},{y:.1f}" for x,y in pts)
+        fill=path+f" L {pad_l+cw},{pad_t+ch} L {pad_l},{pad_t+ch} Z"
+        axes=""
+        for i,tick in enumerate([145,155,165,175,182]):
+            y=pad_t+(1-(tick-lo)/rng)*ch
+            axes+=f'<line x1="{pad_l}" y1="{y:.1f}" x2="{pad_l+cw}" y2="{y:.1f}" stroke="#2a2d3e" stroke-width="1"/>'
+            axes+=f'<text x="{pad_l-6}" y="{y+4:.1f}" font-size="10" fill="#8b95b0" text-anchor="end">{tick}</text>'
+        months=["Nov","Dec","Jan","Feb","Mar","Apr"]
+        for i,m in enumerate(months):
+            x=pad_l+i/(len(months)-1)*cw
+            axes+=f'<text x="{x:.1f}" y="{h-8}" font-size="10" fill="#8b95b0" text-anchor="middle">{m}</text>'
+        return f'<svg width="{w}" height="{h}" viewBox="0 0 {w} {h}"><defs><linearGradient id="pg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="{SUCCESS}" stop-opacity="0.25"/><stop offset="100%" stop-color="{SUCCESS}" stop-opacity="0"/></linearGradient></defs>{axes}<path d="{fill}" fill="url(#pg)"/><path d="{path}" fill="none" stroke="{SUCCESS}" stroke-width="2"/><circle cx="{pts[-1][0]:.1f}" cy="{pts[-1][1]:.1f}" r="4" fill="{SUCCESS}"/></svg>'
+    chart=f"""<div style="background:{SURF};border:1px solid {BORDER};border-radius:10px;padding:18px 20px;margin-bottom:18px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+    <div><div style="font-size:14px;font-weight:700;color:{TXT_PRI};">NYX-7F3A Price History</div>
+         <div style="font-size:11px;color:{TXT_MUT};">Secondary market ask price (XMR/unit)</div></div>
+    <div style="display:flex;gap:8px;">
+      {"".join(f'<div style="padding:4px 12px;background:{"' + ACC_GLO + '" if i==4 else SURF_HI};border:1px solid {"' + ACCENT + '" if i==4 else BORDER};border-radius:4px;font-size:12px;color:{"' + ACCENT + '" if i==4 else TXT_MUT};cursor:pointer;">{t}</div>'
+               for i,t in enumerate(["1W","1M","3M","6M","1Y"]))}
+    </div>
+  </div>
+  {price_svg()}
+</div>"""
+    trades=f"""<div style="background:{SURF};border:1px solid {BORDER};border-radius:10px;padding:18px 20px;">
+  {sl("RECENT TRADES")}
+  <div style="display:grid;grid-template-columns:110px 80px 80px 1fr;gap:12px;margin-bottom:6px;">
+    {"".join(f'<div style="font-size:11px;color:{TXT_MUT};">{h}</div>' for h in ["DATE","PRICE","UNITS","BUYER"])}
+  </div>
+  {"".join(f'<div style="display:grid;grid-template-columns:110px 80px 80px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid {BORDER};">'
+           f'<div style="font-size:12px;color:{TXT_MUT};">{d}</div>'
+           f'<div style="font-size:13px;color:{TXT_PRI};">{p} XMR</div>'
+           f'<div style="font-size:12px;color:{TXT_MUT};">{u}</div>'
+           f'<div style="font-size:12px;font-family:monospace;color:{TXT_MUT};">{b}</div></div>'
+           for d,p,u,b in [("2026-04-23","182","1","7Ab2...88Fc"),("2026-04-21","180","2","4aB2...CC91"),
+                           ("2026-04-18","178","1","3eF8...12D0"),("2026-04-12","175","3","9dFk...3rPx")])}
+</div>"""
+    return frame("BOUNTY MARKET / PRICE HISTORY","NYX-7F3A Price History",chart+trades)
+
+def f4():
+    watch_row=lambda bid,subj,c,ask,chg,watch_px,pts: f"""<div style="display:grid;grid-template-columns:130px 1fr 100px 80px 80px 80px 100px;
+              gap:12px;align-items:center;padding:12px 16px;background:{SURF};border:1px solid {BORDER};
+              border-radius:8px;margin-bottom:8px;">
+  <div style="font-family:monospace;font-size:11px;color:{ACCENT};">{bid}</div>
+  <div style="font-size:13px;color:{TXT_PRI};font-weight:600;">{subj}</div>
+  <div style="font-size:13px;color:{WARN};font-weight:600;">{c}</div>
+  <div style="font-size:13px;color:{TXT_PRI};">{ask} XMR</div>
+  <div style="font-size:12px;color:{SUCCESS if not chg.startswith("-") else DANGER};">{chg}</div>
+  <div style="font-size:12px;color:{TXT_MUT};">@{watch_px}</div>
+  <div style="text-align:right;display:flex;gap:6px;justify-content:flex-end;">{btn_o("View",small=True)}<span style="font-size:16px;cursor:pointer;color:{DANGER};">&#x2715;</span></div>
+</div>"""
+    rows=(watch_row("NYX-7F3A","Archer Mwangi 2036","50k XMR","182","+2.2%","175","[145,152,159,163,170,175,178,182]")+
+          watch_row("NYX-91C3","Sofia Reinholt 2040","25k XMR","140","+1.4%","130","[128,131,133,135,136,138,137,140]")+
+          watch_row("NYX-BB12","Ana Lima 2035","8k XMR","62","-4.6%","68","[71,69,68,67,66,65,65,62]"))
+    alert=f"""<div style="background:{WARN_RGBA};border:1px solid {WARN};border-radius:8px;padding:14px 16px;margin-bottom:18px;">
+  <div style="font-size:12px;font-weight:700;color:{WARN};margin-bottom:4px;">Price Alert Triggered</div>
+  <div style="font-size:12px;color:{TXT_SEC};">NYX-7F3A crossed your watch price of 175 XMR. Current ask: 182 XMR.</div>
+</div>"""
+    hdr_row=f'<div style="display:grid;grid-template-columns:130px 1fr 100px 80px 80px 80px 100px;gap:12px;padding:8px 16px;margin-bottom:6px;"><div style="font-size:11px;color:{TXT_MUT};">BOUNTY ID</div><div style="font-size:11px;color:{TXT_MUT};">SUBJECT</div><div style="font-size:11px;color:{TXT_MUT};">COLLATERAL</div><div style="font-size:11px;color:{TXT_MUT};">ASK</div><div style="font-size:11px;color:{TXT_MUT};">24H</div><div style="font-size:11px;color:{TXT_MUT};">WATCH @</div><div></div></div>'
+    return frame("BOUNTY MARKET / WATCHLIST","Your Watchlist",alert+sl("WATCHING (3)")+hdr_row+rows)
+
+def f5():
+    note=f"""<div style="padding:12px 16px;background:{ACCENT_RGBA};border-left:3px solid {ACCENT};
+             border-radius:0 6px 6px 0;font-size:12px;color:{TXT_SEC};margin-bottom:20px;">
+  Listing makes the bounty's metadata (subject, collateral, terms, judge) publicly browsable.
+  The actual .bounty file is NOT uploaded. You retain possession. Listings are free; a 0.5%
+  fee is charged on completed secondary-market trades.</div>"""
+    body=f"""
+{note}
+{sl("BOUNTY FILE")}
+<div style="display:grid;grid-template-columns:1fr auto;gap:10px;margin-bottom:12px;">
+  <div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;padding:9px 13px;font-size:13px;color:{TXT_MUT};font-family:monospace;">archer-mwangi-2036-001.bounty</div>
+  {btn("Browse",color=SURF_HI,text_color=TXT_SEC,small=True)}
+</div>
+<div style="padding:11px 14px;background:{SURF_HI};border:1px solid {BORDER};border-radius:7px;margin-bottom:18px;">
+  <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:12px;color:{TXT_MUT};">Bounty ID</span><span style="font-size:12px;font-family:monospace;color:{ACCENT};">NYX-7F3A-C20B-E941</span></div>
+  <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:12px;color:{TXT_MUT};">Collateral</span><span style="font-size:13px;color:{WARN};font-weight:600;">50,000 XMR</span></div>
+  <div style="display:flex;justify-content:space-between;"><span style="font-size:12px;color:{TXT_MUT};">DLEQ Proof</span><span style="font-size:12px;color:{SUCCESS};">Valid &#10003;</span></div>
+</div>
+{sl("LISTING SETTINGS")}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
+  <div>
+    <div style="font-size:12px;color:{TXT_MUT};margin-bottom:4px;">Ask Price (XMR)</div>
+    <div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;padding:9px 13px;font-size:13px;color:{WARN};">182</div>
+  </div>
+  <div>
+    <div style="font-size:12px;color:{TXT_MUT};margin-bottom:4px;">Minimum Bid (XMR)</div>
+    <div style="background:{SURF_HI};border:1px solid {BORDER};border-radius:6px;padding:9px 13px;font-size:13px;color:{TXT_MUT};">170</div>
+  </div>
+</div>
+<div style="display:flex;gap:12px;">{btn_o("Cancel")} {btn("Publish Listing",color=ACCENT,text_color=TXT_PRI)}</div>"""
+    return frame("BOUNTY MARKET / LIST","List a Bounty",body)
+
+FRAMES=[("Browse",f1),("Listing Detail",f2),("Price History",f3),("Watchlist",f4),("List Bounty",f5)]
+
+def build():
+    tabs="".join(f'<button data-idx="{i}" aria-selected="{"true" if i==0 else "false"}" role="tab" '
+                 f'style="padding:8px 18px;background:none;border:none;cursor:pointer;font-size:13px;'
+                 f'font-weight:600;color:{"' + ACCENT + '" if i==0 else "' + TXT_MUT + '"};'
+                 f'border-bottom:2px solid {"' + ACCENT + '" if i==0 else "transparent"};">'
+                 f'{l}</button>' for i,(l,_) in enumerate(FRAMES))
+    bodies="".join(f'<div data-frame="{i}" style="display:{"block" if i==0 else "none"};">{fn()}</div>'
+                   for i,(_,fn) in enumerate(FRAMES))
+    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NyxForge Bounty Market</title>
+<style>*,*::before,*::after{{box-sizing:border-box;margin:0;padding:0}}
+body{{background:{BG};color:{TXT_PRI};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}}
+::-webkit-scrollbar{{width:6px}}::-webkit-scrollbar-track{{background:{SURF}}}
+::-webkit-scrollbar-thumb{{background:{INACT};border-radius:3px}}</style></head>
+<body>
+<div style="background:{SURF};border-bottom:1px solid {BORDER};padding:0 24px;position:sticky;top:0;z-index:100;">
+  <div style="max-width:{FW+64}px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;">
+    <div style="padding:12px 0;display:flex;align-items:center;gap:12px;">
+      <div style="width:28px;height:28px;border-radius:6px;background:{ACC_GLO};display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:11px;font-weight:700;color:{ACCENT};">NYX</div>
+      <div style="font-size:14px;font-weight:700;color:{TXT_PRI};">Bounty Market</div>
+    </div>
+    <div style="display:flex;gap:0;" role="tablist">{tabs}</div>
+    <div style="width:80px;"></div>
+  </div>
+</div>
+<div style="position:fixed;bottom:20px;right:24px;z-index:200;display:flex;gap:8px;">
+  <button onclick="nav(-1)" style="padding:8px 16px;background:{SURF_HI};border:1px solid {BORDER};border-radius:7px;color:{TXT_SEC};font-size:13px;cursor:pointer;">&larr; Prev</button>
+  <button onclick="nav(1)"  style="padding:8px 16px;background:{SURF_HI};border:1px solid {BORDER};border-radius:7px;color:{TXT_SEC};font-size:13px;cursor:pointer;">Next &rarr;</button>
+</div>
+<div id="frames">{bodies}</div>
+<script>
+let cur=0;const tot={len(FRAMES)};
+const fr=document.querySelectorAll('[data-frame]'),tb=document.querySelectorAll('[data-idx]');
+function show(i){{fr[cur].style.display='none';tb[cur].style.color='{TXT_MUT}';tb[cur].style.borderBottomColor='transparent';
+  cur=i;fr[cur].style.display='block';tb[cur].style.color='{ACCENT}';tb[cur].style.borderBottomColor='{ACCENT}';window.scrollTo(0,0);}}
+function nav(d){{show((cur+d+tot)%tot);}}
+tb.forEach(t=>t.addEventListener('click',()=>show(+t.dataset.idx)));
+document.addEventListener('keydown',e=>{{if(e.key==='ArrowRight')nav(1);if(e.key==='ArrowLeft')nav(-1);}});
+</script></body></html>"""
+
+if __name__=="__main__":
+    os.makedirs(OUTDIR,exist_ok=True)
+    html=build()
+    with open(OUTFILE,"w") as f: f.write(html)
+    print(f"Written: {OUTFILE}  ({len(html):,} bytes)")
